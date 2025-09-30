@@ -11,7 +11,7 @@ maintainers = [
 ]
 description = "R2X Core Framework"
 license = {file = "LICENSE.txt"}
-requires-python = ">=3.10,<=3.13"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
