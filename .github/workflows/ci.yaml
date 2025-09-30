@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
     branches:
       - main
-    branches:
-      - 'releases/**'
+      - "releases/**"
   workflow_dispatch:
 
 env:
@@ -20,7 +20,6 @@ permissions:
 
 jobs:
   pytest:
-
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -34,14 +33,13 @@ jobs:
       - mypy
 
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Installing uv with python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v6
         with:
           version: "latest"
-          python-version : ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
 
       - name: Installing dependencies
         run: uv sync --dev
@@ -60,11 +58,9 @@ jobs:
       #     verbose: true
 
   pre-commit:
-
     runs-on: ubuntu-latest
 
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Install uv
@@ -80,11 +76,9 @@ jobs:
           uv run pre-commit run --all-files
 
   mypy:
-
     runs-on: ${{ env.DEFAULT_OS }}
 
     steps:
-
       - uses: actions/checkout@v4
 
       - name: Install uv
@@ -100,7 +94,6 @@ jobs:
           uv run mypy --config-file=pyproject.toml src/
 
   ruff:
-
     runs-on: ${{ env.DEFAULT_OS }}
 
     steps:
