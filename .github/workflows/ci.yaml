@@ -10,7 +10,7 @@ on:
       - "releases/**"
   workflow_dispatch:
 
-vars:
+env:
   DEFAULT_PYTHON: "3.12"
   DEFAULT_OS: ubuntu-latest
 
@@ -50,7 +50,7 @@ jobs:
 
       # - name: codecov
       #   uses: codecov/codecov-action@v4.2.0
-      #   if: ${{ matrix.os == vars.DEFAULT_OS && matrix.python-version == vars.DEFAULT_PYTHON  }}
+      #   if: ${{ matrix.os == env.DEFAULT_OS && matrix.python-version == env.DEFAULT_PYTHON  }}
       #   with:
       #     token: ${{ secrets.CODECOV_TOKEN }}
       #     name: r2x-core
@@ -58,7 +58,7 @@ jobs:
       #     verbose: true
 
   pre-commit:
-    runs-on: ${{ vars.DEFAULT_OS }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
           uv run pre-commit run --all-files
 
   mypy:
-    runs-on: ${{ vars.DEFAULT_OS }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
           uv run mypy --config-file=pyproject.toml src/
 
   ruff:
-    runs-on: ${{ vars.DEFAULT_OS }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
