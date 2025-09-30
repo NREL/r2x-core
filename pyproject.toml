@@ -1,0 +1,40 @@
+[project]
+name = "r2x-core"
+version = "0.0.0"
+authors = [
+    { name = "pesap", email = "pesap@users.noreply.github.com" },
+    { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
+    { name = "Vivienne Liu", email = "vivienne.liu@nrel.gov"},
+]
+maintainers = [
+    { name = "pesap", email = "pesap@users.noreply.github.com" },
+]
+description = "R2X Core Framework"
+license = {file = "LICENSE.txt"}
+requires-python = ">=3.10,<=3.13"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Software Development :: Build Tools",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: File Formats :: JSON",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator"
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.2",
+    "pytest-coverage>=0.0",
+    "ruff>=0.13.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.22,<0.9.0"]
+build-backend = "uv_build"
