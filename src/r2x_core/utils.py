@@ -99,7 +99,7 @@ def validate_file_extension(path: Path, info: ValidationInfo) -> Path:
     ext = path.suffix.lower()
     if ext not in EXTENSION_MAPPING:
         msg = f"{ext=} not found on `EXTENSION_MAPPING`. "
-        msg += "Check spelling of file type or verify it is supported `FileType`."
+        msg += "Check spelling of file type or verify it is a supported `FileType`."
         msg += f"List of supported `FileType`: {EXTENSION_MAPPING.keys()}"
         raise KeyError(msg)
     return path
