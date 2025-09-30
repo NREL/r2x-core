@@ -67,8 +67,8 @@ jobs:
         id: version
         run: |
           uv version --bump ${{ needs.determine-version.outputs.RELEASE_TYPE }}
-          echo "NEW_VERSION=$(uv version)" >> $GITHUB_ENV
-          echo "version=$(uv version)" >> $GITHUB_OUTPUT
+          echo "NEW_VERSION=$(uv version --short)" >> $GITHUB_ENV
+          echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
