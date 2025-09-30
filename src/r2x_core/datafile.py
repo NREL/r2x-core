@@ -127,7 +127,7 @@ class DataFile(BaseModel):
     fpath: Annotated[
         FilePath,
         AfterValidator(validate_file_extension),
-        Field(description="File path (must exists)"),
+        Field(description="File path (must exist)"),
     ]
     description: Annotated[
         str | None, Field(description="Description of the data file")
