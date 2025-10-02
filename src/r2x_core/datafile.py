@@ -13,9 +13,8 @@ from pydantic import (
     computed_field,
 )
 
+from .file_types import EXTENSION_MAPPING, FileType
 from .utils import (
-    EXTENSION_MAPPING,
-    FileType,
     validate_file_extension,
 )
 
@@ -119,6 +118,7 @@ class DataFile(BaseModel):
 
     See Also
     --------
+    FileType: Class for file types.
     DataStore : Container for managing multiple DataFile instances
     DataReader : Service class for actually loading and processing the files
     """
