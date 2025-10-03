@@ -1,4 +1,15 @@
-# Welcome to `r2x-core` documentation!
+### r2x-core
+> Model translation parsing tool (ReEDS to X)
+>
+> [![image](https://img.shields.io/pypi/v/r2x.svg)](https://pypi.python.org/pypi/r2x-core)
+> [![image](https://img.shields.io/pypi/l/r2x.svg)](https://pypi.python.org/pypi/r2x-core)
+> [![image](https://img.shields.io/pypi/pyversions/r2x.svg)](https://pypi.python.org/pypi/r2x-core)
+> [![CI](https://github.com/NREL/r2x/actions/workflows/CI.yaml/badge.svg)](https://github.com/NREL/r2x/actions/workflows/ci.yaml)
+> [![codecov](https://codecov.io/gh/NREL/r2x-core/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL/r2x-core)
+> [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+> [![Documentation](https://github.com/NREL/r2x-core/actions/workflows/docs.yaml/badge.svg?branch=main)](https://nrel.github.io/r2x-core/)
+
+
 
 R2X Core is the foundational framework and engine for building power system model translators.
 It provides the core infrastructure, data models, and APIs that enable translation between different power system modeling platforms.
