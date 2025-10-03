@@ -6,22 +6,32 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      release_type:
-        description: Select release type
+      base_bump:
+        description: "Select base version bump (major, minor, patch)"
         required: true
         type: choice
         options:
-          - alpha
-          - beta
-          - dev
           - patch
           - minor
-          - rc
           - major
+
+      prerelease:
+        description: "Optional: Add a pre-release tag (dev, alpha, beta, rc)"
+        required: false
+        type: choice
+        default: ""
+        options:
+          - ""
+          - dev
+          - alpha
+          - beta
+          - rc
+
       release_name:
         description: "Optional: Release Name"
         required: false
         type: string
+
       release_body:
         description: "Optional: Release Body"
         required: false
@@ -38,7 +48,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         id: release_type
         run: |
-          echo "RELEASE_TYPE=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          echo "BASE_BUMP=${{ github.event.inputs.base_bump }}" >> $GITHUB_OUTPUT
+          echo "PRERELEASE=${{ github.event.inputs.prerelease }}" >> $GITHUB_OUTPUT
 
   bumpversion:
     needs: determine-version
@@ -66,9 +77,28 @@ jobs:
       - name: Bump version using UV
         id: version
         run: |
-          uv version --bump ${{ needs.determine-version.outputs.RELEASE_TYPE }}
+          BASE_BUMP="${{ needs.determine-version.outputs.BASE_BUMP }}"
+          PRERELEASE="${{ needs.determine-version.outputs.PRERELEASE }}"
+
+          if [[ -n "$PRERELEASE" ]]; then
+            echo "Creating pre-release: bumping $BASE_BUMP + $PRERELEASE"
+            uv version --bump "$BASE_BUMP" --bump "$PRERELEASE"
+          else
+            echo "Creating standard release: bumping $BASE_BUMP"
+            uv version --bump "$BASE_BUMP"
+          fi
+
           echo "NEW_VERSION=$(uv version --short)" >> $GITHUB_ENV
           echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
+
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: docs/source/CHANGELOG.md
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -82,7 +112,7 @@ jobs:
           git_config_global: true
 
       - name: Adding changes
-        run: git add pyproject.toml
+        run: git add pyproject.toml docs/source/CHANGELOG.md
 
       - name: Commit new version
         shell: bash
