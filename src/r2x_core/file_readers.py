@@ -10,7 +10,7 @@ from h5py import File as h5pyFile
 from loguru import logger
 from polars import DataFrame, LazyFrame, scan_csv
 
-from .utils import H5File, JSONFile, TableFile, XMLFile
+from .file_types import H5File, JSONFile, TableFile, XMLFile
 
 
 @singledispatch

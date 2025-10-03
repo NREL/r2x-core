@@ -9,8 +9,8 @@ from loguru import logger
 
 from .datafile import DataFile
 from .file_readers import read_file_by_type
+from .file_types import EXTENSION_MAPPING
 from .processors import apply_transformation, register_transformation
-from .utils import EXTENSION_MAPPING
 
 MAX_CACHE_SIZE = 100
 

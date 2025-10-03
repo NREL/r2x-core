@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from r2x_core import DataFile
-from r2x_core.utils import H5File, JSONFile, TableFile, XMLFile
+from r2x_core.file_types import H5File, JSONFile, TableFile, XMLFile
 
 
 @pytest.mark.parametrize(
