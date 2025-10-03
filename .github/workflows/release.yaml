@@ -41,7 +41,8 @@ jobs:
   determine-version:
     runs-on: ubuntu-latest
     outputs:
-      RELEASE_TYPE: ${{ steps.release_type.outputs.RELEASE_TYPE  }}
+      BASE_BUMP: ${{ steps.release_type.outputs.BASE_BUMP  }}
+      PRERELEASE: ${{ steps.release_type.outputs.PRERELEASE  }}
     steps:
       - uses: actions/checkout@v4
       - name: Determine version bump
