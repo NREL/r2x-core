@@ -1,0 +1,1501 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Exceptions" href="exceptions.html"><link rel="prev" title="API Reference" href="api.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.09.25 -->
+        <title>Parser Framework - r2x-core</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=580074bf" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">r2x-core</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">r2x-core</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how-tos/index.html">How-To Guides</a><input aria-label="Toggle navigation of How-To Guides" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/configuration.html">… create JSON configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/configuration.html#load-datastore-from-configuration">… load DataStore from configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/configuration.html#export-existing-configurations">… export existing configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/configuration.html#validate-configurations">… validate configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/configuration.html#manage-environment-specific-configurations">… manage environment-specific configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/data-reading.html">… read data files with DataReader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/data-reading.html#configure-data-caching">… configure data caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/data-reading.html#handle-different-file-types">… handle different file types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/data-reading.html#work-with-optional-files">… work with optional files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datafile-basics.html">… create a basic DataFile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datafile-basics.html#map-column-names-during-loading">… map column names during loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datafile-basics.html#filter-data-during-loading">… filter data during loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datafile-basics.html#work-with-different-file-types">… work with different file types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datafile-basics.html#use-custom-reader-functions">… use custom reader functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datastore-management.html">… create a DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datastore-management.html#add-files-to-a-datastore">… add files to a DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datastore-management.html#read-data-from-a-datastore">… read data from a DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datastore-management.html#manage-datastore-contents">… manage DataStore contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/datastore-management.html#save-and-load-datastore-configurations">… save and load DataStore configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/file-operations.html">… perform column operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/file-operations.html#filter-data-during-loading">… filter data during loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/file-operations.html#reshape-data-with-pivot-operations">… reshape data with pivot operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/file-operations.html#select-specific-columns">… select specific columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html">… create a basic parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#validate-inputs-before-building">… validate inputs before building</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#create-components-with-validation">… create components with validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#skip-validation-for-performance">… skip validation for performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#attach-time-series-to-components">… attach time series to components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#post-process-the-system">… post-process the system</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#use-parser-with-plugin-system">… use parser with plugin system</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#handle-errors-gracefully">… handle errors gracefully</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#customize-component-creation">… customize component creation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#work-with-multiple-model-years">… work with multiple model years</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how-tos/parser-basics.html#integrate-with-datastore-transformations">… integrate with DataStore transformations</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Parser Framework</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exceptions.html">Exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="file-formats.html">File Formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../CHANGELOG.html">Changelog</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/NREL/r2x-core/blob/main/docs/references/parser.md?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/NREL/r2x-core/edit/main/docs/references/parser.md" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="parser-framework">
+<h1>Parser Framework<a class="headerlink" href="#parser-framework" title="Link to this heading">¶</a></h1>
+<section id="parser-configuration">
+<h2>Parser Configuration<a class="headerlink" href="#parser-configuration" title="Link to this heading">¶</a></h2>
+<dl class="py class pydantic_model">
+<dt class="sig sig-object py" id="r2x_core.ParserConfig">
+<em class="property"><span class="pre">pydantic</span> <span class="pre">model</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_core.</span></span><span class="sig-name descname"><span class="pre">ParserConfig</span></span><a class="headerlink" href="#r2x_core.ParserConfig" title="Link to this definition">¶</a></dt>
+<dd><p>Base configuration class for parser inputs and model parameters.</p>
+<p>Applications should inherit from this class to define model-specific
+configuration parameters. This base class provides common fields that
+most parsers will need, while allowing full customization through inheritance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>defaults</strong> (<em>dict</em><em>, </em><em>optional</em>) – Default values for model-specific parameters. Can include device mappings,
+technology categorizations, filtering rules, etc. Default is empty dict.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.ParserConfig.defaults">
+<span class="sig-name descname"><span class="pre">defaults</span></span><a class="headerlink" href="#r2x_core.ParserConfig.defaults" title="Link to this definition">¶</a></dt>
+<dd><p>Dictionary of default values and mappings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Examples</p>
+<p>Create a model-specific configuration:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">ReEDSConfig</span><span class="p">(</span><span class="n">ParserConfig</span><span class="p">):</span>
+<span class="gp">... </span><span class="w">    </span><span class="sd">&#39;&#39;&#39;Configuration for ReEDS parser.&#39;&#39;&#39;</span>
+<span class="gp">... </span>    <span class="n">model_year</span><span class="p">:</span> <span class="nb">int</span>
+<span class="gp">... </span>    <span class="n">weather_year</span><span class="p">:</span> <span class="nb">int</span>
+<span class="gp">... </span>    <span class="n">scenario</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;base&quot;</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">ReEDSConfig</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">model_year</span><span class="o">=</span><span class="mi">2030</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">weather_year</span><span class="o">=</span><span class="mi">2012</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">defaults</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;excluded_techs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;coal&quot;</span><span class="p">,</span> <span class="s2">&quot;oil&quot;</span><span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With validation:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">ValidatedConfig</span><span class="p">(</span><span class="n">ParserConfig</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">model_year</span><span class="p">:</span> <span class="nb">int</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;model_year&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nd">@classmethod</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_year</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">2020</span> <span class="ow">or</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">2050</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Year must be between 2020 and 2050&quot;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">return</span> <span class="n">v</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#r2x_core.BaseParser" title="r2x_core.BaseParser"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseParser</span></code></a></dt><dd><p>Uses this configuration class</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></dt><dd><p>Parent class providing validation</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>The ParserConfig uses Pydantic for:
+- Automatic type checking and validation
+- JSON serialization/deserialization
+- Field validation and transformation
+- Default value management</p>
+<p>Subclasses can add:
+- Model-specific years (solve_year, weather_year, horizon_year, etc.)
+- Scenario identifiers
+- Feature flags
+- File path overrides
+- Custom validation logic</p>
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fields<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">defaults</span> <span class="pre">(dict[str,</span> <span class="pre">Any])</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute pydantic_field">
+<dt class="sig sig-object py" id="id0">
+<em class="property"><span class="pre">field</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">defaults</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">[Optional]</span></em><a class="headerlink" href="#id0" title="Link to this definition">¶</a></dt>
+<dd><p>Default values and model-specific mappings</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="base-parser">
+<h2>Base Parser<a class="headerlink" href="#base-parser" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="r2x_core.BaseParser">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">r2x_core.</span></span><span class="sig-name descname"><span class="pre">BaseParser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_store</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_add_composed_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_validation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for building infrasys.System objects from model data.</p>
+<p>The BaseParser provides a standardized framework for creating model-specific parsers.
+It orchestrates data loading, validation, transformation, and system construction,
+while delegating model-specific logic to subclasses through abstract methods.</p>
+<p>Applications create parsers by:
+1. Inheriting from BaseParser
+2. Implementing required abstract methods
+3. Optionally overriding hook methods for custom behavior
+4. Defining a model-specific ParserConfig subclass</p>
+<p>The typical workflow is:
+1. Initialize parser with configuration and data store
+2. Call build_system() which orchestrates the full build process
+3. Receive populated infrasys.System object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference internal" href="#r2x_core.ParserConfig" title="r2x_core.ParserConfig"><em>ParserConfig</em></a>) – Model-specific configuration instance containing model parameters,
+default values, and file mappings.</p></li>
+<li><p><strong>data_store</strong> (<a class="reference internal" href="api.html#r2x_core.DataStore" title="r2x_core.DataStore"><em>DataStore</em></a>) – Initialized DataStore instance with file mappings loaded. The parser
+uses this to read and cache data files.</p></li>
+<li><p><strong>name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name for the system being built. If None, a default name will be used.</p></li>
+<li><p><strong>auto_add_composed_components</strong> (<em>bool</em><em>, </em><em>default=True</em>) – Whether to automatically add composed components to the system.
+Passed directly to infrasys.System constructor.</p></li>
+<li><p><strong>skip_validation</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Skip Pydantic validation when creating component instances. Useful for
+performance optimization or when handling incomplete/legacy data.
+Use with caution as it bypasses type and constraint checking.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#r2x_core.BaseParser.config" title="Link to this definition">¶</a></dt>
+<dd><p>The model configuration instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#r2x_core.ParserConfig" title="r2x_core.ParserConfig">ParserConfig</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.data_store">
+<span class="sig-name descname"><span class="pre">data_store</span></span><a class="headerlink" href="#r2x_core.BaseParser.data_store" title="Link to this definition">¶</a></dt>
+<dd><p>Data store for file management and reading.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="api.html#r2x_core.DataStore" title="r2x_core.DataStore">DataStore</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.system">
+<span class="sig-name descname"><span class="pre">system</span></span><a class="headerlink" href="#r2x_core.BaseParser.system" title="Link to this definition">¶</a></dt>
+<dd><p>The infrasys.System instance being built. None until build_system() is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>System or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#r2x_core.BaseParser.name" title="Link to this definition">¶</a></dt>
+<dd><p>Name of the system being built.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.auto_add_composed_components">
+<span class="sig-name descname"><span class="pre">auto_add_composed_components</span></span><a class="headerlink" href="#r2x_core.BaseParser.auto_add_composed_components" title="Link to this definition">¶</a></dt>
+<dd><p>Whether to auto-add composed components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.skip_validation">
+<span class="sig-name descname"><span class="pre">skip_validation</span></span><a class="headerlink" href="#r2x_core.BaseParser.skip_validation" title="Link to this definition">¶</a></dt>
+<dd><p>Whether to skip component validation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.build_system">
+<span class="sig-name descname"><span class="pre">build_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.build_system" title="Link to this definition">¶</a></dt>
+<dd><p>Main entry point: Build and return the complete infrasys.System.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>Any</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.get_data">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.get_data" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve parsed data from the data store by key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Any</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.read_data_file">
+<span class="sig-name descname"><span class="pre">read_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">\*\*kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.read_data_file" title="Link to this definition">¶</a></dt>
+<dd><p>Read a data file through the data store with optional parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>)</p></li>
+<li><p><strong>kwargs</strong> (<em>Any</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Any</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.create_component">
+<span class="sig-name descname"><span class="pre">create_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">\*\*field_values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.create_component" title="Link to this definition">¶</a></dt>
+<dd><p>Factory method to create and validate component instances.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component_class</strong> (<em>type</em><em>[</em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>field_values</strong> (<em>Any</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Any</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.add_component">
+<span class="sig-name descname"><span class="pre">add_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.add_component" title="Link to this definition">¶</a></dt>
+<dd><p>Add a component to the system with logging.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>component</strong> (<em>Any</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.add_time_series">
+<span class="sig-name descname"><span class="pre">add_time_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_series</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">\*\*kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.add_time_series" title="Link to this definition">¶</a></dt>
+<dd><p>Attach time series data to a component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component</strong> (<em>Any</em>)</p></li>
+<li><p><strong>time_series</strong> (<em>Any</em>)</p></li>
+<li><p><strong>kwargs</strong> (<em>Any</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.validate_inputs">
+<span class="sig-name descname"><span class="pre">validate_inputs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.validate_inputs" title="Link to this definition">¶</a></dt>
+<dd><p>Hook for pre-build validation (override in subclasses).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.post_process_system">
+<span class="sig-name descname"><span class="pre">post_process_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.post_process_system" title="Link to this definition">¶</a></dt>
+<dd><p>Hook for post-build processing (override in subclasses).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Abstract</span> <span class="pre">Methods</span> <span class="pre">(must</span> <span class="pre">implement</span> <span class="pre">in</span> <span class="pre">subclass)</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">----------------------------------------------</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.build_system_components">
+<span class="sig-name descname"><span class="pre">build_system_components</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.build_system_components" title="Link to this definition">¶</a></dt>
+<dd><p>Create all system components (buses, generators, etc.).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="r2x_core.BaseParser.build_time_series">
+<span class="sig-name descname"><span class="pre">build_time_series</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#r2x_core.BaseParser.build_time_series" title="Link to this definition">¶</a></dt>
+<dd><p>Attach time series data to components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If there are issues during parsing or system construction.</p></li>
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ValidationError" title="r2x_core.ValidationError"><strong>ValidationError</strong></a> – If configuration or data validation fails.</p></li>
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ComponentCreationError" title="r2x_core.ComponentCreationError"><strong>ComponentCreationError</strong></a> – If component instantiation fails.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference internal" href="#r2x_core.ParserConfig" title="r2x_core.parser.ParserConfig"><em>ParserConfig</em></a>)</p></li>
+<li><p><strong>data_store</strong> (<a class="reference internal" href="api.html#r2x_core.DataStore" title="r2x_core.store.DataStore"><em>DataStore</em></a>)</p></li>
+<li><p><strong>name</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>auto_add_composed_components</strong> (<em>bool</em>)</p></li>
+<li><p><strong>skip_validation</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Create a simple parser:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">r2x_core.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseParser</span><span class="p">,</span> <span class="n">ParserConfig</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">r2x_core.store</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataStore</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">MyModelConfig</span><span class="p">(</span><span class="n">ParserConfig</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">model_year</span><span class="p">:</span> <span class="nb">int</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">MyModelParser</span><span class="p">(</span><span class="n">BaseParser</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">model_year</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">model_year</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_year</span> <span class="o">&lt;</span> <span class="mi">2020</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="s2">&quot;Invalid year&quot;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">build_system_components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">bus_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;buses&quot;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">bus_data</span><span class="o">.</span><span class="n">iter_rows</span><span class="p">(</span><span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="gp">... </span>            <span class="n">bus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
+<span class="gp">... </span>            <span class="bp">self</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">build_time_series</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">load_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;load_profiles&quot;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="c1"># Attach time series...</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">MyModelConfig</span><span class="p">(</span><span class="n">model_year</span><span class="o">=</span><span class="mi">2030</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">store</span> <span class="o">=</span> <span class="n">DataStore</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="s2">&quot;mappings.json&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">system</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">build_system</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>With custom post-processing:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">AdvancedParser</span><span class="p">(</span><span class="n">BaseParser</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">post_process_system</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span><span class="w">        </span><span class="sd">&#39;&#39;&#39;Add metadata and validate connectivity.&#39;&#39;&#39;</span>
+<span class="gp">... </span>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Built </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_components</span><span class="p">(</span><span class="n">Bus</span><span class="p">))</span><span class="si">}</span><span class="s2"> buses&quot;</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_connectivity</span><span class="p">()</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_year</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For plugin integration (calling methods individually):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">validate_inputs</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">build_system_components</span><span class="p">()</span>  <span class="c1"># Public method</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Apply custom modifications...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">build_time_series</span><span class="p">()</span>  <span class="c1"># Public method</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">post_process_system</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">system</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">system</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#r2x_core.ParserConfig" title="r2x_core.ParserConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParserConfig</span></code></a></dt><dd><p>Base configuration class</p>
+</dd>
+<dt><a class="reference internal" href="api.html#r2x_core.DataStore" title="r2x_core.DataStore"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataStore</span></code></a></dt><dd><p>Data file management</p>
+</dd>
+<dt><a class="reference internal" href="api.html#r2x_core.DataReader" title="r2x_core.DataReader"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataReader</span></code></a></dt><dd><p>File reading operations</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">infrasys.system.System</span></code></dt><dd><p>Target system class</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>The parser follows the Template Method pattern where build_system() defines
+the overall algorithm flow, and subclasses fill in the specific steps through
+abstract methods.</p>
+<p>The separation between parser and data store provides:
+- Independent testing of data loading vs. system building
+- Reuse of data stores across multiple parsers
+- Clear separation of I/O concerns from domain logic
+- Flexible caching strategies</p>
+<p>Key design patterns:
+- Template Method: build_system() defines the workflow skeleton
+- build_system_components() and build_time_series() are the abstract templates
+- Hook methods: validate_inputs(), post_process_system() (optional overrides)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">build_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#id1" title="Link to this definition">¶</a></dt>
+<dd><p>Build and return the complete infrasys.System.</p>
+<p>This is the main entry point for the parser. It orchestrates the complete
+system building workflow by calling validation, component creation, time
+series attachment, and post-processing in sequence.</p>
+<p>The workflow is:
+1. Validate inputs (validate_inputs)
+2. Create infrasys.System instance
+3. Build system components (build_system_components)
+4. Build time series (build_time_series)
+5. Post-process system (post_process_system)
+6. Return completed system</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Fully constructed infrasys.System instance with all components
+and time series attached.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>System</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If system construction fails.</p></li>
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ValidationError" title="r2x_core.ValidationError"><strong>ValidationError</strong></a> – If validation fails during any step.</p></li>
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ComponentCreationError" title="r2x_core.ComponentCreationError"><strong>ComponentCreationError</strong></a> – If component creation fails.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Basic usage:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">system</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">build_system</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Built system with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">get_components</span><span class="p">(</span><span class="n">Bus</span><span class="p">))</span><span class="si">}</span><span class="s2"> buses&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With error handling:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">system</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">build_system</span><span class="p">()</span>
+<span class="gp">... </span><span class="k">except</span> <span class="n">ValidationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Validation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">... </span><span class="k">except</span> <span class="n">ParserError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parser error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id7" title="r2x_core.BaseParser.validate_inputs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_inputs</span></code></a></dt><dd><p>Pre-build validation hook</p>
+</dd>
+<dt><a class="reference internal" href="#id8" title="r2x_core.BaseParser.build_system_components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_system_components</span></code></a></dt><dd><p>Component creation</p>
+</dd>
+<dt><a class="reference internal" href="#id9" title="r2x_core.BaseParser.build_time_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_time_series</span></code></a></dt><dd><p>Time series attachment</p>
+</dd>
+<dt><a class="reference internal" href="#id10" title="r2x_core.BaseParser.post_process_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">post_process_system</span></code></a></dt><dd><p>Post-build processing hook</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This method creates the System instance during execution, not in __init__.
+This allows multiple systems to be built from the same parser configuration
+if needed, and keeps the parser lightweight until actually used.</p>
+<p>For plugin systems that need finer control, call the individual public
+methods (build_system_components, build_time_series) directly instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id2" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve parsed data from the data store by key.</p>
+<p>Provides convenient access to data that has been loaded into the data store.
+This is a thin wrapper around the data store’s internal data access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – The data file identifier/name as registered in the data store.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded data (typically polars.LazyFrame, polars.DataFrame,
+dict, or other format depending on the file type).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>KeyError</strong> – If the specified key is not found in the data store.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bus_data</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s2">&quot;buses&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">gen_data</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s2">&quot;generators&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With error handling:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">data</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s2">&quot;optional_file&quot;</span><span class="p">)</span>
+<span class="gp">... </span><span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Optional file not found, using defaults&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">data</span> <span class="o">=</span> <span class="n">default_data</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id3" title="r2x_core.BaseParser.read_data_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_data_file</span></code></a></dt><dd><p>Read data file through the data store</p>
+</dd>
+<dt><a class="reference internal" href="api.html#r2x_core.DataStore.get_data_file_by_name" title="r2x_core.DataStore.get_data_file_by_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataStore.get_data_file_by_name</span></code></a></dt><dd><p>Underlying data store method</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This method assumes the data has already been loaded into the data store.
+For on-demand reading, use read_data_file() instead.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">read_data_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id3" title="Link to this definition">¶</a></dt>
+<dd><p>Read a data file through the data store.</p>
+<p>Loads a data file using the data store’s reader, applying any configured
+transformations (filters, column mapping, etc.) and optionally using cache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – The data file identifier as registered in the data store.</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments passed to the data store’s read_data_file
+method. Common arguments include:
+- use_cache : bool, whether to use cached data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded and transformed data (format depends on file type).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>KeyError</strong> – If the data file name is not found in the data store.</p></li>
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If file reading fails.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Basic usage:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bus_data</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;buses&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With caching disabled:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fresh_data</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;generators&quot;</span><span class="p">,</span> <span class="n">use_cache</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id2" title="r2x_core.BaseParser.get_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_data</span></code></a></dt><dd><p>Access already-loaded data</p>
+</dd>
+<dt><a class="reference internal" href="api.html#r2x_core.DataStore.read_data_file" title="r2x_core.DataStore.read_data_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataStore.read_data_file</span></code></a></dt><dd><p>Underlying data store method</p>
+</dd>
+<dt><a class="reference internal" href="models.html#r2x_core.DataFile" title="r2x_core.DataFile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DataFile</span></code></a></dt><dd><p>File configuration including transformations</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This method applies transformations configured in the DataFile definition.
+If the file has filter, rename, or cast operations defined, they are
+applied automatically during reading.</p>
+<p>For performance-critical code paths, consider using use_cache=True (default)
+to avoid repeated file I/O.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">create_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_class</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">field_values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id4" title="Link to this definition">¶</a></dt>
+<dd><p>Create and validate a component instance.</p>
+<p>Factory method for creating infrasys Component instances with optional
+validation skipping. Handles field filtering to only pass valid fields
+for the component class, and provides consistent error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component_class</strong> (<em>type</em>) – The Component class to instantiate (e.g., ACBus, Generator, etc.).</p></li>
+<li><p><strong>**field_values</strong> – Field names and values to pass to the component constructor.
+Invalid fields (not in component’s model_fields) are filtered out.
+None values are also filtered out.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Validated (or constructed) instance of the specified component class.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Component</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="exceptions.html#r2x_core.ComponentCreationError" title="r2x_core.ComponentCreationError"><strong>ComponentCreationError</strong></a> – If component creation fails due to invalid field values or other errors.</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Basic usage:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bus</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">ACBus</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bus1&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">voltage</span><span class="o">=</span><span class="mf">230.0</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">bus_type</span><span class="o">=</span><span class="n">ACBusTypes</span><span class="o">.</span><span class="n">PV</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With extra fields (filtered out automatically):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gen</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">Generator</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Gen1&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">capacity</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">extra_field</span><span class="o">=</span><span class="s2">&quot;ignored&quot;</span><span class="p">,</span>  <span class="c1"># Not in Generator.model_fields</span>
+<span class="gp">... </span>    <span class="n">bus</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># None values are filtered out</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Skip validation for performance:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">skip_validation</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">gen</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span><span class="n">ThermalGen</span><span class="p">,</span> <span class="o">**</span><span class="n">row_data</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id5" title="r2x_core.BaseParser.add_component"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_component</span></code></a></dt><dd><p>Add component to system</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">infrasys.component.Component</span></code></dt><dd><p>Base component class</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This method implements the create_model_instance pattern from the old
+r2x codebase, providing the skip_validation functionality for handling
+incomplete or legacy data.</p>
+<p>When skip_validation=True:
+- Uses model_construct() instead of model_validate()
+- Bypasses Pydantic validation (faster but less safe)
+- Falls back to validation if construction fails</p>
+<p>Field filtering removes:
+- Fields not in component_class.model_fields
+- Fields with None values</p>
+<p>Subclasses can override this method to add model-specific defaults
+or transformations before component creation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">add_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id5" title="Link to this definition">¶</a></dt>
+<dd><p>Add a component to the system with logging.</p>
+<p>Convenience method that adds a component to the system and logs the action.
+Provides consistent logging across all parsers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>component</strong> (<em>Component</em>) – The infrasys Component instance to add to the system.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If system has not been created yet (build_system not called).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bus</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Bus1&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In a loop:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">bus_data</span><span class="o">.</span><span class="n">iter_rows</span><span class="p">(</span><span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">bus</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="o">**</span><span class="n">row</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">parser</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id4" title="r2x_core.BaseParser.create_component"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_component</span></code></a></dt><dd><p>Create component instances</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">infrasys.system.System.add_component</span></code></dt><dd><p>Underlying system method</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This method requires that self.system is not None. Call this within
+build_system_components(), after build_system() completes, or in plugin
+workflows after manually creating a System instance.</p>
+<p>The logging uses DEBUG level to avoid cluttering output when adding
+many components, but provides traceability for debugging.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">add_time_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_series</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id6" title="Link to this definition">¶</a></dt>
+<dd><p>Attach time series data to a component.</p>
+<p>Convenience method for adding time series to components with consistent
+logging and error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component</strong> (<em>Component</em>) – The component to attach the time series to.</p></li>
+<li><p><strong>time_series</strong> (<em>TimeSeriesData</em>) – The time series data instance (e.g., SingleTimeSeries).</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments passed to system.add_time_series.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If system has not been created yet.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">infrasys.time_series_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">SingleTimeSeries</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bus</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="s2">&quot;Bus1&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ts</span> <span class="o">=</span> <span class="n">SingleTimeSeries</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">data</span><span class="o">=</span><span class="n">load_profile</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+<span class="gp">... </span>    <span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;max_active_power&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">add_time_series</span><span class="p">(</span><span class="n">bus</span><span class="p">,</span> <span class="n">ts</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id9" title="r2x_core.BaseParser.build_time_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_time_series</span></code></a></dt><dd><p>Method that typically calls this</p>
+</dd>
+<dt><code class="xref py py-obj docutils literal notranslate"><span class="pre">infrasys.system.System.add_time_series</span></code></dt><dd><p>Underlying system method</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This is typically called within build_time_series(), but can be used in any
+workflow where self.system has been initialized.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">validate_inputs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#id7" title="Link to this definition">¶</a></dt>
+<dd><p>Validate configuration and data before building system.</p>
+<p>Hook method that subclasses can override to perform custom validation
+before system construction begins. Called at the start of build_system().</p>
+<p>Default implementation does nothing. Override in subclasses to add
+validation logic.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="exceptions.html#r2x_core.ValidationError" title="r2x_core.ValidationError"><strong>ValidationError</strong></a> – If validation fails. Subclasses should raise this exception
+    with a descriptive message.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Basic validation:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span><span class="w"> </span><span class="nc">MyParser</span><span class="p">(</span><span class="n">BaseParser</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">def</span><span class="w"> </span><span class="nf">validate_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_year</span> <span class="o">&lt;</span> <span class="mi">2020</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="s2">&quot;Year must be &gt;= 2020&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Checking data availability:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">validate_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">required</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;buses&quot;</span><span class="p">,</span> <span class="s2">&quot;generators&quot;</span><span class="p">,</span> <span class="s2">&quot;branches&quot;</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">required</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_store</span><span class="o">.</span><span class="n">_data_files</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Required file &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; missing&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Validating against data:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">validate_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">years_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s2">&quot;available_years&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">available</span> <span class="o">=</span> <span class="n">years_data</span><span class="p">[</span><span class="s2">&quot;year&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_year</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="sa">f</span><span class="s2">&quot;Year </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_year</span><span class="si">}</span><span class="s2"> not in </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="gp">... </span>        <span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id1" title="r2x_core.BaseParser.build_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_system</span></code></a></dt><dd><p>Calls this method first</p>
+</dd>
+<dt><a class="reference internal" href="exceptions.html#r2x_core.ValidationError" title="r2x_core.ValidationError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ValidationError</span></code></a></dt><dd><p>Exception to raise on failure</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This is a hook method in the Template Method pattern. The base class
+calls it at the appropriate time, but subclasses provide the implementation.</p>
+<p>Best practices:
+- Validate configuration parameters
+- Check required data files are present
+- Verify cross-field constraints
+- Fail fast with clear error messages</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id8">
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">build_system_components</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#id8" title="Link to this definition">¶</a></dt>
+<dd><p>Create all system components (abstract method for subclass implementation).</p>
+<p>Subclasses must implement this method to create and add all components
+needed for their specific model. This typically includes buses, generators,
+loads, branches, and other network elements.</p>
+<p>The implementation should:
+1. Read component data using read_data_file()
+2. Iterate over the data
+3. Create components using create_component()
+4. Add components using add_component()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If component creation fails.</p></li>
+<li><p><a class="reference internal" href="exceptions.html#r2x_core.ComponentCreationError" title="r2x_core.ComponentCreationError"><strong>ComponentCreationError</strong></a> – If specific component instantiation fails.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Normal usage (via build_system):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">system</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">build_system</span><span class="p">()</span>  <span class="c1"># Calls build_system_components internally</span>
+</pre></div>
+</div>
+<p>Direct usage (for plugin systems):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">validate_inputs</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">build_system_components</span><span class="p">()</span>  <span class="c1"># Call directly</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Apply custom modifications...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">build_time_series</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Typical implementation:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">build_system_components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="c1"># Create buses</span>
+<span class="gp">... </span>    <span class="n">bus_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;buses&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">bus_data</span><span class="o">.</span><span class="n">iter_rows</span><span class="p">(</span><span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">bus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="n">ACBus</span><span class="p">,</span>
+<span class="gp">... </span>            <span class="n">name</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;bus_name&quot;</span><span class="p">],</span>
+<span class="gp">... </span>            <span class="n">voltage</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;voltage_kv&quot;</span><span class="p">]</span>
+<span class="gp">... </span>        <span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="c1"># Create generators</span>
+<span class="gp">... </span>    <span class="n">gen_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;generators&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">gen_data</span><span class="o">.</span><span class="n">iter_rows</span><span class="p">(</span><span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="n">gen</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="n">ThermalGen</span><span class="p">,</span>
+<span class="gp">... </span>            <span class="n">name</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;gen_name&quot;</span><span class="p">],</span>
+<span class="gp">... </span>            <span class="n">bus</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;bus_name&quot;</span><span class="p">]),</span>
+<span class="gp">... </span>            <span class="n">active_power</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;capacity_mw&quot;</span><span class="p">]</span>
+<span class="gp">... </span>        <span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">gen</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With error handling:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">build_system_components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">bus_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;buses&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="k">raise</span> <span class="n">ParserError</span><span class="p">(</span><span class="s2">&quot;Required file &#39;buses&#39; not found&quot;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">bus_data</span><span class="o">.</span><span class="n">iter_rows</span><span class="p">(</span><span class="n">named</span><span class="o">=</span><span class="kc">True</span><span class="p">)):</span>
+<span class="gp">... </span>        <span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="n">bus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="o">**</span><span class="n">row</span><span class="p">)</span>
+<span class="gp">... </span>            <span class="bp">self</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">bus</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="k">raise</span> <span class="n">ComponentCreationError</span><span class="p">(</span>
+<span class="gp">... </span>                <span class="sa">f</span><span class="s2">&quot;Failed to create bus at row </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="gp">... </span>            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id1" title="r2x_core.BaseParser.build_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_system</span></code></a></dt><dd><p>Main workflow that calls this method</p>
+</dd>
+<dt><a class="reference internal" href="#id4" title="r2x_core.BaseParser.create_component"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_component</span></code></a></dt><dd><p>Factory for creating components</p>
+</dd>
+<dt><a class="reference internal" href="#id5" title="r2x_core.BaseParser.add_component"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_component</span></code></a></dt><dd><p>Add component to system</p>
+</dd>
+<dt><a class="reference internal" href="#id3" title="r2x_core.BaseParser.read_data_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_data_file</span></code></a></dt><dd><p>Read data files</p>
+</dd>
+<dt><a class="reference internal" href="#id9" title="r2x_core.BaseParser.build_time_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_time_series</span></code></a></dt><dd><p>Companion method for time series</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This is an abstract method that must be implemented by subclasses.
+It is called by build_system() as part of the template method workflow.</p>
+<p>Common patterns:
+- Create topology first (buses, areas, zones)
+- Create devices (generators, loads, storage)
+- Create connections (branches, interfaces)
+- Establish relationships (generator.bus = bus_instance)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id9">
+<em class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">build_time_series</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#id9" title="Link to this definition">¶</a></dt>
+<dd><p>Attach time series data to components (abstract method for subclass implementation).</p>
+<p>Subclasses must implement this method to read and attach time series
+data to the appropriate components. This typically includes load profiles,
+generation profiles, and other time-varying data.</p>
+<p>The implementation should:
+1. Read time series data using read_data_file()
+2. Process/transform the data as needed
+3. Create time series objects (e.g., SingleTimeSeries)
+4. Attach to components using add_time_series()</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="exceptions.html#r2x_core.ParserError" title="r2x_core.ParserError"><strong>ParserError</strong></a> – If time series processing fails.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Normal usage (via build_system):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">system</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">build_system</span><span class="p">()</span>  <span class="c1"># Calls build_time_series internally</span>
+</pre></div>
+</div>
+<p>Direct usage (for plugin systems):</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span> <span class="o">=</span> <span class="n">MyModelParser</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">data_store</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">build_system_components</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Apply modifications...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">parser</span><span class="o">.</span><span class="n">build_time_series</span><span class="p">()</span>  <span class="c1"># Call directly</span>
+</pre></div>
+</div>
+<p>Typical implementation:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">build_time_series</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="kn">from</span><span class="w"> </span><span class="nn">infrasys.time_series_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">SingleTimeSeries</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="c1"># Load profiles for buses</span>
+<span class="gp">... </span>    <span class="n">load_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;load_profiles&quot;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">bus_name</span> <span class="ow">in</span> <span class="n">load_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">bus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_component</span><span class="p">(</span><span class="n">ACBus</span><span class="p">,</span> <span class="n">bus_name</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="n">ts</span> <span class="o">=</span> <span class="n">SingleTimeSeries</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="n">data</span><span class="o">=</span><span class="n">load_data</span><span class="p">[</span><span class="n">bus_name</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+<span class="gp">... </span>            <span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;max_active_power&quot;</span>
+<span class="gp">... </span>        <span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">add_time_series</span><span class="p">(</span><span class="n">bus</span><span class="p">,</span> <span class="n">ts</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="c1"># Capacity factors for renewables</span>
+<span class="gp">... </span>    <span class="n">cf_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_data_file</span><span class="p">(</span><span class="s2">&quot;capacity_factors&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">gen_name</span> <span class="ow">in</span> <span class="n">cf_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">gen</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_component</span><span class="p">(</span><span class="n">RenewableGen</span><span class="p">,</span> <span class="n">gen_name</span><span class="p">)</span>
+<span class="gp">... </span>        <span class="n">ts</span> <span class="o">=</span> <span class="n">SingleTimeSeries</span><span class="p">(</span>
+<span class="gp">... </span>            <span class="n">data</span><span class="o">=</span><span class="n">cf_data</span><span class="p">[</span><span class="n">gen_name</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span>
+<span class="gp">... </span>            <span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;max_active_power&quot;</span>
+<span class="gp">... </span>        <span class="p">)</span>
+<span class="gp">... </span>        <span class="bp">self</span><span class="o">.</span><span class="n">add_time_series</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="n">ts</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id1" title="r2x_core.BaseParser.build_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_system</span></code></a></dt><dd><p>Main workflow that calls this method</p>
+</dd>
+<dt><a class="reference internal" href="#id6" title="r2x_core.BaseParser.add_time_series"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_time_series</span></code></a></dt><dd><p>Attach time series to component</p>
+</dd>
+<dt><a class="reference internal" href="#id3" title="r2x_core.BaseParser.read_data_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_data_file</span></code></a></dt><dd><p>Read time series data files</p>
+</dd>
+<dt><a class="reference internal" href="#id8" title="r2x_core.BaseParser.build_system_components"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_system_components</span></code></a></dt><dd><p>Companion method for components</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This is an abstract method that must be implemented by subclasses.
+It is called by build_system() after build_system_components(),
+ensuring all components exist before attaching time series.</p>
+<p>Common time series types:
+- Load profiles (demand over time)
+- Renewable capacity factors (generation availability)
+- Price curves (cost over time)
+- Reserve requirements (operating reserve levels)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">post_process_system</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#id10" title="Link to this definition">¶</a></dt>
+<dd><p>Perform post-processing after system construction.</p>
+<p>Hook method that subclasses can override to perform custom processing
+after all components and time series have been added. Called at the
+end of build_system().</p>
+<p>Default implementation does nothing. Override in subclasses to add
+post-processing logic.</p>
+<p class="rubric">Examples</p>
+<p>Add summary logging:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">post_process_system</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;System &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; built successfully&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Buses: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_components</span><span class="p">(</span><span class="n">ACBus</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Generators: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_components</span><span class="p">(</span><span class="n">Generator</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Add metadata:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">post_process_system</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s2">&quot;model_year&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_year</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;scenario&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">scenario</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="s2">&quot;created&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+<span class="gp">... </span>        <span class="s2">&quot;parser_version&quot;</span><span class="p">:</span> <span class="n">__version__</span>
+<span class="gp">... </span>    <span class="p">}</span>
+</pre></div>
+</div>
+<p>Validate system integrity:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span><span class="w"> </span><span class="nf">post_process_system</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="c1"># Check all generators have valid buses</span>
+<span class="gp">... </span>    <span class="n">buses</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_components</span><span class="p">(</span><span class="n">ACBus</span><span class="p">))</span>
+<span class="gp">... </span>    <span class="k">for</span> <span class="n">gen</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">get_components</span><span class="p">(</span><span class="n">Generator</span><span class="p">):</span>
+<span class="gp">... </span>        <span class="k">if</span> <span class="n">gen</span><span class="o">.</span><span class="n">bus</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">buses</span><span class="p">:</span>
+<span class="gp">... </span>            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span>
+<span class="gp">... </span>                <span class="sa">f</span><span class="s2">&quot;Generator </span><span class="si">{</span><span class="n">gen</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> has invalid bus&quot;</span>
+<span class="gp">... </span>            <span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#id1" title="r2x_core.BaseParser.build_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_system</span></code></a></dt><dd><p>Calls this method last</p>
+</dd>
+<dt><a class="reference internal" href="#id7" title="r2x_core.BaseParser.validate_inputs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_inputs</span></code></a></dt><dd><p>Pre-build validation hook</p>
+</dd>
+</dl>
+</div>
+<p class="rubric">Notes</p>
+<p>This is a hook method in the Template Method pattern. The base class
+calls it at the appropriate time, but subclasses provide the implementation.</p>
+<p>Common uses:
+- Logging summary statistics
+- Adding metadata
+- Validating system integrity
+- Computing derived quantities
+- Setting up cross-component relationships</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="exceptions.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Exceptions</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="api.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">API Reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Alliance for Sustainable Energy LLC, All rights reserved.
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/NREL/r2x-core" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Parser Framework</a><ul>
+<li><a class="reference internal" href="#parser-configuration">Parser Configuration</a><ul>
+<li><a class="reference internal" href="#r2x_core.ParserConfig"><code class="docutils literal notranslate"><span class="pre">ParserConfig</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_core.ParserConfig.defaults"><code class="docutils literal notranslate"><span class="pre">ParserConfig.defaults</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">ParserConfig.defaults</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#base-parser">Base Parser</a><ul>
+<li><a class="reference internal" href="#r2x_core.BaseParser"><code class="docutils literal notranslate"><span class="pre">BaseParser</span></code></a><ul>
+<li><a class="reference internal" href="#r2x_core.BaseParser.config"><code class="docutils literal notranslate"><span class="pre">BaseParser.config</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.data_store"><code class="docutils literal notranslate"><span class="pre">BaseParser.data_store</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.system"><code class="docutils literal notranslate"><span class="pre">BaseParser.system</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.name"><code class="docutils literal notranslate"><span class="pre">BaseParser.name</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.auto_add_composed_components"><code class="docutils literal notranslate"><span class="pre">BaseParser.auto_add_composed_components</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.skip_validation"><code class="docutils literal notranslate"><span class="pre">BaseParser.skip_validation</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.build_system"><code class="docutils literal notranslate"><span class="pre">BaseParser.build_system()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.get_data"><code class="docutils literal notranslate"><span class="pre">BaseParser.get_data()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.read_data_file"><code class="docutils literal notranslate"><span class="pre">BaseParser.read_data_file()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.create_component"><code class="docutils literal notranslate"><span class="pre">BaseParser.create_component()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.add_component"><code class="docutils literal notranslate"><span class="pre">BaseParser.add_component()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.add_time_series"><code class="docutils literal notranslate"><span class="pre">BaseParser.add_time_series()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.validate_inputs"><code class="docutils literal notranslate"><span class="pre">BaseParser.validate_inputs()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.post_process_system"><code class="docutils literal notranslate"><span class="pre">BaseParser.post_process_system()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.build_system_components"><code class="docutils literal notranslate"><span class="pre">BaseParser.build_system_components()</span></code></a></li>
+<li><a class="reference internal" href="#r2x_core.BaseParser.build_time_series"><code class="docutils literal notranslate"><span class="pre">BaseParser.build_time_series()</span></code></a></li>
+<li><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">BaseParser.build_system()</span></code></a></li>
+<li><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">BaseParser.get_data()</span></code></a></li>
+<li><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">BaseParser.read_data_file()</span></code></a></li>
+<li><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">BaseParser.create_component()</span></code></a></li>
+<li><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">BaseParser.add_component()</span></code></a></li>
+<li><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">BaseParser.add_time_series()</span></code></a></li>
+<li><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">BaseParser.validate_inputs()</span></code></a></li>
+<li><a class="reference internal" href="#id8"><code class="docutils literal notranslate"><span class="pre">BaseParser.build_system_components()</span></code></a></li>
+<li><a class="reference internal" href="#id9"><code class="docutils literal notranslate"><span class="pre">BaseParser.build_time_series()</span></code></a></li>
+<li><a class="reference internal" href="#id10"><code class="docutils literal notranslate"><span class="pre">BaseParser.post_process_system()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=f539c95a"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=3a0c56fd"></script>
+    </body>
+</html>
