@@ -408,7 +408,7 @@ class BaseParser(ABC):
         """
         from infrasys.system import System
 
-        logger.info(f"Starting system build: {self.name}")
+        logger.info("Starting system build: {}", self.name)
 
         # Step 1: Validate inputs before doing anything
         logger.debug("Validating parser inputs...")
