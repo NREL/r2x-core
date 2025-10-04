@@ -48,14 +48,14 @@ jobs:
         run: |
           uv run --frozen pytest -vvl --cov --cov-report=xml
 
-      # - name: codecov
-      #   uses: codecov/codecov-action@v4.2.0
-      #   if: ${{ matrix.os == env.DEFAULT_OS && matrix.python-version == env.DEFAULT_PYTHON  }}
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     name: r2x-core
-      #     fail_ci_if_error: false
-      #     verbose: true
+      - name: codecov
+        uses: codecov/codecov-action@v5
+        if: ${{ matrix.os == env.DEFAULT_OS && matrix.python-version == env.DEFAULT_PYTHON  }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: r2x-core
+          fail_ci_if_error: false
+          verbose: true
 
   pre-commit:
     runs-on: ubuntu-latest
