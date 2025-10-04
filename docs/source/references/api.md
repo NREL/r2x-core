@@ -31,3 +31,12 @@
    :model-show-validator-summary: False
    :field-list-validators: False
 ```
+
+## Exporter Framework
+
+```{eval-rst}
+.. autoclass:: r2x_core.BaseExporter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
