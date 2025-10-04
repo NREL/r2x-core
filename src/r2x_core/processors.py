@@ -91,7 +91,7 @@ def pl_lowercase(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     result = df.with_columns(pl.col(pl.String).str.to_lowercase()).rename(
         {column: column.lower() for column in df.collect_schema().names()}
     )
-    logger.trace("New columns: {}", df.collect_schema().names())
+    logger.trace("New columns: {}", result.collect_schema().names())
     return result
 
 
