@@ -429,7 +429,7 @@ class BaseParser(ABC):
         logger.debug("Post-processing system...")
         self.post_process_system()
 
-        logger.info(f"System '{self.name}' built successfully")
+        logger.info("System '{}' built successfully", self.name)
         return self.system
 
     def get_data(self, key: str) -> Any:
