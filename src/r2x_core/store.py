@@ -201,8 +201,8 @@ class DataStore:
 
         store = cls(folder=folder)
 
-        # Try first to check if the file exist in the folder pass. In the
-        # future we could potentiall add arbitrary files
+        # Try first to check if the file exists in the folder pass. In the
+        # future we could potentially add arbitrary files
         files_not_found = []
         for file_data in data_files_json:
             updated_fpath = Path(folder) / file_data["fpath"]
