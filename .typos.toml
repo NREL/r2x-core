@@ -1,0 +1,6 @@
+# Typos configuration for r2x-core
+# See https://github.com/crate-ci/typos for more information
+[files]
+extend-exclude = [
+    "tests/*",
+]

@@ -5,7 +5,7 @@ from pydantic.dataclasses import dataclass
 
 
 @dataclass(slots=True)
-class FileType:  # type: ignore
+class FileType:
     """Base class for file data types."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

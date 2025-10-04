@@ -196,9 +196,27 @@ class DataStore:
             data_files_json = json.load(f)
 
         if not isinstance(data_files_json, list):
-            raise TypeError(f"JSON file `{fpath}` is not a JSON array.")
+            msg = f"JSON file `{fpath}` is not a JSON array."
+            raise TypeError(msg)
 
         store = cls(folder=folder)
+
+        # Try first to check if the file exists in the folder pass. In the
+        # future we could potentially add arbitrary files
+        files_not_found = []
+        for file_data in data_files_json:
+            updated_fpath = Path(folder) / file_data["fpath"]
+            if not updated_fpath.exists():
+                logger.warning(
+                    "File {} not found on: {}", file_data["name"], updated_fpath
+                )
+                files_not_found.append(file_data["name"])
+                continue
+            file_data["fpath"] = updated_fpath
+        if files_not_found:
+            msg = f"The following files {files_not_found} were not found in the specified {folder=}."
+            raise FileNotFoundError(msg)
+
         data_files = [DataFile(**file_data) for file_data in data_files_json]
         store.add_data_files(data_files)
         return store
@@ -404,7 +422,7 @@ class DataStore:
         """
         return sorted(self._cache.keys())
 
-    def read_data_file(self, name: str, use_cache: bool = True) -> Any:
+    def read_data_file(self, /, *, name: str, use_cache: bool = True) -> Any:
         """Load data from a file using the configured reader.
 
         Parameters

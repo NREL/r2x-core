@@ -143,8 +143,16 @@ class DataFile(BaseModel):
             description="Custom reader function (callable) that takes a Path and returns data"
         ),
     ] = None
+    reader_kwargs: Annotated[
+        dict[str, Any] | None,
+        Field(description="Key-Word arguments passed to the reader function."),
+    ] = None
     column_mapping: Annotated[
         dict[str, str] | None, Field(description="Column name mappings")
+    ] = None
+    key_mapping: Annotated[
+        dict[str, str] | None,
+        Field(description="Keys name mappings (applicable for JSON files)."),
     ] = None
     index_columns: Annotated[
         list[str] | None, Field(description="Index column names")
@@ -172,7 +180,7 @@ class DataFile(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def file_type(self) -> FileType:
         """Computed file type based on file extension.
