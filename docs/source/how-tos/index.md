@@ -44,3 +44,11 @@ datastore-management
 
 file-operations
 ```
+
+## Building Systems with Parsers
+
+```{toctree}
+:maxdepth: 1
+
+parser-basics
+```

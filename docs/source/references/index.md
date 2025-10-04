@@ -1,6 +1,6 @@
 # Reference
 
-R2X Core provides three main classes for data file management:
+R2X Core provides data file management and parser framework classes:
 
 ```{eval-rst}
 .. currentmodule:: r2x_core
@@ -9,6 +9,8 @@ R2X Core provides three main classes for data file management:
 
    DataStore
    DataReader
+   BaseParser
+   ParserConfig
 ```
 
 For detailed API documentation with examples and method signatures, see the [Complete API Documentation](./api.md).
@@ -18,6 +20,8 @@ For detailed API documentation with examples and method signatures, see the [Com
 :hidden:
 
 api
+parser
+exceptions
 file-formats
 models
 ```
