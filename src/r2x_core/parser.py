@@ -741,7 +741,7 @@ class BaseParser(ABC):
 
         self.system.add_time_series(time_series, component, **kwargs)
         logger.debug(
-            f"Added time series to {component.__class__.__name__}: {component.name}"
+            "Added time series to {}: {}", component.__class__.__name__, component.name
         )
 
     def validate_inputs(self) -> None:
