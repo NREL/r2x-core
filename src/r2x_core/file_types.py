@@ -1,4 +1,4 @@
-from typing import TypeAlias
+from typing import TypeAlias, ClassVar
 
 from pydantic import ConfigDict
 from pydantic.dataclasses import dataclass
@@ -14,7 +14,7 @@ class FileType:
         Whether this file type can store time series data. Default is False.
     """
 
-    supports_timeseries: bool = False
+    supports_timeseries: ClassVar[bool] = False
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
@@ -24,7 +24,7 @@ class TableFile(FileType):
     Supports time series data storage.
     """
 
-    supports_timeseries: bool = True
+    supports_timeseries: ClassVar[bool] = True
 
 
 class H5File(FileType):
@@ -33,7 +33,7 @@ class H5File(FileType):
     Supports time series data storage with hierarchical organization.
     """
 
-    supports_timeseries: bool = True
+    supports_timeseries: ClassVar[bool] = True
 
 
 class ParquetFile(FileType):
@@ -42,7 +42,7 @@ class ParquetFile(FileType):
     Supports time series data storage with columnar compression.
     """
 
-    supports_timeseries: bool = True
+    supports_timeseries: ClassVar[bool] = True
 
 
 class JSONFile(FileType):
@@ -51,7 +51,7 @@ class JSONFile(FileType):
     Does not support time series (typically used for component definitions).
     """
 
-    supports_timeseries: bool = False
+    supports_timeseries: ClassVar[bool] = False
 
 
 class XMLFile(FileType):
@@ -60,7 +60,7 @@ class XMLFile(FileType):
     Does not support time series (typically used for hierarchical component data).
     """
 
-    supports_timeseries: bool = False
+    supports_timeseries: ClassVar[bool] = False
 
 
 # Mapping of files to FileType

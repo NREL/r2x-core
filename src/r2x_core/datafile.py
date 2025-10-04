@@ -38,6 +38,10 @@ class DataFile(BaseModel):
         Whether this file represents input data (True) or output data (False).
     is_optional : bool, default False
         Whether the file is optional. If True, missing files will not raise errors.
+    is_timeseries : bool, default False
+        Whether the file contains time series data. Time series files must use
+        formats that support time series (CSV, TSV, HDF5, Parquet). Files marked
+        as time series with unsupported formats will raise a validation error.
     units : str, optional
         Physical units for numeric data in the file (e.g., "MW", "$/MWh").
     reader_function : Callable[[Path], Any], optional
@@ -136,6 +140,13 @@ class DataFile(BaseModel):
     is_optional: Annotated[bool, Field(description="Whether this file is optional")] = (
         False
     )
+    is_timeseries: Annotated[
+        bool,
+        Field(
+            description="Whether this file contains time series data. "
+            "Time series files must use supported formats (CSV, HDF5, Parquet)."
+        ),
+    ] = False
     units: Annotated[str | None, Field(description="Units for the data")] = None
     reader_function: Annotated[
         Callable[[Path], Any] | None,
@@ -187,7 +198,28 @@ class DataFile(BaseModel):
 
         Returns
         -------
-        type[FileType]
-            FileType class determined from file extension
+        FileType
+            FileType instance determined from file extension
+
+        Raises
+        ------
+        ValueError
+            If the file extension is not supported or if marked as time series
+            but the file type doesn't support time series data.
         """
-        return EXTENSION_MAPPING[self.fpath.suffix.lower()]()
+        extension = self.fpath.suffix.lower()
+        file_type_class = EXTENSION_MAPPING.get(extension)
+
+        if file_type_class is None:
+            msg = f"Unsupported file extension: {extension}"
+            raise ValueError(msg)
+
+        # If marked as time series, verify the file type supports it
+        if self.is_timeseries and not file_type_class.supports_timeseries:
+            msg = (
+                f"File type {file_type_class.__name__} does not support time series data. "
+                f"File: {self.fpath}"
+            )
+            raise ValueError(msg)
+
+        return file_type_class()
