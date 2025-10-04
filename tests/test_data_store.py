@@ -1,9 +1,11 @@
+"""Tests for DataStore class."""
+
 import json
 from pathlib import Path
 
 import pytest
 
-from r2x_core import DataFile, DataStore
+from r2x_core import DataFile, DataReader, DataStore
 
 
 def test_data_container_instance() -> None:
@@ -284,3 +286,66 @@ def test_data_container_to_json(
 
     assert isinstance(data, list)
     assert len(data) == 3
+
+
+# =============================================================================
+# Additional tests for comprehensive coverage
+# =============================================================================
+
+
+def test_from_json_missing_files_in_folder(tmp_path: Path) -> None:
+    """Test from_json when files don't exist in the specified folder."""
+    # Create JSON config with files that don't exist
+    json_file = tmp_path / "config.json"
+    config = [
+        {"name": "missing1", "fpath": "missing1.csv"},
+        {"name": "missing2", "fpath": "missing2.csv"},
+    ]
+    json_file.write_text(json.dumps(config))
+
+    with pytest.raises(FileNotFoundError, match="were not found"):
+        DataStore.from_json(json_file, folder=tmp_path)
+
+
+def test_from_json_partial_missing_files(tmp_path: Path) -> None:
+    """Test from_json when some files are missing."""
+    # Create one file but not the other
+    existing_file = tmp_path / "exists.csv"
+    existing_file.write_text("col1,col2\n1,2\n")
+
+    json_file = tmp_path / "config.json"
+    config = [
+        {"name": "exists", "fpath": "exists.csv"},
+        {"name": "missing", "fpath": "missing.csv"},
+    ]
+    json_file.write_text(json.dumps(config))
+
+    with pytest.raises(FileNotFoundError, match="missing.*were not found"):
+        DataStore.from_json(json_file, folder=tmp_path)
+
+
+def test_read_data_file_missing_name(tmp_path: Path) -> None:
+    """Test reading a file that doesn't exist in the store."""
+    store = DataStore(folder=tmp_path)
+
+    with pytest.raises(KeyError, match="not present in store"):
+        store.read_data_file(name="nonexistent")
+
+
+def test_reader_property_setter_invalid_type(tmp_path: Path) -> None:
+    """Test setting reader property with invalid type."""
+    store = DataStore(folder=tmp_path)
+
+    with pytest.raises(TypeError, match="must be a valid DataReader"):
+        store.reader = "not a reader"  # type: ignore[assignment]
+
+
+def test_reader_property_setter_valid(tmp_path: Path) -> None:
+    """Test setting reader property with valid DataReader."""
+    store = DataStore(folder=tmp_path)
+    new_reader = DataReader(max_cache_size=50)
+
+    store.reader = new_reader
+
+    assert store.reader is new_reader
+    assert store.reader.max_cache_size == 50

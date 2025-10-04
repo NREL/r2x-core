@@ -15,8 +15,8 @@ TransformFunction = Callable[[Any, DataFile], Any]
 def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFrame:
     """Transform tabular data to LazyFrame with applied transformations.
 
-    Applies transformations in order: drop → rename → schema → filter → select.
-    Always returns a LazyFrame for consistent lazy evaluation.
+    Applies transformations in order:
+        lowercase -> drop -> rename -> schema -> filter -> select
 
     Parameters
     ----------
@@ -29,11 +29,16 @@ def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFr
     -------
     pl.LazyFrame
         Transformed lazy frame.
+
+    Notes
+    -----
+    Always returns a LazyFrame for consistent lazy evaluation.
     """
     # Convert to LazyFrame if needed
     df = data.lazy() if isinstance(data, pl.DataFrame) else data
 
     pipeline = [
+        partial(pl_lowercase, data_file),
         partial(pl_drop_columns, data_file),
         partial(pl_rename_columns, data_file),
         partial(pl_cast_schema, data_file),
@@ -80,13 +85,25 @@ def transform_json_data(data_file: DataFile, data: dict[str, Any]) -> dict[str, 
     return result
 
 
+def pl_lowercase(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
+    """Convert all string columns to lowercase."""
+    logger.trace("Lowercase columns: {}", df.collect_schema().names())
+    result = df.with_columns(pl.col(pl.String).str.to_lowercase()).rename(
+        {column: column.lower() for column in df.collect_schema().names()}
+    )
+    logger.trace("New columns: {}", df.collect_schema().names())
+    return result
+
+
 def pl_drop_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     """Drop specified columns if they exist."""
     if not data_file.drop_columns:
         return df
 
     # Only drop columns that actually exist
-    existing_cols = [col for col in data_file.drop_columns if col in df.columns]
+    existing_cols = [
+        col for col in data_file.drop_columns if col in df.collect_schema().names()
+    ]
     if existing_cols:
         logger.debug("Dropping columns {} from {}", existing_cols, data_file.name)
         return df.drop(existing_cols)
@@ -100,7 +117,9 @@ def pl_rename_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
 
     # Only rename columns that exist
     valid_mapping = {
-        old: new for old, new in data_file.column_mapping.items() if old in df.columns
+        old: new
+        for old, new in data_file.column_mapping.items()
+        if old in df.collect_schema().names()
     }
     if valid_mapping:
         logger.debug("Renaming columns {} in {}", valid_mapping, data_file.name)
@@ -117,7 +136,7 @@ def pl_cast_schema(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     cast_exprs = [
         pl.col(col).cast(_get_polars_type(type_str))
         for col, type_str in data_file.column_schema.items()
-        if col in df.columns
+        if col in df.collect_schema().names()
     ]
 
     if cast_exprs:
@@ -135,7 +154,7 @@ def pl_apply_filters(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     filters = [
         pl_build_filter_expr(col, value)
         for col, value in data_file.filter_by.items()
-        if col in df.columns
+        if col in df.collect_schema().names()
     ]
 
     if filters:
@@ -161,7 +180,9 @@ def pl_select_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
 
     # Keep only existing columns, preserve order, remove duplicates
     unique_cols = list(
-        dict.fromkeys(col for col in cols_to_select if col in df.columns)
+        dict.fromkeys(
+            col for col in cols_to_select if col in df.collect_schema().names()
+        )
     )
 
     if unique_cols:
@@ -172,11 +193,11 @@ def pl_select_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
 
 def json_rename_keys(data_file: DataFile, data: dict[str, Any]) -> dict[str, Any]:
     """Rename keys based on column mapping."""
-    if not data_file.column_mapping:
+    if not data_file.key_mapping:
         return data
 
     logger.debug("Applying key mapping to {}", data_file.name)
-    return {data_file.column_mapping.get(k, k): v for k, v in data.items()}
+    return {data_file.key_mapping.get(k, k): v for k, v in data.items()}
 
 
 def json_apply_filters(data_file: DataFile, data: dict[str, Any]) -> dict[str, Any]:
@@ -232,7 +253,7 @@ def apply_transformation(data_file: DataFile, data: Any) -> Any:
     """
     for registered_types, transform_func in TRANSFORMATIONS.items():
         if isinstance(data, registered_types):
-            return transform_func(data, data_file)
+            return transform_func(data_file, data)
 
     logger.debug(
         "No transformation for type {} in {}", type(data).__name__, data_file.name
@@ -265,8 +286,8 @@ def register_transformation(
 def _matches_filter(value: Any, filter_value: Any) -> bool:
     """Check if value matches filter criteria."""
     if isinstance(filter_value, list):
-        return value in filter_value
-    return value == filter_value
+        return bool(value in filter_value)
+    return bool(value == filter_value)
 
 
 def _get_polars_type(type_str: str) -> DataTypeClass:
@@ -275,6 +296,7 @@ def _get_polars_type(type_str: str) -> DataTypeClass:
         "string": pl.String,
         "str": pl.String,
         "int": pl.Int64,
+        "int32": pl.Int32,
         "integer": pl.Int64,
         "float": pl.Float64,
         "double": pl.Float64,
@@ -301,4 +323,4 @@ def pl_build_filter_expr(column: str, value: Any) -> pl.Expr:
     # Regular filtering
     if isinstance(value, list):
         return pl.col(column).is_in(value)
-    return pl.col(column) == value
+    return pl.col(column) == value  # type: ignore[no-any-return]

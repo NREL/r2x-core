@@ -14,7 +14,9 @@ from .file_types import H5File, JSONFile, TableFile, XMLFile
 
 
 @singledispatch
-def read_file_by_type(file_type_instance: Any, file_path: Path) -> Any:
+def read_file_by_type(
+    file_type_instance: Any, file_path: Path, **reader_kwargs: dict[str, Any]
+) -> Any:
     """Read file based on FileType instance using single dispatch.
 
     This is the main dispatch function that routes to specific readers
@@ -26,6 +28,8 @@ def read_file_by_type(file_type_instance: Any, file_path: Path) -> Any:
         FileType instance to dispatch on (TableFile(), H5File(), etc.).
     file_path : Path
         Path to the file to read.
+    reader_kwargs: dict[str, Any]
+        Additional kwargs for reader function.
 
     Returns
     -------
@@ -37,12 +41,12 @@ def read_file_by_type(file_type_instance: Any, file_path: Path) -> Any:
     NotImplementedError
         If no reader is implemented for the given file type.
     """
-    msg = f"No reader implemented for file type: {type(file_type_instance)}"
+    msg = f"No reader implemented for file type: {file_type_instance}"
     raise NotImplementedError(msg)
 
 
 @read_file_by_type.register
-def _(file_type_class: TableFile, file_path: Path) -> LazyFrame:
+def _(file_type_class: TableFile, file_path: Path, **reader_kwargs: Any) -> LazyFrame:
     """Read CSV/TSV files as LazyFrame.
 
     Parameters
@@ -51,6 +55,8 @@ def _(file_type_class: TableFile, file_path: Path) -> LazyFrame:
         TableFile class (not used, but required for dispatch).
     file_path : Path
         Path to the CSV/TSV file.
+    reader_kwargs: dict[str, Any]
+        Additional kwargs for reader function.
 
     Returns
     -------
@@ -59,12 +65,12 @@ def _(file_type_class: TableFile, file_path: Path) -> LazyFrame:
     """
     logger.debug("Reading table file: {}", file_path)
     if file_path.suffix.lower() == ".tsv":
-        return scan_csv(file_path, separator="\t")
-    return scan_csv(file_path)
+        return scan_csv(file_path, separator="\t", **reader_kwargs)
+    return scan_csv(file_path, **reader_kwargs)
 
 
 @read_file_by_type.register
-def _(file_type_class: H5File, file_path: Path) -> LazyFrame:
+def _(file_type_class: H5File, file_path: Path, **reader_kwargs: Any) -> LazyFrame:
     """Read HDF5 files as LazyFrame.
 
     Parameters
@@ -73,6 +79,8 @@ def _(file_type_class: H5File, file_path: Path) -> LazyFrame:
         H5File class (not used, but required for dispatch).
     file_path : Path
         Path to the HDF5 file.
+    reader_kwargs: dict[str, Any]
+        Additional kwargs for reader function.
 
     Returns
     -------
@@ -114,7 +122,9 @@ def _(file_type_class: H5File, file_path: Path) -> LazyFrame:
 
 
 @read_file_by_type.register
-def _(file_type_class: JSONFile, file_path: Path) -> dict[str, Any]:
+def _(
+    file_type_class: JSONFile, file_path: Path, **reader_kwargs: Any
+) -> dict[str, Any]:
     """Read JSON files as dictionary.
 
     Parameters
@@ -123,6 +133,8 @@ def _(file_type_class: JSONFile, file_path: Path) -> dict[str, Any]:
         JSONFile class (not used, but required for dispatch).
     file_path : Path
         Path to the JSON file.
+    reader_kwargs: dict[str, Any]
+        Additional kwargs for reader function.
 
     Returns
     -------
@@ -131,11 +143,14 @@ def _(file_type_class: JSONFile, file_path: Path) -> dict[str, Any]:
     """
     logger.debug("Reading JSON file: {}", file_path)
     with open(file_path, encoding="utf-8") as f:
-        return json.load(f)
+        data: dict[str, Any] = json.load(f)
+    return data
 
 
 @read_file_by_type.register
-def _(file_type_class: XMLFile, file_path: Path) -> ElementTree.Element:
+def _(
+    file_type_class: XMLFile, file_path: Path, **reader_kwargs: dict[str, Any]
+) -> ElementTree.Element:
     """Read XML files and return the root element.
 
     Parameters
@@ -144,6 +159,8 @@ def _(file_type_class: XMLFile, file_path: Path) -> ElementTree.Element:
         XMLFile class (not used, but required for dispatch).
     file_path : Path
         Path to the XML file.
+    reader_kwargs: dict[str, Any]
+        Additional kwargs for reader function.
 
     Returns
     -------

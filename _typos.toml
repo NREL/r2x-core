@@ -1,0 +1,7 @@
+# Typos configuration for r2x-core
+# See https://github.com/crate-ci/typos for more information
+
+[default.extend-words]
+# Domain-specific terms that should not be flagged as typos
+ba = "ba"  # reeds_ba is a valid column name (balancing authority)
+fom = "fom"  # fixed O&M (operations and maintenance) cost
