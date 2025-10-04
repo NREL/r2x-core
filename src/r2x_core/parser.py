@@ -33,13 +33,13 @@ Create a model-specific parser:
 ...         if self.model_year < 2020:
 ...             raise ValidationError("Year must be >= 2020")
 ...
-...     def _build_system_components(self) -> None:
+...     def build_system_components(self) -> None:
 ...         bus_data = self.read_data_file("buses")
 ...         for row in bus_data.iter_rows(named=True):
 ...             bus = self.create_component(ACBus, name=row["name"])
 ...             self.add_component(bus)
 ...
-...     def _build_time_series(self) -> None:
+...     def build_time_series(self) -> None:
 ...         load_data = self.read_data_file("load_profiles")
 ...         # Attach time series...
 >>>
