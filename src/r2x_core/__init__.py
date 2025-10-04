@@ -8,7 +8,12 @@ __version__ = version("r2x_core")
 from .datafile import (
     DataFile,
 )
-from .exceptions import ComponentCreationError, ParserError, ValidationError
+from .exceptions import (
+    ComponentCreationError,
+    ExporterError,
+    ParserError,
+    ValidationError,
+)
 from .file_types import FileType
 from .parser import BaseParser, ParserConfig
 from .reader import DataReader
@@ -26,4 +31,5 @@ __all__ = [
     "ParserError",
     "ValidationError",
     "ComponentCreationError",
+    "ExporterError",
 ]

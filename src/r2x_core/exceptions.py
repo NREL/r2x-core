@@ -63,3 +63,24 @@ class ComponentCreationError(R2XCoreError):
     """
 
     pass
+
+
+class ExporterError(R2XCoreError):
+    """Exception raised for exporter-related errors.
+
+    This exception is raised when there are issues during the export process,
+    such as missing required components, invalid output formats, or file
+    writing errors.
+
+    Parameters
+    ----------
+    message : str
+        Description of the error.
+
+    Examples
+    --------
+    >>> raise ExporterError("No Generator components found in system")
+    >>> raise ExporterError("Output directory does not exist: /path/to/output")
+    """
+
+    pass
