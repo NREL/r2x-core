@@ -152,7 +152,7 @@ class DataFile(BaseModel):
     ] = None
     key_mapping: Annotated[
         dict[str, str] | None,
-        Field(description="Keys name mappings (applicable for JSON files."),
+        Field(description="Keys name mappings (applicable for JSON files)."),
     ] = None
     index_columns: Annotated[
         list[str] | None, Field(description="Index column names")
