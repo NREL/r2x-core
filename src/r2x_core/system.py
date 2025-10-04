@@ -31,7 +31,7 @@ class System(InfrasysSystem):
         Unique identifier for the system.
     description : str, optional
         Human-readable description of the system.
-    auto_add_composed_components : bool, default False
+    auto_add_composed_components : bool, default True
         If True, automatically add composed components (e.g., when adding a Generator
         with a Bus, automatically add the Bus to the system if not already present).
 
