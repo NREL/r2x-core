@@ -214,7 +214,7 @@ class DataStore:
                 continue
             file_data["fpath"] = updated_fpath
         if files_not_found:
-            msg = f"The following files {files_not_found} were not found on its specified {folder=}."
+            msg = f"The following files {files_not_found} were not found in the specified {folder=}."
             raise FileNotFoundError(msg)
 
         data_files = [DataFile(**file_data) for file_data in data_files_json]
