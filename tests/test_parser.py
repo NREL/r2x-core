@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 
+from infrasys import Component
 from r2x_core.parser import BaseParser, ParserConfig
 from r2x_core.store import DataStore
 from r2x_core.datafile import DataFile
@@ -17,37 +18,18 @@ class MockModelConfig(ParserConfig):
     scenario: str = "base"
 
 
-# Mock component classes for testing
-class MockComponent:
-    """Mock infrasys Component."""
+# Mock component classes for testing (inherit from infrasys.Component)
+class MockComponent(Component):
+    """Mock infrasys Component with extra fields."""
 
-    model_fields = {"name": None, "value": None, "extra_field": None}
-
-    def __init__(self, name: str, value: float = 0.0):
-        self.name = name
-        self.value = value
-
-    @classmethod
-    def model_validate(cls, data: dict):
-        """Mock validation."""
-        if "name" not in data:
-            raise ValueError("name is required")
-        return cls(**data)
-
-    @classmethod
-    def model_construct(cls, **data):
-        """Mock construction without validation."""
-        return cls(**{k: v for k, v in data.items() if k in ["name", "value"]})
+    value: float = 0.0
+    extra_field: str | None = None
 
 
-class MockBus(MockComponent):
-    """Mock Bus component."""
+class MockBus(Component):
+    """Mock Bus component based on infrasys.Component."""
 
-    model_fields = {"name": None, "voltage": None}
-
-    def __init__(self, name: str, voltage: float = 230.0):
-        self.name = name
-        self.voltage = voltage
+    voltage: float = 230.0
 
 
 # Mock parser implementation for testing
@@ -68,7 +50,7 @@ class MockParser(BaseParser):
         if self.model_year < 2020:
             raise ValidationError("Model year must be >= 2020")
 
-    def _build_system_components(self) -> None:
+    def build_system_components(self) -> None:
         """Test component building."""
         self.components_built = True
         # Create test components
@@ -77,7 +59,7 @@ class MockParser(BaseParser):
         bus2 = self.create_component(MockBus, name="Bus2", voltage=500.0)
         self.add_component(bus2)
 
-    def _build_time_series(self) -> None:
+    def build_time_series(self) -> None:
         """Test time series building."""
         self.time_series_built = True
         # Mock time series attachment
@@ -174,7 +156,7 @@ def test_parser_skip_validation(sample_config, sample_data_store):
 def test_build_system_workflow(mock_parser):
     """Test complete build_system workflow."""
     # Patch the System import at the actual location
-    with patch("infrasys.system.System") as mock_system_class:
+    with patch("r2x_core.system.System") as mock_system_class:
         mock_system = MagicMock()
         mock_system.get_components.return_value = [MockBus(name="Bus1")]
         mock_system_class.return_value = mock_system
@@ -275,7 +257,7 @@ def test_create_component_skip_validation(mock_parser):
 
 def test_create_component_validation_error(mock_parser):
     """Test create_component with validation error."""
-    with pytest.raises(ComponentCreationError, match="error creating MockBus"):
+    with pytest.raises(ComponentCreationError, match="Failed to create MockBus"):
         mock_parser.create_component(MockBus)  # Missing required 'name'
 
 
@@ -325,7 +307,7 @@ def test_validate_inputs_hook(mock_parser):
     assert mock_parser.validation_called is True
 
 
-def test_build_system_components_public_method(mock_parser):
+def testbuild_system_components_public_method(mock_parser):
     """Test build_system_components public method."""
     # Create system first
     mock_system = MagicMock()
@@ -335,7 +317,7 @@ def test_build_system_components_public_method(mock_parser):
     assert mock_parser.components_built is True
 
 
-def test_build_time_series_public_method(mock_parser):
+def testbuild_time_series_public_method(mock_parser):
     """Test build_time_series public method."""
     # Create system first
     mock_system = MagicMock()
@@ -389,22 +371,22 @@ def test_cannot_instantiate_base_parser(sample_config, sample_data_store):
         BaseParser(sample_config, sample_data_store)
 
 
-def test_must_implement_build_system_components(sample_config, sample_data_store):
-    """Test that _build_system_components must be implemented."""
+def test_must_implementbuild_system_components(sample_config, sample_data_store):
+    """Test that build_system_components must be implemented."""
 
     class IncompleteParser(BaseParser):
-        def _build_time_series(self):
+        def build_time_series(self):
             pass
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         IncompleteParser(sample_config, sample_data_store)
 
 
-def test_must_implement_build_time_series(sample_config, sample_data_store):
-    """Test that _build_time_series must be implemented."""
+def test_must_implementbuild_time_series(sample_config, sample_data_store):
+    """Test that build_time_series must be implemented."""
 
     class IncompleteParser(BaseParser):
-        def _build_system_components(self):
+        def build_system_components(self):
             pass
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
@@ -431,7 +413,7 @@ def test_full_parser_workflow_with_data(tmp_path):
     parser = MockParser(config, data_store, name="integration_system")
 
     # Mock System
-    with patch("infrasys.system.System") as mock_system_class:
+    with patch("r2x_core.system.System") as mock_system_class:
         mock_system = MagicMock()
         mock_system.get_components.return_value = [MockBus(name="Bus1")]
         mock_system_class.return_value = mock_system
@@ -460,10 +442,10 @@ def test_parser_with_custom_validation(tmp_path):
                 if name not in data_files:
                     raise ValidationError(f"Required file '{name}' missing")
 
-        def _build_system_components(self):
+        def build_system_components(self):
             pass
 
-        def _build_time_series(self):
+        def build_time_series(self):
             pass
 
     # Create data store with only buses (no file needed, just checking validation)
@@ -552,11 +534,11 @@ def test_empty_hook_methods_coverage(tmp_path):
     class MinimalParser(BaseParser):
         """Parser with only required methods, using default hooks."""
 
-        def _build_system_components(self):
+        def build_system_components(self):
             """Minimal implementation."""
             pass  # Line 952
 
-        def _build_time_series(self):
+        def build_time_series(self):
             """Minimal implementation."""
             pass  # Line 1064
 
@@ -571,7 +553,7 @@ def test_empty_hook_methods_coverage(tmp_path):
     config = ParserConfig()
     parser = MinimalParser(config, data_store)
 
-    with patch("infrasys.system.System") as mock_system_class:
+    with patch("r2x_core.system.System") as mock_system_class:
         mock_system = MagicMock()
         mock_system.get_components.return_value = []
         mock_system_class.return_value = mock_system

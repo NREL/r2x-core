@@ -213,7 +213,6 @@ class System(InfrasysSystem):
         filter_func: Callable[[Component], bool] | None = None,
         fpath: PathLike[str] | None = None,
         key_mapping: dict[str, str] | None = None,
-        unnest_key: str = "name",
         **dict_writer_kwargs: Any,
     ) -> list[dict[str, Any]] | None:
         """Export component data to CSV file.
@@ -234,8 +233,6 @@ class System(InfrasysSystem):
             Output CSV file path. If None, returns data without writing.
         key_mapping : dict, optional
             Dictionary mapping component field names to CSV column names.
-        unnest_key : str, default "name"
-            Field name to use when unnesting nested objects.
         **dict_writer_kwargs
             Additional arguments passed to csv.DictWriter.
 

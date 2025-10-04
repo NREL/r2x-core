@@ -226,19 +226,15 @@ class BaseParser(ABC):
         Attach time series data to a component.
     validate_inputs()
         Hook for pre-build validation (override in subclasses).
-    build_system_components()
-        Public method to create all system components (calls _build_system_components).
-    build_time_series()
-        Public method to attach time series (calls _build_time_series).
     post_process_system()
         Hook for post-build processing (override in subclasses).
 
-    Abstract Methods
-    ----------------
-    _build_system_components()
-        Must implement: Create all system components (buses, generators, etc.).
-    _build_time_series()
-        Must implement: Attach time series data to components.
+    Abstract Methods (must implement in subclass)
+    ----------------------------------------------
+    build_system_components()
+        Create all system components (buses, generators, etc.).
+    build_time_series()
+        Attach time series data to components.
 
     Raises
     ------
@@ -268,13 +264,13 @@ class BaseParser(ABC):
     ...         if self.model_year < 2020:
     ...             raise ValidationError("Invalid year")
     ...
-    ...     def _build_system_components(self):
+    ...     def build_system_components(self):
     ...         bus_data = self.read_data_file("buses")
     ...         for row in bus_data.iter_rows(named=True):
     ...             bus = self.create_component(ACBus, name=row["name"])
     ...             self.add_component(bus)
     ...
-    ...     def _build_time_series(self):
+    ...     def build_time_series(self):
     ...         load_data = self.read_data_file("load_profiles")
     ...         # Attach time series...
     >>>
@@ -321,10 +317,10 @@ class BaseParser(ABC):
     - Clear separation of I/O concerns from domain logic
     - Flexible caching strategies
 
-    Public vs. private methods:
-    - build_system_components() and build_time_series() are public for plugin access
-    - _build_system_components() and _build_time_series() are the abstract templates
-    - This allows plugins to call build steps individually while maintaining clean API
+    Key design patterns:
+    - Template Method: build_system() defines the workflow skeleton
+    - build_system_components() and build_time_series() are the abstract templates
+    - Hook methods: validate_inputs(), post_process_system() (optional overrides)
     """
 
     def __init__(
@@ -406,7 +402,7 @@ class BaseParser(ABC):
         For plugin systems that need finer control, call the individual public
         methods (build_system_components, build_time_series) directly instead.
         """
-        from infrasys.system import System
+        from .system import System
 
         logger.info("Starting system build: {}", self.name)
 
@@ -414,7 +410,7 @@ class BaseParser(ABC):
         logger.debug("Validating parser inputs...")
         self.validate_inputs()
 
-        # Step 2: Create the infrasys.System instance
+        # Step 2: Create the r2x_core.System instance
         logger.debug(f"Creating System instance: {self.name}")
         self.system = System(
             name=self.name,
@@ -645,7 +641,7 @@ class BaseParser(ABC):
             ) from e
         except Exception as e:
             raise ComponentCreationError(
-                f"Unexpected error creating {component_class.__name__}: {e}"
+                f"Failed to create {component_class.__name__}: {e}"
             ) from e
 
     def add_component(self, component: Any) -> None:
@@ -682,15 +678,16 @@ class BaseParser(ABC):
 
         Notes
         -----
-        This method requires that self.system is not None. Call this only within
-        or after build_system_components().
+        This method requires that self.system is not None. Call this within
+        build_system_components(), after build_system() completes, or in plugin
+        workflows after manually creating a System instance.
 
         The logging uses DEBUG level to avoid cluttering output when adding
         many components, but provides traceability for debugging.
         """
         if self.system is None:
             raise ParserError(
-                "System has not been created yet. Call this method only within build_system_components()."
+                "System has not been created yet. Call build_system() or create a System instance before adding components."
             )
 
         self.system.add_component(component)
@@ -734,11 +731,12 @@ class BaseParser(ABC):
 
         Notes
         -----
-        This is typically called within the build_time_series() method implementation.
+        This is typically called within build_time_series(), but can be used in any
+        workflow where self.system has been initialized.
         """
         if self.system is None:
             raise ParserError(
-                "System has not been created yet. Call this method only within build_time_series()."
+                "System has not been created yet. Call build_system() or create a System instance before adding time series."
             )
 
         self.system.add_time_series(time_series, component, **kwargs)
@@ -806,59 +804,8 @@ class BaseParser(ABC):
         """
         pass
 
-    def build_system_components(self) -> None:
-        """Create all system components (public method for plugin access).
-
-        Public wrapper that calls the abstract _build_system_components() method.
-        This design allows plugin systems to call component building independently
-        while maintaining the abstract method pattern for subclass implementation.
-
-        The method is responsible for:
-        - Reading component data from files
-        - Creating component instances (buses, generators, loads, etc.)
-        - Adding components to the system
-        - Establishing component relationships
-
-        Raises
-        ------
-        ParserError
-            If component creation fails.
-        ComponentCreationError
-            If specific component instantiation fails.
-
-        Examples
-        --------
-        Normal usage (via build_system):
-
-        >>> parser = MyModelParser(config, data_store)
-        >>> system = parser.build_system()  # Calls build_system_components internally
-
-        Plugin usage (individual method calls):
-
-        >>> parser = MyModelParser(config, data_store)
-        >>> parser.validate_inputs()
-        >>> parser.build_system_components()  # Call directly
-        >>> # Apply custom modifications...
-        >>> parser.build_time_series()
-
-        See Also
-        --------
-        _build_system_components : Abstract method that subclasses implement
-        build_system : Main workflow that calls this
-        build_time_series : Companion method for time series
-
-        Notes
-        -----
-        This public method exists to support plugin architectures where the
-        build process may need to be split across multiple steps with
-        custom logic inserted between them.
-
-        Subclasses should implement _build_system_components(), not this method.
-        """
-        self._build_system_components()
-
     @abstractmethod
-    def _build_system_components(self) -> None:
+    def build_system_components(self) -> None:
         """Create all system components (abstract method for subclass implementation).
 
         Subclasses must implement this method to create and add all components
@@ -880,9 +827,22 @@ class BaseParser(ABC):
 
         Examples
         --------
+        Normal usage (via build_system):
+
+        >>> parser = MyModelParser(config, data_store)
+        >>> system = parser.build_system()  # Calls build_system_components internally
+
+        Direct usage (for plugin systems):
+
+        >>> parser = MyModelParser(config, data_store)
+        >>> parser.validate_inputs()
+        >>> parser.build_system_components()  # Call directly
+        >>> # Apply custom modifications...
+        >>> parser.build_time_series()
+
         Typical implementation:
 
-        >>> def _build_system_components(self):
+        >>> def build_system_components(self):
         ...     # Create buses
         ...     bus_data = self.read_data_file("buses")
         ...     for row in bus_data.iter_rows(named=True):
@@ -906,7 +866,7 @@ class BaseParser(ABC):
 
         With error handling:
 
-        >>> def _build_system_components(self):
+        >>> def build_system_components(self):
         ...     try:
         ...         bus_data = self.read_data_file("buses")
         ...     except KeyError:
@@ -923,16 +883,16 @@ class BaseParser(ABC):
 
         See Also
         --------
-        build_system_components : Public wrapper for this method
+        build_system : Main workflow that calls this method
         create_component : Factory for creating components
         add_component : Add component to system
         read_data_file : Read data files
+        build_time_series : Companion method for time series
 
         Notes
         -----
         This is an abstract method that must be implemented by subclasses.
-        It is called by build_system_components() which is in turn called
-        by build_system().
+        It is called by build_system() as part of the template method workflow.
 
         Common patterns:
         - Create topology first (buses, areas, zones)
@@ -942,54 +902,8 @@ class BaseParser(ABC):
         """
         pass
 
-    def build_time_series(self) -> None:
-        """Attach time series data to components (public method for plugin access).
-
-        Public wrapper that calls the abstract _build_time_series() method.
-        This design allows plugin systems to call time series building independently
-        while maintaining the abstract method pattern for subclass implementation.
-
-        The method is responsible for:
-        - Reading time series data from files
-        - Creating time series objects
-        - Attaching time series to appropriate components
-
-        Raises
-        ------
-        ParserError
-            If time series attachment fails.
-
-        Examples
-        --------
-        Normal usage (via build_system):
-
-        >>> parser = MyModelParser(config, data_store)
-        >>> system = parser.build_system()  # Calls build_time_series internally
-
-        Plugin usage (individual method calls):
-
-        >>> parser = MyModelParser(config, data_store)
-        >>> parser.build_system_components()
-        >>> # Apply modifications...
-        >>> parser.build_time_series()  # Call directly
-
-        See Also
-        --------
-        _build_time_series : Abstract method that subclasses implement
-        build_system : Main workflow that calls this
-        build_system_components : Companion method for components
-
-        Notes
-        -----
-        This public method exists to support plugin architectures where the
-        build process may need to be split across multiple steps.
-
-        Subclasses should implement _build_time_series(), not this method.
-        """
-        self._build_time_series()
-
     @abstractmethod
-    def _build_time_series(self) -> None:
+    def build_time_series(self) -> None:
         """Attach time series data to components (abstract method for subclass implementation).
 
         Subclasses must implement this method to read and attach time series
@@ -1009,9 +923,21 @@ class BaseParser(ABC):
 
         Examples
         --------
+        Normal usage (via build_system):
+
+        >>> parser = MyModelParser(config, data_store)
+        >>> system = parser.build_system()  # Calls build_time_series internally
+
+        Direct usage (for plugin systems):
+
+        >>> parser = MyModelParser(config, data_store)
+        >>> parser.build_system_components()
+        >>> # Apply modifications...
+        >>> parser.build_time_series()  # Call directly
+
         Typical implementation:
 
-        >>> def _build_time_series(self):
+        >>> def build_time_series(self):
         ...     from infrasys.time_series_models import SingleTimeSeries
         ...
         ...     # Load profiles for buses
@@ -1037,14 +963,16 @@ class BaseParser(ABC):
 
         See Also
         --------
-        build_time_series : Public wrapper for this method
+        build_system : Main workflow that calls this method
         add_time_series : Attach time series to component
         read_data_file : Read time series data files
+        build_system_components : Companion method for components
 
         Notes
         -----
-        This method is called after _build_system_components(), ensuring
-        all components exist before attaching time series.
+        This is an abstract method that must be implemented by subclasses.
+        It is called by build_system() after build_system_components(),
+        ensuring all components exist before attaching time series.
 
         Common time series types:
         - Load profiles (demand over time)

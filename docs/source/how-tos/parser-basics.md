@@ -1,10 +1,10 @@
-````markdown
 # ... create a basic parser
 
 ```python
 from pydantic import BaseModel
 from r2x_core.parser import BaseParser, ParserConfig
 from r2x_core.store import DataStore
+from r2x_core.exceptions import ValidationError, ParserError, ComponentCreationError
 
 # Define model configuration
 class MyModelConfig(ParserConfig):
@@ -48,6 +48,8 @@ system = parser.build_system()
 # ... validate inputs before building
 
 ```python
+from r2x_core.exceptions import ValidationError, ParserError
+
 class MyModelParser(BaseParser):
 
     def validate_inputs(self) -> None:
@@ -70,6 +72,8 @@ class MyModelParser(BaseParser):
 # ... create components with validation
 
 ```python
+from r2x_core.exceptions import ComponentCreationError
+
 def build_system_components(self) -> None:
     """Create validated components."""
     # Read bus data
@@ -305,5 +309,3 @@ class MyModelParser(BaseParser):
             )
             self.add_component(gen)
 ```
-
-````
