@@ -4,16 +4,16 @@ import pytest
 from pydantic import ValidationError
 
 from r2x_core import DataFile
-from r2x_core.file_types import H5File, JSONFile, TableFile, XMLFile
+from r2x_core.file_types import H5Format, JSONFormat, TableFormat, XMLFormat
 
 
 @pytest.mark.parametrize(
     "extension,expected_file_type",
     [
-        (".csv", TableFile),
-        (".h5", H5File),
-        (".xml", XMLFile),
-        (".json", JSONFile),
+        (".csv", TableFormat),
+        (".h5", H5Format),
+        (".xml", XMLFormat),
+        (".json", JSONFormat),
     ],
 )
 def test_file_mapping_extension_inference(

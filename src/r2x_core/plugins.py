@@ -63,7 +63,7 @@ Discover and use plugins:
 >>> manager = PluginManager()
 >>> parser_class = manager.load_parser("my_model")
 >>> exporter_class = manager.load_exporter("my_model")
->>> modifier = manager.system_modifiers["add_storage"]
+>>> modifier = manager.registered_modifiers["add_storage"]
 
 See Also
 --------
@@ -214,9 +214,9 @@ class PluginManager:
         All registered parser classes
     registered_exporters : dict[str, type]
         All registered exporter classes
-    system_modifiers : dict[str, SystemModifier]
+    registered_modifiers : dict[str, SystemModifier]
         All registered system modifiers
-    filter_functions : dict[str, FilterFunction]
+    registered_filters : dict[str, FilterFunction]
         All registered filter functions
 
     Methods
@@ -231,8 +231,8 @@ class PluginManager:
         Load a parser class by name
     load_exporter(name)
         Load an exporter class by name
-    get_config_class(name)
-        Get config class for a plugin
+    load_config_class(name)
+        Load config class for a plugin
 
     Examples
     --------
@@ -476,7 +476,7 @@ class PluginManager:
         }
 
     @property
-    def system_modifiers(self) -> dict[str, SystemModifier]:
+    def registered_modifiers(self) -> dict[str, SystemModifier]:
         """Get all registered system modifiers.
 
         Returns
@@ -487,7 +487,7 @@ class PluginManager:
         return self._modifier_registry.copy()
 
     @property
-    def filter_functions(self) -> dict[str, FilterFunction]:
+    def registered_filters(self) -> dict[str, FilterFunction]:
         """Get all registered filter functions.
 
         Returns
@@ -543,8 +543,8 @@ class PluginManager:
         plugin = self._registry.get(name)
         return plugin.exporter if plugin else None
 
-    def get_config_class(self, name: str) -> type[BaseModel] | None:
-        """Get configuration class for a plugin.
+    def load_config_class(self, name: str) -> type[BaseModel] | None:
+        """Load configuration class for a plugin.
 
         Parameters
         ----------
@@ -559,7 +559,7 @@ class PluginManager:
         Examples
         --------
         >>> manager = PluginManager()
-        >>> config_class = manager.get_config_class("switch")
+        >>> config_class = manager.load_config_class("switch")
         >>> if config_class:
         ...     config = config_class(folder="./data", year=2030)
         """

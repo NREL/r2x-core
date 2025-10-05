@@ -102,7 +102,7 @@ def test_register_plugin_with_neither_parser_nor_exporter():
 
     # Should have registered
     manager = PluginManager()
-    assert manager.get_config_class("test_neither") is MockPluginConfig
+    assert manager.load_config_class("test_neither") is MockPluginConfig
     assert "test_neither" not in manager.registered_parsers
     assert "test_neither" not in manager.registered_exporters
 
@@ -118,8 +118,8 @@ def test_register_system_modifier():
         return system
 
     manager = PluginManager()
-    assert "test_modifier" in manager.system_modifiers
-    modifier = manager.system_modifiers["test_modifier"]
+    assert "test_modifier" in manager.registered_modifiers
+    modifier = manager.registered_modifiers["test_modifier"]
     assert callable(modifier)
 
 
@@ -131,8 +131,8 @@ def test_register_system_modifier_without_name():
         return system
 
     manager = PluginManager()
-    assert "my_modifier" in manager.system_modifiers
-    modifier = manager.system_modifiers["my_modifier"]
+    assert "my_modifier" in manager.registered_modifiers
+    modifier = manager.registered_modifiers["my_modifier"]
     assert callable(modifier)
 
 
@@ -144,8 +144,8 @@ def test_register_filter():
         return data.filter(pl.col(column).is_not_null())
 
     manager = PluginManager()
-    assert "test_filter" in manager.filter_functions
-    filter_func = manager.filter_functions["test_filter"]
+    assert "test_filter" in manager.registered_filters
+    filter_func = manager.registered_filters["test_filter"]
     assert callable(filter_func)
 
 
@@ -157,8 +157,8 @@ def test_register_filter_without_name():
         return data
 
     manager = PluginManager()
-    assert "my_filter" in manager.filter_functions
-    filter_func = manager.filter_functions["my_filter"]
+    assert "my_filter" in manager.registered_filters
+    filter_func = manager.registered_filters["my_filter"]
     assert callable(filter_func)
 
 
@@ -205,23 +205,23 @@ def test_load_exporter_not_found():
     assert exporter_class is None
 
 
-def test_get_config_class():
-    """Test getting config class for a plugin."""
+def test_load_config_class():
+    """Test loading config class for a plugin."""
     PluginManager.register_model_plugin(
-        name="test_get_config",
+        name="test_load_config",
         config=MockPluginConfig,
         parser=MockParser,
     )
 
     manager = PluginManager()
-    config_class = manager.get_config_class("test_get_config")
+    config_class = manager.load_config_class("test_load_config")
     assert config_class is MockPluginConfig
 
 
-def test_get_config_class_not_found():
-    """Test getting config for non-existent plugin."""
+def test_load_config_class_not_found():
+    """Test loading config for non-existent plugin."""
     manager = PluginManager()
-    config_class = manager.get_config_class("nonexistent")
+    config_class = manager.load_config_class("nonexistent")
     assert config_class is None
 
 
@@ -237,7 +237,7 @@ def test_modifier_transforms_system():
         return system
 
     manager = PluginManager()
-    modifier = manager.system_modifiers["test_transform"]
+    modifier = manager.registered_modifiers["test_transform"]
 
     system = System()
     result = modifier(system)
@@ -256,7 +256,7 @@ def test_modifier_with_parameters():
         return system
 
     manager = PluginManager()
-    modifier = manager.system_modifiers["test_params"]
+    modifier = manager.registered_modifiers["test_params"]
 
     system = System()
     result = modifier(system, capacity_mw=250.0)
@@ -274,7 +274,7 @@ def test_modifier_with_context():
         return system
 
     manager = PluginManager()
-    modifier = manager.system_modifiers["test_context"]
+    modifier = manager.registered_modifiers["test_context"]
 
     system = System()
     config = MockPluginConfig(folder="./test", year=2040)
@@ -293,7 +293,7 @@ def test_filter_processes_data():
         return data
 
     manager = PluginManager()
-    filter_func = manager.filter_functions["test_process"]
+    filter_func = manager.registered_filters["test_process"]
 
     df = pl.LazyFrame({"a": [1, 2, 3]})
     result = filter_func(df)
@@ -308,7 +308,7 @@ def test_filter_with_parameters():
         return data.filter(pl.col("value") > threshold)
 
     manager = PluginManager()
-    filter_func = manager.filter_functions["test_filter_params"]
+    filter_func = manager.registered_filters["test_filter_params"]
 
     df = pl.LazyFrame({"value": [1, 5, 10]})
     result = filter_func(df, threshold=4).collect()
@@ -377,28 +377,28 @@ def test_registered_exporters_property():
     assert exporters["test_props_exporter"] is MockExporter
 
 
-def test_system_modifiers_property():
-    """Test system_modifiers property."""
+def test_registered_modifiers_property():
+    """Test registered_modifiers property."""
 
     @PluginManager.register_system_modifier("test_props_modifier")
     def test_mod(system: System, **kwargs) -> System:
         return system
 
     manager = PluginManager()
-    modifiers = manager.system_modifiers
+    modifiers = manager.registered_modifiers
     assert isinstance(modifiers, dict)
     assert "test_props_modifier" in modifiers
 
 
-def test_filter_functions_property():
-    """Test filter_functions property."""
+def test_registered_filters_property():
+    """Test registered_filters property."""
 
     @PluginManager.register_filter("test_props_filter")
     def test_filter(data: pl.LazyFrame) -> pl.LazyFrame:
         return data
 
     manager = PluginManager()
-    filters = manager.filter_functions
+    filters = manager.registered_filters
     assert isinstance(filters, dict)
     assert "test_props_filter" in filters
 

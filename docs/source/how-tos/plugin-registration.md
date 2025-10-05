@@ -224,8 +224,8 @@ def test_plugin_registered():
 
     assert "my_model" in manager.registered_parsers
     assert "my_model" in manager.registered_exporters
-    assert "my_custom_modifier" in manager.system_modifiers
-    assert "my_custom_filter" in manager.filter_functions
+    assert "my_custom_modifier" in manager.registered_modifiers
+    assert "my_custom_filter" in manager.registered_filters
 
 def test_load_parser():
     manager = PluginManager()

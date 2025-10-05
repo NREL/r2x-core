@@ -1,77 +1,105 @@
-from typing import TypeAlias, ClassVar
-
-from pydantic import ConfigDict
-from pydantic.dataclasses import dataclass
+from typing import TypeAlias, ClassVar, Any
+from pydantic_core import core_schema
 
 
-@dataclass(slots=True)
-class FileType:
-    """Base class for file data types.
+class FileFormat:
+    """Lightweight base class for file format types.
+
+    This is a minimal sentinel class designed to work with singledispatch.
+    Subclasses act as type markers for dispatch without storing instance data.
 
     Attributes
     ----------
     supports_timeseries : bool
-        Whether this file type can store time series data. Default is False.
+        Whether this file format can store time series data. Default is False.
     """
 
+    __slots__ = ()  # Prevent instance attributes for minimal memory footprint
     supports_timeseries: ClassVar[bool] = False
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: Any
+    ) -> core_schema.CoreSchema:
+        """Generate Pydantic schema for FileFormat instances.
+
+        This allows FileFormat instances to be used in Pydantic models.
+        They are serialized as their class name string.
+        """
+        python_schema = core_schema.is_instance_schema(cls)
+
+        return core_schema.no_info_after_validator_function(
+            lambda x: x,
+            python_schema,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda instance: instance.__class__.__name__,
+                return_schema=core_schema.str_schema(),
+            ),
+        )
 
 
-class TableFile(FileType):
-    """Data model for tabular data (CSV, TSV, etc.).
+class TableFormat(FileFormat):
+    """Tabular data format (CSV, TSV, etc.).
 
     Supports time series data storage.
     """
 
+    __slots__ = ()
     supports_timeseries: ClassVar[bool] = True
 
 
-class H5File(FileType):
-    """Data model for HDF5 data.
+class H5Format(FileFormat):
+    """HDF5 data format.
 
     Supports time series data storage with hierarchical organization.
     """
 
+    __slots__ = ()
     supports_timeseries: ClassVar[bool] = True
 
 
-class ParquetFile(FileType):
-    """Data model for Apache Parquet data.
+class ParquetFormat(FileFormat):
+    """Apache Parquet data format.
 
     Supports time series data storage with columnar compression.
     """
 
+    __slots__ = ()
     supports_timeseries: ClassVar[bool] = True
 
 
-class JSONFile(FileType):
-    """Data model for JSON data.
+class JSONFormat(FileFormat):
+    """JSON data format.
 
     Does not support time series (typically used for component definitions).
     """
 
+    __slots__ = ()
     supports_timeseries: ClassVar[bool] = False
 
 
-class XMLFile(FileType):
-    """Data model for XML data.
+class XMLFormat(FileFormat):
+    """XML data format.
 
     Does not support time series (typically used for hierarchical component data).
     """
 
+    __slots__ = ()
     supports_timeseries: ClassVar[bool] = False
 
 
-# Mapping of files to FileType
-EXTENSION_MAPPING: dict[str, type[FileType]] = {
-    ".csv": TableFile,
-    ".tsv": TableFile,
-    ".h5": H5File,
-    ".hdf5": H5File,
-    ".parquet": ParquetFile,
-    ".json": JSONFile,
-    ".xml": XMLFile,
+# Mapping of file extensions to format classes
+EXTENSION_MAPPING: dict[str, type[FileFormat]] = {
+    ".csv": TableFormat,
+    ".tsv": TableFormat,
+    ".h5": H5Format,
+    ".hdf5": H5Format,
+    ".parquet": ParquetFormat,
+    ".json": JSONFormat,
+    ".xml": XMLFormat,
 }
 
-TableDataFileType: TypeAlias = TableFile | H5File | ParquetFile
+TableDataFormat: TypeAlias = TableFormat | H5Format | ParquetFormat

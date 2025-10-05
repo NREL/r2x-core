@@ -7,7 +7,7 @@ import pytest
 from polars import Int32, LazyFrame
 
 from r2x_core.datafile import DataFile
-from r2x_core.file_types import TableFile
+from r2x_core.file_types import TableFormat
 from r2x_core.processors import (
     apply_transformation,
     json_apply_filters,
@@ -90,7 +90,7 @@ def test_transform_tabular_data(csv_store):
 
     datafile = store.get_data_file_by_name("unitdata")
     assert isinstance(datafile, DataFile)
-    assert isinstance(datafile.file_type, TableFile)
+    assert isinstance(datafile.file_type, TableFormat)
 
     file = store.read_data_file(name="unitdata")
     schema = file.collect_schema()

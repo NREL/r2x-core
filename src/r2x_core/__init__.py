@@ -15,7 +15,7 @@ from .exceptions import (
     ValidationError,
 )
 from .exporter import BaseExporter
-from .file_types import FileType
+from .file_types import FileFormat
 from .parser import BaseParser, ParserConfig
 from .plugins import (
     FilterFunction,
@@ -31,7 +31,7 @@ __all__ = [
     "DataFile",
     "DataStore",
     "DataReader",
-    "FileType",
+    "FileFormat",
     "BaseParser",
     "BaseExporter",
     "ParserConfig",

@@ -7,8 +7,8 @@ manager = PluginManager()
 
 parsers = manager.registered_parsers
 exporters = manager.registered_exporters
-modifiers = manager.system_modifiers
-filters = manager.filter_functions
+modifiers = manager.registered_modifiers
+filters = manager.registered_filters
 
 print(f"Available parsers: {list(parsers.keys())}")
 print(f"Available exporters: {list(exporters.keys())}")
@@ -60,7 +60,7 @@ from loguru import logger
 
 system = System()
 
-modifier = manager.system_modifiers.get("add_storage")
+modifier = manager.registered_modifiers.get("add_storage")
 if modifier:
     modified_system = modifier(system, capacity_mw=200.0, duration_hours=4.0)
     logger.info("Storage added to system")
@@ -96,7 +96,7 @@ data_store = DataStore.from_json("mappings.json", folder="./data")
 parser = MyParser(config=config, data_store=data_store)
 system = parser.build_system()
 
-modifier = manager.system_modifiers.get("scenario_adjustments")
+modifier = manager.registered_modifiers.get("scenario_adjustments")
 if modifier:
     modified_system = modifier(system, config=config, parser=parser)
 ```
@@ -120,9 +120,9 @@ if rename_filter:
 # ... chain multiple filters
 
 ```python
-year_filter = manager.filter_functions.get("filter_by_year")
-tech_filter = manager.filter_functions.get("filter_by_technology")
-rename_filter = manager.filter_functions.get("rename_columns")
+year_filter = manager.registered_filters.get("filter_by_year")
+tech_filter = manager.registered_filters.get("filter_by_technology")
+rename_filter = manager.registered_filters.get("rename_columns")
 
 data = pl.scan_csv("generators.csv")
 
@@ -144,7 +144,7 @@ class MyParser(BaseParser):
 
     def build_system_components(self) -> None:
         manager = PluginManager()
-        year_filter = manager.filter_functions.get("filter_by_year")
+        year_filter = manager.registered_filters.get("filter_by_year")
 
         generators = self.read_data_file(
             name="generators",
@@ -175,8 +175,8 @@ manager._load_entry_point_plugins()
 
 print(f"Total parsers: {len(manager.registered_parsers)}")
 print(f"Total exporters: {len(manager.registered_exporters)}")
-print(f"Total modifiers: {len(manager.system_modifiers)}")
-print(f"Total filters: {len(manager.filter_functions)}")
+print(f"Total modifiers: {len(manager.registered_modifiers)}")
+print(f"Total filters: {len(manager.registered_filters)}")
 ```
 
 # ... build a translation application
@@ -213,7 +213,7 @@ def translate(
 
     if modifiers:
         for modifier_name, params in modifiers:
-            modifier_func = manager.system_modifiers.get(modifier_name)
+            modifier_func = manager.registered_modifiers.get(modifier_name)
             if modifier_func:
                 logger.info(f"Applying: {modifier_name}")
                 system = modifier_func(system, config=parser_config, parser=parser, **params)

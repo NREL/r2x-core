@@ -95,9 +95,9 @@ def registered_parsers(self) -> list[str]
 @property
 def registered_exporters(self) -> list[str]
 @property
-def system_modifiers(self) -> list[str]
+def registered_modifiers(self) -> list[str]
 @property
-def filter_functions(self) -> list[str]
+def registered_filters(self) -> list[str]
 ```
 
 ### 3. External Plugin Discovery

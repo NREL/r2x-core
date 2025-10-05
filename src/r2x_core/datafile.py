@@ -13,7 +13,7 @@ from pydantic import (
     computed_field,
 )
 
-from .file_types import EXTENSION_MAPPING, FileType
+from .file_types import EXTENSION_MAPPING, FileFormat
 from .utils import (
     validate_file_extension,
 )
@@ -68,8 +68,8 @@ class DataFile(BaseModel):
 
     Attributes
     ----------
-    file_type : FileType
-        Computed property that returns the appropriate FileType class based on
+    file_type : FileFormat
+        Computed property that returns the appropriate FileFormat class based on
         the file extension. Automatically determined from `fpath.suffix`.
 
     Examples
@@ -83,7 +83,7 @@ class DataFile(BaseModel):
     ...     units="MWh",
     ... )
     >>> mapping.file_type
-    <class 'TableFile'>
+    <class 'TableFormat'>
 
     File mapping with column operations:
 
@@ -122,7 +122,7 @@ class DataFile(BaseModel):
 
     See Also
     --------
-    FileType: Class for file types.
+    FileFormat: Class for file formats.
     DataStore : Container for managing multiple DataFile instances
     DataReader : Service class for actually loading and processing the files
     """
@@ -193,13 +193,13 @@ class DataFile(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def file_type(self) -> FileType:
+    def file_type(self) -> FileFormat:
         """Computed file type based on file extension.
 
         Returns
         -------
-        FileType
-            FileType instance determined from file extension
+        FileFormat
+            FileFormat instance determined from file extension
 
         Raises
         ------

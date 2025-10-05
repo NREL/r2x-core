@@ -349,17 +349,17 @@ class BaseExporter(ABC):
         Export with file type matching:
 
         >>> def export_time_series(self) -> None:
-        ...     from r2x_core.file_types import TableFile, H5File, ParquetFile
+        ...     from r2x_core.file_types import TableFormat, H5Format, ParquetFormat
         ...     for datafile in self.data_store.data_files.values():
         ...         if not datafile.is_timeseries:
         ...             continue
         ...         ts_data = self._collect_time_series(datafile.name)
         ...         match datafile.file_type:
-        ...             case TableFile():
+        ...             case TableFormat():
         ...                 ts_data.write_csv(datafile.file_path)
-        ...             case H5File():
+        ...             case H5Format():
         ...                 self._write_h5(datafile, ts_data)
-        ...             case ParquetFile():
+        ...             case ParquetFormat():
         ...                 ts_data.write_parquet(datafile.file_path)
 
         See Also
