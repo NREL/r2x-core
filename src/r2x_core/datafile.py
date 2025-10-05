@@ -210,7 +210,8 @@ class DataFile(BaseModel):
         extension = self.fpath.suffix.lower()
         file_type_class = EXTENSION_MAPPING.get(extension)
 
-        if file_type_class is None:
+        if file_type_class is None:  # pragma: no cover
+            # Defensive check - should be caught by field validator
             msg = f"Unsupported file extension: {extension}"
             raise ValueError(msg)
 
