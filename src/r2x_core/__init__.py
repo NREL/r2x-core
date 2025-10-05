@@ -17,6 +17,12 @@ from .exceptions import (
 from .exporter import BaseExporter
 from .file_types import FileType
 from .parser import BaseParser, ParserConfig
+from .plugins import (
+    FilterFunction,
+    PluginComponent,
+    PluginManager,
+    SystemModifier,
+)
 from .reader import DataReader
 from .store import DataStore
 from .system import System
@@ -34,4 +40,8 @@ __all__ = [
     "ValidationError",
     "ComponentCreationError",
     "ExporterError",
+    "PluginManager",
+    "PluginComponent",
+    "SystemModifier",
+    "FilterFunction",
 ]

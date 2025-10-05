@@ -4,6 +4,7 @@
 
 install
 how-tos/index
+explanations/index
 references/index
 contributing
 CHANGELOG
