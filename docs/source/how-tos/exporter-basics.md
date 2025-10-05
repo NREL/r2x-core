@@ -34,7 +34,7 @@ class MyModelExporter(BaseExporter):
 
         # Export time series if enabled
         if self.config.export_timeseries:
-            self._export_time_series()
+            self.export_time_series()
 
         logger.info("Export complete")
 
@@ -46,9 +46,16 @@ class MyModelExporter(BaseExporter):
         """Export buses."""
         pass  # Implementation
 
-    def _export_time_series(self) -> None:
-        """Export time series."""
-        pass  # Implementation
+    def export_time_series(self) -> None:
+        """Export time series (required abstract method)."""
+        # Get only time series files from DataStore
+        ts_files = [
+            df for df in self.data_store.data_files.values()
+            if df.is_timeseries
+        ]
+        for datafile in ts_files:
+            logger.info(f"Exporting time series to {datafile.file_path}")
+            # Implementation here
 
 # Use the exporter
 config = MyModelConfig(model_year=2030, scenario_name="base")
@@ -126,7 +133,7 @@ import polars as pl
 class MyModelExporter(BaseExporter):
     """Exporter for MyModel format."""
 
-    def _export_time_series(self) -> None:
+    def export_time_series(self) -> None:
         """Export time series to files."""
         # Get only time series files from DataStore
         timeseries_files = [
@@ -305,6 +312,11 @@ class MyModelExporter(BaseExporter):
 
         logger.info("Export complete")
 
+    def export_time_series(self) -> None:
+        """Export time series (required abstract method)."""
+        # Implementation moved to export() method for this example
+        pass
+
     def _export_component_type(self, file_key: str, filter_func) -> None:
         """Export specific component type."""
         if file_key in self.data_store.data_files:
@@ -328,7 +340,7 @@ from r2x_core import BaseExporter, DataFile
 class MyModelExporter(BaseExporter):
     """Exporter for MyModel format."""
 
-    def _export_time_series(self) -> None:
+    def export_time_series(self) -> None:
         """Export time series, handling optional files."""
         timeseries_files = [
             df for df in self.data_store.data_files.values()

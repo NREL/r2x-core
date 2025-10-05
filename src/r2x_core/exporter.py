@@ -34,7 +34,7 @@ Create a model-specific exporter:
 ...         self._export_generators()
 ...         self._export_buses()
 ...         if self.config.export_timeseries:
-...             self._export_time_series()
+...             self.export_time_series()
 ...         logger.info("Export complete")
 ...
 ...     def _export_generators(self) -> None:
@@ -47,8 +47,11 @@ Create a model-specific exporter:
 ...     def _export_buses(self) -> None:
 ...         pass  # Implementation
 ...
-...     def _export_time_series(self) -> None:
-...         pass  # Implementation
+...     def export_time_series(self) -> None:
+...         for datafile in self.data_store.data_files.values():
+...             if datafile.is_timeseries:
+...                 # Export time series data for this file
+...                 pass  # Implementation
 >>>
 >>> config = MyModelConfig(model_year=2030, scenario="base", export_timeseries=True)
 >>> system = System()  # Already populated with components
@@ -96,8 +99,9 @@ class BaseExporter(ABC):
     """Abstract base class for exporting infrasys.System objects to model formats.
 
     This class provides the foundational structure for model-specific exporters.
-    Subclasses must implement the export() method to define the export workflow
-    for their specific model format.
+    Subclasses must implement two abstract methods:
+    - export(): Define the overall export workflow
+    - export_time_series(): Export time series data from system
 
     The BaseExporter provides access to:
     - System with components and time series (self.system)
@@ -141,6 +145,13 @@ class BaseExporter(ABC):
     ...         # Export all components to CSV
     ...         output_file = self.data_store.data_files["components"]
     ...         self.system.export_components_to_csv(output_file.file_path)
+    ...         # Export time series
+    ...         self.export_time_series()
+    ...
+    ...     def export_time_series(self) -> None:
+    ...         # Export time series data
+    ...         ts_file = self.data_store.data_files["timeseries"]
+    ...         # ... implementation
     >>>
     >>> config = MyConfig(year=2030)
     >>> system = System(name="MySystem")
@@ -161,6 +172,11 @@ class BaseExporter(ABC):
     ...             file_path=gen_file.file_path,
     ...             filter_func=lambda c: c.__class__.__name__ == "Generator"
     ...         )
+    ...         self.export_time_series()
+    ...
+    ...     def export_time_series(self) -> None:
+    ...         # Export time series for generators only
+    ...         pass
 
     Export with field selection and renaming:
 
@@ -173,6 +189,11 @@ class BaseExporter(ABC):
     ...             fields=["name", "max_active_power"],
     ...             key_mapping={"max_active_power": "capacity_mw"}
     ...         )
+    ...         self.export_time_series()
+    ...
+    ...     def export_time_series(self) -> None:
+    ...         # Export time series data
+    ...         pass
 
     See Also
     --------
@@ -183,17 +204,20 @@ class BaseExporter(ABC):
 
     Notes
     -----
-    The BaseExporter provides a minimal interface - just the export() method.
+    The BaseExporter provides a minimal interface with two abstract methods:
+    - export(): Orchestrate the complete export workflow
+    - export_time_series(): Handle time series data export
+
     This gives applications maximum flexibility to:
-    - Define their own export workflow
+    - Define their own export workflow in export()
     - Use any combination of System export methods
-    - Implement custom transformations and formatting
-    - Handle time series export as needed for their format
+    - Implement custom time series export logic
+    - Handle transformations and formatting as needed
 
     Common export patterns:
     1. Component export: Use system.export_components_to_csv()
     2. Custom transformations: Use system.components_to_records() then transform
-    3. Time series export: Use system.get_time_series() from infrasys
+    3. Time series export: Implement in export_time_series() using system.get_time_series()
     4. Multi-file export: Iterate over data_store.data_files
     """
 
@@ -237,7 +261,7 @@ class BaseExporter(ABC):
         The implementation should:
         1. Export component data using system.export_components_to_csv() or
            system.components_to_records()
-        2. Export time series data if needed using system.get_time_series()
+        2. Export time series data using export_time_series()
         3. Apply any model-specific transformations
         4. Write files to paths configured in data_store
 
@@ -253,9 +277,9 @@ class BaseExporter(ABC):
         >>> def export(self) -> None:
         ...     logger.info("Starting export")
         ...     # Export components
-        ...     for name, datafile in self.data_store.data_files.items():
-        ...         if not datafile.is_timeseries:
-        ...             self.system.export_components_to_csv(datafile.file_path)
+        ...     self._export_components()
+        ...     # Export time series
+        ...     self.export_time_series()
         ...     logger.info("Export complete")
 
         Export with error handling:
@@ -263,14 +287,85 @@ class BaseExporter(ABC):
         >>> def export(self) -> None:
         ...     try:
         ...         self._export_components()
-        ...         self._export_time_series()
+        ...         self.export_time_series()
         ...     except Exception as e:
         ...         raise ExporterError(f"Export failed: {e}") from e
 
         See Also
         --------
+        export_time_series : Export time series data from system
         r2x_core.system.System.export_components_to_csv : Export components
         r2x_core.system.System.components_to_records : Get component records
         r2x_core.exceptions.ExporterError : Export error exception
+        """
+        pass
+
+    @abstractmethod
+    def export_time_series(self) -> None:
+        """Export time series data from the system.
+
+        This method must be implemented by subclasses to export time series
+        data from components to files. The implementation should:
+        1. Identify which components have time series data
+        2. Retrieve time series using system.get_time_series()
+        3. Convert to appropriate format (DataFrame, arrays, etc.)
+        4. Write to files based on data_store configuration
+
+        Subclasses can filter time series files using:
+        >>> ts_files = [
+        ...     df for df in self.data_store.data_files.values()
+        ...     if df.is_timeseries
+        ... ]
+
+        Raises
+        ------
+        ExporterError
+            If time series export fails.
+
+        Examples
+        --------
+        Export time series to CSV:
+
+        >>> def export_time_series(self) -> None:
+        ...     import polars as pl
+        ...     for datafile in self.data_store.data_files.values():
+        ...         if datafile.is_timeseries:
+        ...             # Collect time series data
+        ...             ts_data = self._collect_time_series(datafile.name)
+        ...             # Write to file
+        ...             ts_data.write_csv(datafile.file_path)
+
+        Export to HDF5:
+
+        >>> def export_time_series(self) -> None:
+        ...     import h5py
+        ...     ts_file = self.data_store.data_files["timeseries"]
+        ...     with h5py.File(ts_file.file_path, "w") as f:
+        ...         for component in self.system.get_components():
+        ...             ts_data = self.system.get_time_series(component)
+        ...             if ts_data is not None:
+        ...                 f.create_dataset(component.name, data=ts_data)
+
+        Export with file type matching:
+
+        >>> def export_time_series(self) -> None:
+        ...     from r2x_core.file_types import TableFile, H5File, ParquetFile
+        ...     for datafile in self.data_store.data_files.values():
+        ...         if not datafile.is_timeseries:
+        ...             continue
+        ...         ts_data = self._collect_time_series(datafile.name)
+        ...         match datafile.file_type:
+        ...             case TableFile():
+        ...                 ts_data.write_csv(datafile.file_path)
+        ...             case H5File():
+        ...                 self._write_h5(datafile, ts_data)
+        ...             case ParquetFile():
+        ...                 ts_data.write_parquet(datafile.file_path)
+
+        See Also
+        --------
+        infrasys.system.System.get_time_series : Retrieve time series from components
+        r2x_core.datafile.DataFile.is_timeseries : Check if file is for time series
+        r2x_core.file_types : File type classes for format handling
         """
         pass

@@ -1,4 +1,4 @@
-## ... get all components as records
+# ... get all components as records
 
 ```python
 from infrasys import Component
@@ -17,7 +17,7 @@ all_records = system.components_to_records()
 print(f"Total components: {len(all_records)}")
 ```
 
-## ... filter components by type
+# ... filter components by type
 
 ```python
 from infrasys import Component
@@ -53,7 +53,7 @@ print(f"Generators: {len(gen_records)}")
 print(f"Buses: {len(bus_records)}")
 ```
 
-## ... filter components by attributes
+# ... filter components by attributes
 
 ```python
 from infrasys import Component
@@ -104,7 +104,7 @@ print(f"High voltage buses: {len(hv_bus_records)}")
 print(f"Renewable generators: {len(renewable_records)}")
 ```
 
-## ... select specific fields
+# ... select specific fields
 
 ```python
 from infrasys import Component
@@ -132,7 +132,7 @@ print(bus_records)
 # Output: [{"name": "bus1", "voltage": 230.0, "base_voltage": 230.0}, ...]
 ```
 
-## ... rename fields with key mapping
+# ... rename fields with key mapping
 
 ```python
 from infrasys import Component
@@ -163,7 +163,7 @@ print(gen_records)
 # Output: [{"name": "gen1", "PMax_MW": 500.0, "PMin_MW": 100.0}]
 ```
 
-## ... combine filtering, field selection, and renaming
+# ... combine filtering, field selection, and renaming
 
 ```python
 from infrasys import Component
@@ -203,7 +203,7 @@ print(export_records)
 # Output: [{"name": "large_gen_1", "capacity_mw": 500.0, "min_output_mw": 100.0, "bus_id": "bus1"}, ...]
 ```
 
-## ... use records for data analysis
+# ... use records for data analysis
 
 ```python
 from infrasys import Component
@@ -244,7 +244,7 @@ print(f"Average capacity: {avg_capacity} MW")
 print(capacity_by_type)
 ```
 
-## ... export components to CSV
+# ... export components to CSV
 
 ```python
 from infrasys import Component
@@ -284,7 +284,7 @@ system.export_components_to_csv(
 )
 ```
 
-## ... count components by type
+# ... count components by type
 
 ```python
 from infrasys import Component
