@@ -33,13 +33,13 @@ Create a model-specific parser:
 ...         if self.model_year < 2020:
 ...             raise ValidationError("Year must be >= 2020")
 ...
-...     def _build_system_components(self) -> None:
+...     def build_system_components(self) -> None:
 ...         bus_data = self.read_data_file("buses")
 ...         for row in bus_data.iter_rows(named=True):
 ...             bus = self.create_component(ACBus, name=row["name"])
 ...             self.add_component(bus)
 ...
-...     def _build_time_series(self) -> None:
+...     def build_time_series(self) -> None:
 ...         load_data = self.read_data_file("load_profiles")
 ...         # Attach time series...
 >>>
@@ -429,7 +429,7 @@ class BaseParser(ABC):
         logger.debug("Post-processing system...")
         self.post_process_system()
 
-        logger.info(f"System '{self.name}' built successfully")
+        logger.info("System '{}' built successfully", self.name)
         return self.system
 
     def get_data(self, key: str) -> Any:
@@ -741,7 +741,7 @@ class BaseParser(ABC):
 
         self.system.add_time_series(time_series, component, **kwargs)
         logger.debug(
-            f"Added time series to {component.__class__.__name__}: {component.name}"
+            "Added time series to {}: {}", component.__class__.__name__, component.name
         )
 
     def validate_inputs(self) -> None:
