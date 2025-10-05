@@ -14,6 +14,7 @@ from .exceptions import (
     ParserError,
     ValidationError,
 )
+from .exporter import BaseExporter
 from .file_types import FileType
 from .parser import BaseParser, ParserConfig
 from .reader import DataReader
@@ -26,6 +27,7 @@ __all__ = [
     "DataReader",
     "FileType",
     "BaseParser",
+    "BaseExporter",
     "ParserConfig",
     "System",
     "ParserError",
