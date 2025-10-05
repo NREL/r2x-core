@@ -83,6 +83,7 @@ PluginManager.register_model_plugin(
 from r2x_core import PluginManager, System
 from loguru import logger
 
+# With explicit name
 @PluginManager.register_system_modifier("add_storage")
 def add_storage_devices(system: System, capacity_mw: float = 100.0, **kwargs) -> System:
     logger.info(f"Adding {capacity_mw} MW of storage")
@@ -95,6 +96,14 @@ def add_storage_devices(system: System, capacity_mw: float = 100.0, **kwargs) ->
         )
         system.add_component(storage)
 
+    return system
+
+# Without explicit name (uses function name)
+@PluginManager.register_system_modifier
+def scale_generation(system: System, factor: float = 1.0, **kwargs) -> System:
+    """Modifier registered as 'scale_generation'."""
+    for gen in system.get_components(Generator):
+        gen.active_power *= factor
     return system
 ```
 
@@ -124,12 +133,15 @@ def add_emission_constraint(system: System, limit_tonnes: float | None = None, *
 import polars as pl
 from r2x_core import PluginManager
 
+# With explicit name
 @PluginManager.register_filter("rename_columns")
 def rename_columns(data: pl.LazyFrame, mapping: dict[str, str]) -> pl.LazyFrame:
     return data.rename(mapping)
 
-@PluginManager.register_filter("filter_by_year")
+# Without explicit name (uses function name)
+@PluginManager.register_filter
 def filter_by_year(data: pl.LazyFrame, year: int | list[int], year_column: str = "year") -> pl.LazyFrame:
+    """Filter registered as 'filter_by_year'."""
     if isinstance(year, int):
         return data.filter(pl.col(year_column) == year)
     return data.filter(pl.col(year_column).is_in(year))

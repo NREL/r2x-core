@@ -111,7 +111,7 @@ def test_register_plugin_with_neither_parser_nor_exporter():
 
 
 def test_register_system_modifier():
-    """Test registering a system modifier."""
+    """Test registering a system modifier with explicit name."""
 
     @PluginManager.register_system_modifier("test_modifier")
     def test_modifier(system: System, param: int = 10, **kwargs) -> System:
@@ -123,8 +123,21 @@ def test_register_system_modifier():
     assert callable(modifier)
 
 
+def test_register_system_modifier_without_name():
+    """Test registering a system modifier without explicit name (uses function name)."""
+
+    @PluginManager.register_system_modifier
+    def my_modifier(system: System, **kwargs) -> System:
+        return system
+
+    manager = PluginManager()
+    assert "my_modifier" in manager.system_modifiers
+    modifier = manager.system_modifiers["my_modifier"]
+    assert callable(modifier)
+
+
 def test_register_filter():
-    """Test registering a filter function."""
+    """Test registering a filter function with explicit name."""
 
     @PluginManager.register_filter("test_filter")
     def test_filter(data: pl.LazyFrame, column: str) -> pl.LazyFrame:
@@ -133,6 +146,19 @@ def test_register_filter():
     manager = PluginManager()
     assert "test_filter" in manager.filter_functions
     filter_func = manager.filter_functions["test_filter"]
+    assert callable(filter_func)
+
+
+def test_register_filter_without_name():
+    """Test registering a filter function without explicit name (uses function name)."""
+
+    @PluginManager.register_filter
+    def my_filter(data: pl.LazyFrame) -> pl.LazyFrame:
+        return data
+
+    manager = PluginManager()
+    assert "my_filter" in manager.filter_functions
+    filter_func = manager.filter_functions["my_filter"]
     assert callable(filter_func)
 
 

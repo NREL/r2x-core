@@ -352,67 +352,97 @@ class PluginManager:
 
     @classmethod
     def register_system_modifier(
-        cls, name: str
-    ) -> Callable[[SystemModifier], SystemModifier]:
+        cls, name: str | SystemModifier | None = None
+    ) -> Callable[[SystemModifier], SystemModifier] | SystemModifier:
         """Decorator to register a system modifier function.
 
         System modifiers transform a System object and return the modified system.
         They can accept additional context via **kwargs.
 
+        Can be used with or without a name argument:
+        - @register_system_modifier - uses function name
+        - @register_system_modifier("custom_name") - uses explicit name
+
         Parameters
         ----------
-        name : str
-            Modifier name
+        name : str | SystemModifier | None
+            Modifier name, or the function itself if used without parentheses
 
         Returns
         -------
-        Callable
-            Decorator function
+        Callable | SystemModifier
+            Decorator function or decorated function
 
         Examples
         --------
-        >>> @PluginManager.register_system_modifier("add_storage")
+        >>> @PluginManager.register_system_modifier
         ... def add_storage(system: System, capacity_mw: float = 100.0, **kwargs) -> System:
         ...     # Add storage components
+        ...     return system
+
+        >>> @PluginManager.register_system_modifier("custom_name")
+        ... def add_storage(system: System, **kwargs) -> System:
         ...     return system
         """
 
         def decorator(func: SystemModifier) -> SystemModifier:
-            cls._modifier_registry[name] = func
-            logger.debug(f"Registered system modifier: {name}")
+            modifier_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
+            cls._modifier_registry[modifier_name] = func
+            logger.debug(f"Registered system modifier: {modifier_name}")
             return func
 
+        # If used as @register_system_modifier (without parentheses)
+        if callable(name):
+            return decorator(name)
+
+        # If used as @register_system_modifier("name") (with parentheses)
         return decorator
 
     @classmethod
-    def register_filter(cls, name: str) -> Callable[[FilterFunction], FilterFunction]:
+    def register_filter(
+        cls, name: str | FilterFunction | None = None
+    ) -> Callable[[FilterFunction], FilterFunction] | FilterFunction:
         """Decorator to register a filter function.
 
         Filter functions process data (typically polars DataFrames) and return
         processed data.
 
+        Can be used with or without a name argument:
+        - @register_filter - uses function name
+        - @register_filter("custom_name") - uses explicit name
+
         Parameters
         ----------
-        name : str
-            Filter name
+        name : str | FilterFunction | None
+            Filter name, or the function itself if used without parentheses
 
         Returns
         -------
-        Callable
-            Decorator function
+        Callable | FilterFunction
+            Decorator function or decorated function
 
         Examples
         --------
-        >>> @PluginManager.register_filter("rename_columns")
+        >>> @PluginManager.register_filter
         ... def rename_columns(data: pl.LazyFrame, mapping: dict[str, str]) -> pl.LazyFrame:
         ...     return data.rename(mapping)
+
+        >>> @PluginManager.register_filter("custom_name")
+        ... def process_data(data: pl.LazyFrame) -> pl.LazyFrame:
+        ...     return data
         """
 
         def decorator(func: FilterFunction) -> FilterFunction:
-            cls._filter_registry[name] = func
-            logger.debug(f"Registered filter: {name}")
+            filter_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
+            cls._filter_registry[filter_name] = func
+            logger.debug(f"Registered filter: {filter_name}")
             return func
 
+        # If used as @register_filter (without parentheses)
+        if callable(name):
+            return decorator(name)
+
+        # If used as @register_filter("name") (with parentheses)
         return decorator
 
     @property
