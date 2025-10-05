@@ -53,6 +53,14 @@ file-operations
 parser-basics
 ```
 
+## Working with System Components
+
+```{toctree}
+:maxdepth: 1
+
+system-operations
+```
+
 ## Working with Time Series Files
 
 ```{toctree}

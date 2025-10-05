@@ -133,21 +133,21 @@ def test_to_json_no_overwrite_raises(tmp_path):
 # System export tests
 
 
-def test_export_component_to_csv_returns_data():
-    """Test export_component_to_csv without file path returns data."""
+def test_components_to_records_returns_data():
+    """Test components_to_records returns list of dictionaries."""
     from infrasys import Component
 
     system = System(name="TestSystem")
     system.add_components(Component(name="comp1"), Component(name="comp2"))
 
-    # Test that it returns data when no path is provided
-    result = system.export_component_to_csv(Component)
+    # Test that it returns data
+    result = system.components_to_records()
     assert isinstance(result, list)
     assert len(result) == 2
 
 
-def test_export_component_to_csv_with_filter():
-    """Test export with filter function."""
+def test_components_to_records_with_filter():
+    """Test components_to_records with filter function."""
     from infrasys import Component
 
     system = System(name="FilterTest")
@@ -158,46 +158,42 @@ def test_export_component_to_csv_with_filter():
     )
 
     # Filter to only components with "keep" in name
-    result = system.export_component_to_csv(
-        Component, filter_func=lambda c: "keep" in c.name
-    )
+    result = system.components_to_records(filter_func=lambda c: "keep" in c.name)
     assert len(result) == 2
     assert all("keep" in r["name"] for r in result)
 
 
-def test_export_component_to_csv_with_fields():
-    """Test export with specific fields."""
+def test_components_to_records_with_fields():
+    """Test components_to_records with specific fields."""
     from infrasys import Component
 
     system = System(name="FieldsTest")
     system.add_components(Component(name="test"))
 
     # Only export name field
-    result = system.export_component_to_csv(Component, fields=["name"])
+    result = system.components_to_records(fields=["name"])
     assert len(result) == 1
     assert "name" in result[0]
     # Should only have the name field
     assert len(result[0]) == 1
 
 
-def test_export_component_to_csv_with_key_mapping():
-    """Test export with key mapping."""
+def test_components_to_records_with_key_mapping():
+    """Test components_to_records with key mapping."""
     from infrasys import Component
 
     system = System(name="MappingTest")
     system.add_components(Component(name="test"))
 
     # Map 'name' to 'component_name'
-    result = system.export_component_to_csv(
-        Component, key_mapping={"name": "component_name"}
-    )
+    result = system.components_to_records(key_mapping={"name": "component_name"})
     assert len(result) == 1
     assert "component_name" in result[0]
     assert result[0]["component_name"] == "test"
 
 
-def test_export_component_to_csv_to_file(tmp_path):
-    """Test export to CSV file."""
+def test_export_components_to_csv_to_file(tmp_path):
+    """Test export_components_to_csv to file."""
     from infrasys import Component
     import csv
 
@@ -205,7 +201,7 @@ def test_export_component_to_csv_to_file(tmp_path):
     system.add_components(Component(name="comp1"), Component(name="comp2"))
 
     output_file = tmp_path / "components.csv"
-    system.export_component_to_csv(Component, fpath=output_file)
+    system.export_components_to_csv(output_file)
 
     assert output_file.exists()
 
@@ -218,8 +214,8 @@ def test_export_component_to_csv_to_file(tmp_path):
         assert rows[1]["name"] == "comp2"
 
 
-def test_export_component_to_csv_empty(tmp_path):
-    """Test export when no components match."""
+def test_export_components_to_csv_empty(tmp_path):
+    """Test export_components_to_csv when no components match."""
     from infrasys import Component
 
     system = System(name="EmptyTest")
@@ -227,9 +223,8 @@ def test_export_component_to_csv_empty(tmp_path):
     system.add_components(Component(name="test"))
 
     output_file = tmp_path / "empty.csv"
-    system.export_component_to_csv(
-        Component, fpath=output_file, filter_func=lambda c: False
-    )
+    system.export_components_to_csv(output_file, filter_func=lambda c: False)
 
     # File should not exist when no components match
-    # (infrasys just warns, doesn't create file)
+    # (method warns and doesn't create file)
+    assert not output_file.exists()

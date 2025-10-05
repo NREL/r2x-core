@@ -74,16 +74,45 @@ class MyModelExporter(BaseExporter):
 
     def _export_generators(self) -> None:
         """Export generator components to CSV."""
+        from my_components import Generator
+
         # Get DataFile configuration for generators
         gen_file = self.data_store.data_files["generators"]
 
-        # Export using infrasys built-in method
+        # Export only Generator components using filter function
         self.system.export_components_to_csv(
-            component_type="Generator",
             file_path=gen_file.file_path,
+            filter_func=lambda c: isinstance(c, Generator),
         )
 
         logger.info(f"Exported generators to {gen_file.file_path}")
+
+    def _export_high_voltage_buses(self) -> None:
+        """Export only high voltage buses."""
+        from my_components import Bus
+
+        bus_file = self.data_store.data_files["hv_buses"]
+
+        # Filter by type AND attribute
+        self.system.export_components_to_csv(
+            file_path=bus_file.file_path,
+            filter_func=lambda c: isinstance(c, Bus) and c.voltage > 100,
+            fields=["name", "voltage", "area"],  # Select specific fields
+            key_mapping={"voltage": "voltage_kv"}  # Rename columns
+        )
+
+        logger.info(f"Exported high voltage buses to {bus_file.file_path}")
+
+    def _export_all_components(self) -> None:
+        """Export all system components to a single CSV."""
+        all_file = self.data_store.data_files["all_components"]
+
+        # Export everything (no filter)
+        self.system.export_components_to_csv(
+            file_path=all_file.file_path
+        )
+
+        logger.info(f"Exported all components to {all_file.file_path}")
 ```
 
 # ... export time series data
@@ -203,8 +232,15 @@ class MyModelExporter(BaseExporter):
 
     def _export_generators(self) -> None:
         """Export generators with custom transformations."""
-        # Get components as DataFrame
-        gen_df = self.system.to_dataframe(component_type="Generator")
+        from my_components import Generator
+
+        # Get components as records (list of dicts) using filter
+        gen_records = self.system.components_to_records(
+            filter_func=lambda c: isinstance(c, Generator)
+        )
+
+        # Convert to DataFrame for transformations
+        gen_df = pl.DataFrame(gen_records)
 
         # Apply model-specific transformations
         transformed_df = gen_df.with_columns([
@@ -242,12 +278,19 @@ class MyModelExporter(BaseExporter):
         """Export with progress logging."""
         logger.info("Starting export process")
 
-        # Export components
-        component_types = ["Bus", "Generator", "Branch", "Load"]
-        for comp_type in component_types:
-            components = self.system.get_components_by_type(comp_type)
-            logger.info(f"Exporting {len(components)} {comp_type} components")
-            self._export_component_type(comp_type)
+        # Export components by type
+        component_types = {
+            "buses": lambda c: c.__class__.__name__ == "Bus",
+            "generators": lambda c: c.__class__.__name__ == "Generator",
+            "branches": lambda c: c.__class__.__name__ == "Branch",
+            "loads": lambda c: c.__class__.__name__ == "Load",
+        }
+
+        for name, filter_func in component_types.items():
+            # Count matching components
+            count = len(self.system.components_to_records(filter_func=filter_func))
+            logger.info(f"Exporting {count} {name} components")
+            self._export_component_type(name, filter_func)
 
         # Export time series
         if self.config.export_timeseries:
@@ -262,15 +305,13 @@ class MyModelExporter(BaseExporter):
 
         logger.info("Export complete")
 
-    def _export_component_type(self, comp_type: str) -> None:
+    def _export_component_type(self, file_key: str, filter_func) -> None:
         """Export specific component type."""
-        # Get DataFile for this component type
-        file_key = comp_type.lower() + "s"
         if file_key in self.data_store.data_files:
             datafile = self.data_store.data_files[file_key]
             self.system.export_components_to_csv(
-                component_type=comp_type,
                 file_path=datafile.file_path,
+                filter_func=filter_func,
             )
 
     def _export_timeseries_file(self, datafile) -> None:

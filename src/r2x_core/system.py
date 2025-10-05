@@ -1,5 +1,6 @@
 """R2X Core System class - subclass of infrasys.System with R2X-specific functionality."""
 
+import csv
 from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
@@ -206,73 +207,59 @@ class System(InfrasysSystem):
             filename=filename, upgrade_handler=upgrade_handler, **kwargs
         )  # type: ignore
 
-    def export_component_to_csv(
+    def components_to_records(
         self,
-        component: type[Component],
-        fields: list[str] | None = None,
         filter_func: Callable[[Component], bool] | None = None,
-        fpath: PathLike[str] | None = None,
+        fields: list[str] | None = None,
         key_mapping: dict[str, str] | None = None,
-        **dict_writer_kwargs: Any,
-    ) -> list[dict[str, Any]] | None:
-        """Export component data to CSV file.
+    ) -> list[dict[str, Any]]:
+        """Convert system components to a list of dictionaries (records).
 
-        This method extracts component data, optionally filters and transforms it,
-        and writes it to a CSV file. Useful for exporting system data for analysis
-        or use in other tools.
+        This method retrieves components from the system and converts them to
+        dictionary records, with optional filtering, field selection, and key mapping.
 
         Parameters
         ----------
-        component : type[Component]
-            Component class to export (e.g., ACBus, Generator).
-        fields : list, optional
-            List of field names to include. If None, exports all fields.
         filter_func : Callable, optional
             Function to filter components. Should accept a component and return bool.
-        fpath : PathLike, optional
-            Output CSV file path. If None, returns data without writing.
+            If None, converts all components in the system.
+        fields : list, optional
+            List of field names to include. If None, includes all fields.
         key_mapping : dict, optional
-            Dictionary mapping component field names to CSV column names.
-        **dict_writer_kwargs
-            Additional arguments passed to csv.DictWriter.
+            Dictionary mapping component field names to record keys.
 
         Returns
         -------
-        None or list[dict]
-            If fpath is None, returns list of dictionaries. Otherwise writes to file.
+        list[dict[str, Any]]
+            List of component records as dictionaries.
 
         Examples
         --------
-        Export all buses:
+        Get all components as records:
 
-        >>> system.export_component_to_csv(ACBus, fpath="buses.csv")
+        >>> records = system.components_to_records()
 
-        Export filtered generators with custom fields:
+        Get only generators:
 
-        >>> system.export_component_to_csv(
-        ...     Generator,
-        ...     fields=["name", "active_power", "bus"],
-        ...     filter_func=lambda g: g.active_power > 100,
-        ...     fpath="large_generators.csv"
+        >>> from my_components import Generator
+        >>> records = system.components_to_records(
+        ...     filter_func=lambda c: isinstance(c, Generator)
+        ... )
+
+        Get specific fields with renamed keys:
+
+        >>> records = system.components_to_records(
+        ...     fields=["name", "voltage"],
+        ...     key_mapping={"voltage": "voltage_kv"}
         ... )
 
         See Also
         --------
-        to_records : Convert system components to dictionary records
-        infrasys.system.System.get_components : Retrieve components by type
-
-        Notes
-        -----
-        This method is inspired by the legacy r2x.api.System.export_component_to_csv
-        but simplified for r2x-core's use cases.
+        export_components_to_csv : Export components to CSV file
+        get_components : Retrieve components by type with filtering
         """
-        logger.debug("Exporting {} components to CSV", component.__name__)
-        # Get components
-        components = self.get_components(component)
-
-        # Apply filter if provided
-        if filter_func is not None:
-            components = [c for c in components if filter_func(c)]
+        # Get all components, applying filter if provided
+        components = list(self.get_components(Component, filter_func=filter_func))
 
         # Convert to records
         records = [c.model_dump() for c in components]
@@ -290,25 +277,89 @@ class System(InfrasysSystem):
                 for record in records
             ]
 
-        # Write to CSV if path provided
-        if fpath is not None:
-            import csv
+        return records
 
-            fpath = Path(fpath)
-            fpath.parent.mkdir(parents=True, exist_ok=True)
+    def export_components_to_csv(
+        self,
+        file_path: PathLike[str],
+        filter_func: Callable[[Component], bool] | None = None,
+        fields: list[str] | None = None,
+        key_mapping: dict[str, str] | None = None,
+        **dict_writer_kwargs: Any,
+    ) -> None:
+        """Export all components or filtered components to CSV file.
 
-            if records:
-                with open(fpath, "w", newline="") as f:
-                    writer = csv.DictWriter(
-                        f, fieldnames=records[0].keys(), **dict_writer_kwargs
-                    )
-                    writer.writeheader()
-                    writer.writerows(records)
-                logger.info(
-                    "Exported {} {} to {}", len(records), component.__name__, fpath
-                )
-            else:
-                logger.warning("No components to export for {}", component.__name__)
-            return None
-        else:
-            return records
+        This method exports components from the system to a CSV file. You can
+        optionally provide a filter function to select specific components.
+
+        Parameters
+        ----------
+        file_path : PathLike
+            Output CSV file path.
+        filter_func : Callable, optional
+            Function to filter components. Should accept a component and return bool.
+            If None, exports all components in the system.
+        fields : list, optional
+            List of field names to include. If None, exports all fields.
+        key_mapping : dict, optional
+            Dictionary mapping component field names to CSV column names.
+        **dict_writer_kwargs
+            Additional arguments passed to csv.DictWriter.
+
+        Examples
+        --------
+        Export all components:
+
+        >>> system.export_components_to_csv("all_components.csv")
+
+        Export only generators using a filter:
+
+        >>> from my_components import Generator
+        >>> system.export_components_to_csv(
+        ...     "generators.csv",
+        ...     filter_func=lambda c: isinstance(c, Generator)
+        ... )
+
+        Export buses with custom filter:
+
+        >>> from my_components import ACBus
+        >>> system.export_components_to_csv(
+        ...     "high_voltage_buses.csv",
+        ...     filter_func=lambda c: isinstance(c, ACBus) and c.voltage > 100
+        ... )
+
+        Export with field selection and renaming:
+
+        >>> system.export_components_to_csv(
+        ...     "buses.csv",
+        ...     filter_func=lambda c: isinstance(c, ACBus),
+        ...     fields=["name", "voltage"],
+        ...     key_mapping={"voltage": "voltage_kv"}
+        ... )
+
+        See Also
+        --------
+        components_to_records : Convert components to dictionary records
+        get_components : Retrieve components by type with filtering
+        """
+        # Get records using components_to_records method
+        records = self.components_to_records(
+            filter_func=filter_func, fields=fields, key_mapping=key_mapping
+        )
+
+        # Fail fast if no records to export
+        if not records:
+            logger.warning("No components to export")
+            return
+
+        # Write to CSV
+        fpath = Path(file_path)
+        fpath.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(fpath, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=records[0].keys(), **dict_writer_kwargs
+            )
+            writer.writeheader()
+            writer.writerows(records)
+        logger.info("Exported {} components to {}", len(records), fpath)
