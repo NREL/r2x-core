@@ -37,3 +37,21 @@ def test_file_mapping_bad_extension(tmp_path) -> None:
     test_file.write_text("")
     with pytest.raises(KeyError, match="List of supported"):
         _ = DataFile(name="test", fpath=str(tmp_path / "test_data.gas"))
+
+
+def test_file_mapping_timeseries_parquet(tmp_path) -> None:
+    """Test that parquet files can be marked as time series."""
+    test_file = tmp_path / "test_data.parquet"
+    test_file.write_text("")
+    mapping = DataFile(name="test", fpath=str(test_file), is_timeseries=True)
+    assert mapping.is_timeseries is True
+
+
+def test_file_mapping_timeseries_json_fails(tmp_path) -> None:
+    """Test that JSON files cannot be marked as time series."""
+    test_file = tmp_path / "test_data.json"
+    test_file.write_text("")
+    mapping = DataFile(name="test", fpath=str(test_file), is_timeseries=True)
+    # Access file_type property to trigger validation
+    with pytest.raises(ValueError, match="does not support time series"):
+        _ = mapping.file_type

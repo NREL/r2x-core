@@ -52,3 +52,27 @@ file-operations
 
 parser-basics
 ```
+
+## Working with System Components
+
+```{toctree}
+:maxdepth: 1
+
+system-operations
+```
+
+## Working with Time Series Files
+
+```{toctree}
+:maxdepth: 1
+
+timeseries-files
+```
+
+## Exporting Systems
+
+```{toctree}
+:maxdepth: 1
+
+exporter-basics
+```

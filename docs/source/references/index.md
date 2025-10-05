@@ -1,6 +1,6 @@
 # Reference
 
-R2X Core provides data file management and parser framework classes:
+R2X Core provides data file management, parser, and exporter framework classes:
 
 ```{eval-rst}
 .. currentmodule:: r2x_core
@@ -11,6 +11,7 @@ R2X Core provides data file management and parser framework classes:
    DataReader
    BaseParser
    ParserConfig
+   BaseExporter
 ```
 
 For detailed API documentation with examples and method signatures, see the [Complete API Documentation](./api.md).
@@ -21,7 +22,9 @@ For detailed API documentation with examples and method signatures, see the [Com
 
 api
 parser
+exporter
 exceptions
 file-formats
+file-types
 models
 ```
