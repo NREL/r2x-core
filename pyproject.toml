@@ -5,9 +5,11 @@ authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
     { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
     { name = "Vivienne Liu", email = "vivienne.liu@nrel.gov"},
+    { name = "jarry7", email = "27745389+jarry7@users.noreply.github.com"},    
 ]
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
+    { name = "jarry7", email = "27745389+jarry7@users.noreply.github.com"},       
 ]
 description = "R2X Core Framework"
 license = {file = "LICENSE.txt"}
