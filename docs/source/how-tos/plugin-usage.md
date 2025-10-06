@@ -77,7 +77,7 @@ pipeline = [
 
 modified_system = system
 for modifier_name, params in pipeline:
-    modifier_func = manager.system_modifiers.get(modifier_name)
+    modifier_func = manager.registered_modifiers.get(modifier_name)
     if modifier_func:
         modified_system = modifier_func(modified_system, **params)
         logger.info(f"Applied: {modifier_name}")
@@ -107,7 +107,7 @@ if modifier:
 import polars as pl
 
 data = pl.scan_csv("generators.csv")
-rename_filter = manager.filter_functions.get("rename_columns")
+rename_filter = manager.registered_filters.get("rename_columns")
 
 if rename_filter:
     filtered_data = rename_filter(

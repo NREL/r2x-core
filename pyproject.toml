@@ -9,7 +9,7 @@ authors = [
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
 ]
-description = "R2X Core Framework"
+description = "Extensible framework for building power system model translators with plugin architecture"
 license = {file = "LICENSE.txt"}
 requires-python = ">=3.11"
 classifiers = [
@@ -17,7 +17,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: BSD License",
     "Topic :: Software Development :: Build Tools",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

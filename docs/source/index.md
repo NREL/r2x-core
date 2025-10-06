@@ -13,43 +13,45 @@ CHANGELOG
 
 # R2X Core Documentation
 
-R2X Core is a foundational data file management framework that provides declarative configuration and efficient loading of structured data files.
+R2X Core is a model-agnostic framework for building power system model translators. It provides the core infrastructure, data models, plugin architecture, and APIs that enable translation between different power system modeling platforms.
 
 ## About R2X Core
 
-R2X Core provides declarative configuration and efficient loading of structured data files. It serves as the foundation for data management across different power system modeling frameworks, enabling seamless data workflows and reproducible analysis.
+R2X Core serves as the foundation for building translators between power system models like ReEDS, PLEXOS, SWITCH, Sienna, and more. It provides a plugin-based architecture where you can register parsers, exporters, and transformations to create custom translation workflows.
 
 ### Key Features
 
 R2X Core offers the following capabilities:
 
-- **Declarative data file configuration** - Define how files should be read and processed using simple Python objects
-- **Multiple file format support** - Native support for CSV, HDF5, JSON, XML with extensible architecture for custom formats
-- **Data transformation pipeline** - Apply filters, column mapping, and reshaping operations during data loading
-- **Intelligent caching system** - Optimize performance with configurable LRU caching and memory management
-- **Configuration management** - Save, load, and share data setups through JSON serialization for reproducible workflows
+- **Plugin-based architecture** - Automatic discovery and registration of parsers, exporters, and transformations
+- **Standardized component models** - Power system components via [infrasys](https://github.com/NREL/infrasys)
+- **Multiple file format support** - Native support for CSV, HDF5, Parquet, JSON, and XML
+- **Type-safe configuration** - Pydantic models for validation and IDE support
+- **Data transformation pipeline** - Built-in filters, column mapping, and reshaping operations
+- **Abstract base classes** - `BaseParser` and `BaseExporter` for implementing translators
+- **System modifiers** - Apply transformations to entire power system models
+- **Flexible data store** - Automatic format detection and intelligent caching
 
 ## Quick Start
 
 ```python
-from r2x_core import DataFile, DataStore
+from r2x_core import PluginManager, BaseParser
 
-# Create a data store
-store = DataStore(folder="/path/to/data")
-
-# Configure a data file with transformations
-data_file = DataFile(
-    name="generators",
-    fpath="generators.csv",
-    description="Power plant data",
-    filter_by={"year": 2030},
-    column_mapping={"old_name": "new_name"}
+# Register your model plugin
+PluginManager.register_model_plugin(
+    name="my_model",
+    config=MyModelConfig,
+    parser=MyModelParser,
+    exporter=MyModelExporter,
 )
 
-# Add to store and load data
-store.add_data_file(data_file)
-data = store.read_data_file("generators")
+# Use it
+manager = PluginManager()
+parser = manager.load_parser("my_model")
+system = parser(config, data_store).build_system()
 ```
+
+👉 [See the full tutorial](tutorials/getting-started.md) for a complete example.
 
 ## Indices and Tables
 
