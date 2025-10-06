@@ -10,19 +10,36 @@ maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
 ]
 description = "Extensible framework for building power system model translators with plugin architecture"
+readme = "README.md"
 license = {file = "LICENSE.txt"}
 requires-python = ">=3.11"
+keywords = [
+    "power-systems",
+    "energy-modeling",
+    "model-translation",
+    "reeds",
+    "plexos",
+    "switch",
+    "sienna",
+    "plugin-architecture",
+]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
-    "Topic :: Software Development :: Build Tools",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Operating System :: OS Independent",
     "Topic :: File Formats :: JSON",
-    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator"
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "h5py>=3.13.0",
@@ -31,6 +48,13 @@ dependencies = [
     "polars>=1.33.1",
     "pydantic>=2.11.9,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/NREL/r2x-core"
+Documentation = "https://nrel.github.io/r2x-core/"
+Repository = "https://github.com/NREL/r2x-core"
+Issues = "https://github.com/NREL/r2x-core/issues"
+Changelog = "https://nrel.github.io/r2x-core/CHANGELOG.html"
 
 [dependency-groups]
 dev = [
