@@ -1,4 +1,5 @@
-from typing import TypeAlias, ClassVar, Any
+from typing import Any, ClassVar, TypeAlias
+
 from pydantic_core import core_schema
 
 
@@ -21,9 +22,7 @@ class FileFormat:
         return f"{self.__class__.__name__}()"
 
     @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: Any
-    ) -> core_schema.CoreSchema:
+    def __get_pydantic_core_schema__(cls, source_type: Any, handler: Any) -> core_schema.CoreSchema:
         """Generate Pydantic schema for FileFormat instances.
 
         This allows FileFormat instances to be used in Pydantic models.

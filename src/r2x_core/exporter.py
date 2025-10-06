@@ -298,7 +298,7 @@ class BaseExporter(ABC):
         r2x_core.system.System.components_to_records : Get component records
         r2x_core.exceptions.ExporterError : Export error exception
         """
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def export_time_series(self) -> None:
@@ -368,4 +368,4 @@ class BaseExporter(ABC):
         r2x_core.datafile.DataFile.is_timeseries : Check if file is for time series
         r2x_core.file_types : File type classes for format handling
         """
-        pass  # pragma: no cover
+        # pragma: no cover

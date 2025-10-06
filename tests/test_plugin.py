@@ -272,10 +272,7 @@ def test_get_cli_schema_underscore_to_hyphen():
 
     assert schema["properties"]["weather_year"]["cli_flag"] == "--weather-year"
     assert schema["properties"]["solve_year"]["cli_flag"] == "--solve-year"
-    assert (
-        schema["properties"]["model_version_string"]["cli_flag"]
-        == "--model-version-string"
-    )
+    assert schema["properties"]["model_version_string"]["cli_flag"] == "--model-version-string"
 
 
 def test_get_cli_schema_no_required_fields():

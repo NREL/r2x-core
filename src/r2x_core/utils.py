@@ -10,9 +10,7 @@ from pydantic import ValidationInfo
 from .file_types import EXTENSION_MAPPING
 
 
-def filter_valid_kwargs(
-    func: Callable[..., Any], kwargs: dict[str, Any]
-) -> dict[str, Any]:
+def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
     """Filter kwargs to only include valid parameters for the given function."""
     sig = inspect.signature(func)
     valid_params = set(sig.parameters.keys())

@@ -16,9 +16,7 @@ from r2x_core.file_types import H5Format, JSONFormat, TableFormat, XMLFormat
         (".json", JSONFormat),
     ],
 )
-def test_file_mapping_extension_inference(
-    tmp_path, extension, expected_file_type
-) -> None:
+def test_file_mapping_extension_inference(tmp_path, extension, expected_file_type) -> None:
     """Test that FileMapping correctly infers file type from extension."""
     test_file = tmp_path / f"test_data{extension}"
     test_file.write_text("")

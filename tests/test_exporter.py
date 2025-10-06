@@ -1,7 +1,8 @@
 """Tests for the exporter module."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 from pydantic import BaseModel
 
 from r2x_core import BaseExporter, DataStore
@@ -20,12 +21,10 @@ class ConcreteExporter(BaseExporter):
     def export(self) -> None:
         """Implement abstract export method."""
         # Simple implementation for testing
-        pass
 
     def export_time_series(self) -> None:
         """Implement abstract export_time_series method."""
         # Simple implementation for testing
-        pass
 
 
 class ExporterWithKwargs(BaseExporter):
@@ -40,17 +39,13 @@ class ExporterWithKwargs(BaseExporter):
         **kwargs,
     ):
         """Initialize with custom field."""
-        super().__init__(
-            config, system, data_store, custom_field=custom_field, **kwargs
-        )
+        super().__init__(config, system, data_store, custom_field=custom_field, **kwargs)
 
     def export(self) -> None:
         """Implement abstract export method."""
-        pass
 
     def export_time_series(self) -> None:
         """Implement abstract export_time_series method."""
-        pass
 
 
 def test_base_exporter_initialization(tmp_path):

@@ -30,11 +30,9 @@ class MockParser(BaseParser):
 
     def build_system_components(self) -> None:
         """Build mock components."""
-        pass
 
     def build_time_series(self) -> None:
         """Build mock time series."""
-        pass
 
 
 class MockExporter(BaseExporter):
@@ -42,11 +40,9 @@ class MockExporter(BaseExporter):
 
     def export(self) -> None:
         """Export mock data."""
-        pass
 
     def export_time_series(self) -> None:
         """Export mock time series."""
-        pass
 
 
 # Model Plugin Registration Tests
@@ -248,9 +244,7 @@ def test_modifier_with_parameters():
     """Test modifier with custom parameters."""
 
     @PluginManager.register_system_modifier("test_params")
-    def modifier_with_params(
-        system: System, capacity_mw: float = 100.0, **kwargs
-    ) -> System:
+    def modifier_with_params(system: System, capacity_mw: float = 100.0, **kwargs) -> System:
         # Store param for testing
         system._test_capacity = capacity_mw
         return system
@@ -339,9 +333,7 @@ def test_registries_are_shared():
 
     assert "test_shared" in manager1.registered_parsers
     assert "test_shared" in manager2.registered_parsers
-    assert (
-        manager1.registered_parsers is not manager2.registered_parsers
-    )  # Copy returned
+    assert manager1.registered_parsers is not manager2.registered_parsers  # Copy returned
 
 
 # Plugin Manager Property Tests
@@ -439,9 +431,7 @@ def test_entry_point_successful_load():
 def test_entry_point_discovery_error():
     """Test entry point discovery failure."""
     # Should not raise, just log debug message
-    with patch(
-        "r2x_core.plugins.entry_points", side_effect=RuntimeError("Discovery failed")
-    ):
+    with patch("r2x_core.plugins.entry_points", side_effect=RuntimeError("Discovery failed")):
         PluginManager._load_entry_point_plugins()
 
     # If we got here, the exception was caught and handled

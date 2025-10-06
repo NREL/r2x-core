@@ -343,9 +343,7 @@ class PluginManager:
         ... )
         """
         if parser is None and exporter is None:
-            logger.warning(
-                f"Plugin '{name}' registered with neither parser nor exporter"
-            )
+            logger.warning(f"Plugin '{name}' registered with neither parser nor exporter")
 
         cls._registry[name] = PluginComponent(
             config=config,
@@ -458,11 +456,7 @@ class PluginManager:
         dict[str, type]
             Mapping of plugin name to parser class
         """
-        return {
-            name: plugin.parser
-            for name, plugin in self._registry.items()
-            if plugin.parser is not None
-        }
+        return {name: plugin.parser for name, plugin in self._registry.items() if plugin.parser is not None}
 
     @property
     def registered_exporters(self) -> dict[str, type]:
@@ -474,9 +468,7 @@ class PluginManager:
             Mapping of plugin name to exporter class
         """
         return {
-            name: plugin.exporter
-            for name, plugin in self._registry.items()
-            if plugin.exporter is not None
+            name: plugin.exporter for name, plugin in self._registry.items() if plugin.exporter is not None
         }
 
     @property

@@ -621,13 +621,9 @@ class BaseParser(ABC):
                 # Normal validation
                 return component_class.model_validate(valid_fields)
         except PydanticValidationError as e:
-            raise ComponentCreationError(
-                f"Failed to create {component_class.__name__}: {e}"
-            ) from e
+            raise ComponentCreationError(f"Failed to create {component_class.__name__}: {e}") from e
         except Exception as e:
-            raise ComponentCreationError(
-                f"Failed to create {component_class.__name__}: {e}"
-            ) from e
+            raise ComponentCreationError(f"Failed to create {component_class.__name__}: {e}") from e
 
     def add_component(self, component: Any) -> None:
         """Add a component to the system with logging.
@@ -725,9 +721,7 @@ class BaseParser(ABC):
             )
 
         self.system.add_time_series(time_series, component, **kwargs)
-        logger.debug(
-            "Added time series to {}: {}", component.__class__.__name__, component.name
-        )
+        logger.debug("Added time series to {}: {}", component.__class__.__name__, component.name)
 
     def validate_inputs(self) -> None:
         """Validate configuration and data before building system.
@@ -787,7 +781,6 @@ class BaseParser(ABC):
         - Verify cross-field constraints
         - Fail fast with clear error messages
         """
-        pass
 
     @abstractmethod
     def build_system_components(self) -> None:
@@ -885,7 +878,6 @@ class BaseParser(ABC):
         - Create connections (branches, interfaces)
         - Establish relationships (generator.bus = bus_instance)
         """
-        pass
 
     @abstractmethod
     def build_time_series(self) -> None:
@@ -965,7 +957,6 @@ class BaseParser(ABC):
         - Price curves (cost over time)
         - Reserve requirements (operating reserve levels)
         """
-        pass
 
     def post_process_system(self) -> None:
         """Perform post-processing after system construction.
@@ -1024,4 +1015,3 @@ class BaseParser(ABC):
         - Computing derived quantities
         - Setting up cross-component relationships
         """
-        pass

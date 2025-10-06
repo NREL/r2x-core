@@ -133,13 +133,9 @@ class DataFile(BaseModel):
         AfterValidator(validate_file_extension),
         Field(description="File path (must exist)"),
     ]
-    description: Annotated[
-        str | None, Field(description="Description of the data file")
-    ] = None
+    description: Annotated[str | None, Field(description="Description of the data file")] = None
     is_input: Annotated[bool, Field(description="Whether this is an input file")] = True
-    is_optional: Annotated[bool, Field(description="Whether this file is optional")] = (
-        False
-    )
+    is_optional: Annotated[bool, Field(description="Whether this file is optional")] = False
     is_timeseries: Annotated[
         bool,
         Field(
@@ -150,44 +146,30 @@ class DataFile(BaseModel):
     units: Annotated[str | None, Field(description="Units for the data")] = None
     reader_function: Annotated[
         Callable[[Path], Any] | None,
-        Field(
-            description="Custom reader function (callable) that takes a Path and returns data"
-        ),
+        Field(description="Custom reader function (callable) that takes a Path and returns data"),
     ] = None
     reader_kwargs: Annotated[
         dict[str, Any] | None,
         Field(description="Key-Word arguments passed to the reader function."),
     ] = None
-    column_mapping: Annotated[
-        dict[str, str] | None, Field(description="Column name mappings")
-    ] = None
+    column_mapping: Annotated[dict[str, str] | None, Field(description="Column name mappings")] = None
     key_mapping: Annotated[
         dict[str, str] | None,
         Field(description="Keys name mappings (applicable for JSON files)."),
     ] = None
-    index_columns: Annotated[
-        list[str] | None, Field(description="Index column names")
-    ] = None
-    value_columns: Annotated[
-        list[str] | None, Field(description="Value column names")
-    ] = None
-    drop_columns: Annotated[list[str] | None, Field(description="Columns to drop")] = (
-        None
-    )
+    index_columns: Annotated[list[str] | None, Field(description="Index column names")] = None
+    value_columns: Annotated[list[str] | None, Field(description="Value column names")] = None
+    drop_columns: Annotated[list[str] | None, Field(description="Columns to drop")] = None
     column_schema: Annotated[
         dict[str, str] | None,
-        Field(
-            description="User-defined column names/types (used if input data has no column headers)"
-        ),
+        Field(description="User-defined column names/types (used if input data has no column headers)"),
     ] = None
     filter_by: Annotated[
         dict[str, Any] | None,
         Field(description="Column filters as {column_name: value}"),
     ] = None
     pivot_on: Annotated[str | None, Field(description="Column to pivot on")] = None
-    aggregate_function: Annotated[
-        str | None, Field(description="Aggregation function")
-    ] = None
+    aggregate_function: Annotated[str | None, Field(description="Aggregation function")] = None
 
     model_config = ConfigDict(frozen=True)
 
@@ -218,8 +200,7 @@ class DataFile(BaseModel):
         # If marked as time series, verify the file type supports it
         if self.is_timeseries and not file_type_class.supports_timeseries:
             msg = (
-                f"File type {file_type_class.__name__} does not support time series data. "
-                f"File: {self.fpath}"
+                f"File type {file_type_class.__name__} does not support time series data. File: {self.fpath}"
             )
             raise ValueError(msg)
 
