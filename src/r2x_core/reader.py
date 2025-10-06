@@ -34,6 +34,13 @@ class DataReader:
     """
 
     def __init__(self, max_cache_size: int = MAX_CACHE_SIZE) -> None:
+        """Initialize the data reader with cache configuration.
+
+        Parameters
+        ----------
+        max_cache_size : int, optional
+            Maximum number of files to keep in cache. Default is 100.
+        """
         self._cache: dict[str, Any] = {}
         self.max_cache_size = max_cache_size
 

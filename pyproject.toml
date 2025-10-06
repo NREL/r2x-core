@@ -67,10 +67,13 @@ dev = [
 ]
 docs = [
     "autodoc-pydantic",
+    "docstr-coverage>=2.3.2",
     "furo>=2025.9.25",
     "ghp-import",
     "myst-parser",
+    "sphinx>=8.0.0",
     "sphinx-copybutton",
+    "sphinx-reports",
     "sphinx-tabs",
 ]
 

@@ -50,7 +50,7 @@ Create sample input files to work with.
 
 **data/buses.csv:**
 
-```csv
+```text
 bus_id,bus_name,voltage_kv,base_mva
 1,North Station,345,100
 2,South Station,345,100
@@ -59,7 +59,7 @@ bus_id,bus_name,voltage_kv,base_mva
 
 **data/generators.csv:**
 
-```csv
+```text
 gen_id,gen_name,bus_id,capacity_mw,fuel_type,heat_rate
 G1,Coal Plant 1,1,500,coal,9500
 G2,Wind Farm 1,2,200,wind,0

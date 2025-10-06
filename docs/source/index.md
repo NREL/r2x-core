@@ -13,6 +13,8 @@ CHANGELOG
 
 # R2X Core Documentation
 
+[![Docstring Coverage](https://img.shields.io/badge/docstring%20coverage-100%25-brightgreen.svg)](_static/docstr_coverage_badge.svg)
+
 R2X Core is a model-agnostic framework for building power system model translators. It provides the core infrastructure, data models, plugin architecture, and APIs that enable translation between different power system modeling platforms.
 
 ## About R2X Core

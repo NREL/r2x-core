@@ -259,6 +259,7 @@ class BaseExporter(ABC):
         export workflow for their specific model format.
 
         The implementation should:
+
         1. Export component data using system.export_components_to_csv() or
            system.components_to_records()
         2. Export time series data using export_time_series()

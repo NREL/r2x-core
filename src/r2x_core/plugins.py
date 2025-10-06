@@ -359,7 +359,7 @@ class PluginManager:
         """Decorator to register a system modifier function.
 
         System modifiers transform a System object and return the modified system.
-        They can accept additional context via **kwargs.
+        They can accept additional context via ``**kwargs``.
 
         Can be used with or without a name argument:
         - @register_system_modifier - uses function name
@@ -388,6 +388,7 @@ class PluginManager:
         """
 
         def decorator(func: SystemModifier) -> SystemModifier:
+            """Internal decorator that registers the system modifier function."""
             modifier_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._modifier_registry[modifier_name] = func
             logger.debug(f"Registered system modifier: {modifier_name}")
@@ -435,6 +436,7 @@ class PluginManager:
         """
 
         def decorator(func: FilterFunction) -> FilterFunction:
+            """Internal decorator that registers the filter function."""
             filter_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._filter_registry[filter_name] = func
             logger.debug(f"Registered filter: {filter_name}")

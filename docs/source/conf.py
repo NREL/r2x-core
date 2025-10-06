@@ -10,8 +10,11 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
     "sphinx.ext.todo",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "sphinx_tabs.tabs",
+    "sphinx_reports",
     "sphinxcontrib.autodoc_pydantic",
 ]
 
@@ -63,3 +66,13 @@ copybutton_line_continuation_character = "\\"
 copybutton_here_doc_delimiter = "EOT"
 copybutton_prompt_text = "$"
 copybutton_copy_empty_lines = False
+
+# Sphinx-reports - DocCov configuration
+report_doccov_packages = {
+    "src": {
+        "name": "r2x_core",
+        "directory": "/Users/psanchez/dev/r2x-core/dev/src/r2x_core",
+        "fail_below": 90,
+        "levels": "default",
+    }
+}

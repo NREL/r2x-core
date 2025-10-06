@@ -2,6 +2,11 @@
 
 ## Parser Exceptions
 
+````markdown
+# Exceptions
+
+## Parser Exceptions
+
 ```{eval-rst}
 .. autoclass:: r2x_core.ParserError
    :members:
@@ -19,3 +24,13 @@
    :members:
    :show-inheritance:
 ```
+
+## Exporter Exceptions
+
+```{eval-rst}
+.. autoclass:: r2x_core.ExporterError
+   :members:
+   :show-inheritance:
+```
+
+````

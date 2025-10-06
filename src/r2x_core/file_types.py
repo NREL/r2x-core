@@ -1,3 +1,10 @@
+"""File format type definitions for model data files.
+
+This module provides lightweight type markers for different file formats
+used in model data processing. These types enable single dispatch patterns
+for format-specific file reading and processing logic.
+"""
+
 from typing import Any, ClassVar, TypeAlias
 
 from pydantic_core import core_schema
@@ -19,6 +26,13 @@ class FileFormat:
     supports_timeseries: ClassVar[bool] = False
 
     def __repr__(self) -> str:
+        """Return string representation of the file format.
+
+        Returns
+        -------
+        str
+            Class name followed by empty parentheses.
+        """
         return f"{self.__class__.__name__}()"
 
     @classmethod

@@ -85,5 +85,4 @@ exporter-basics
 plugin-standards
 plugin-registration
 plugin-usage
-filter-examples
 ```

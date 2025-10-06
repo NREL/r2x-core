@@ -8,6 +8,7 @@
 > [![codecov](https://codecov.io/gh/NREL/r2x-core/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL/r2x-core)
 > [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 > [![Documentation](https://github.com/NREL/r2x-core/actions/workflows/docs.yaml/badge.svg?branch=main)](https://nrel.github.io/r2x-core/)
+> [![Docstring Coverage](https://nrel.github.io/r2x-core/_static/docstr_coverage_badge.svg)](https://nrel.github.io/r2x-core/)
 
 
 

@@ -317,6 +317,21 @@ class BaseParser(ABC):
         auto_add_composed_components: bool = True,
         skip_validation: bool = False,
     ) -> None:
+        """Initialize the parser with configuration and data store.
+
+        Parameters
+        ----------
+        config : PluginConfig
+            Model-specific configuration instance.
+        data_store : DataStore
+            Initialized DataStore instance with file mappings.
+        name : str, optional
+            Name for the system being built.
+        auto_add_composed_components : bool, default=True
+            Whether to automatically add composed components.
+        skip_validation : bool, default=False
+            Skip Pydantic validation when creating components.
+        """
         self.config = config
         self.data_store = data_store
         self.system: Any = None  # Will be assigned System instance in build_system

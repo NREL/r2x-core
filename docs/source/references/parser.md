@@ -1,21 +1,8 @@
 # Parser Framework
 
-## Parser Configuration
+For complete API documentation of parser classes, see {doc}`api`.
 
-```{eval-rst}
-.. autopydantic_model:: r2x_core.PluginConfig
-   :model-show-json: False
-   :model-show-config-summary: False
-   :model-show-validator-members: False
-   :model-show-validator-summary: False
-   :field-list-validators: False
-```
+## Quick Reference
 
-## Base Parser
-
-```{eval-rst}
-.. autoclass:: r2x_core.BaseParser
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+- {py:class}`~r2x_core.PluginConfig` - Configuration base class
+- {py:class}`~r2x_core.BaseParser` - Parser base class
