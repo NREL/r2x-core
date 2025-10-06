@@ -9,7 +9,7 @@ authors = [
 ]
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
-    { name = "jarry7", email = "27745389+jarry7@users.noreply.github.com"},       
+    { name = "jarry7", email = "27745389+jarry7@users.noreply.github.com"},
 ]
 description = "R2X Core Framework"
 license = {file = "LICENSE.txt"}
