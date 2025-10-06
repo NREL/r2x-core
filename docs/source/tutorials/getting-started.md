@@ -95,6 +95,11 @@ class SimpleGridConfig(BaseModel):
         validate_assignment = True
 ```
 
+```{tip}
+For production plugins, consider using `PluginConfig` instead of `BaseModel` to leverage plugin standards like automatic defaults loading from `config/constants.json` and CLI schema generation. See :doc:`../how-tos/plugin-standards` for details.
+```
+
+
 ## Step 4: Build the Parser
 
 Create `simplegrid/parser.py` to read and parse SimpleGrid data:

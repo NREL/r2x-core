@@ -1,13 +1,14 @@
 # ... create a basic parser
 
+````python from pydantic import BaseModel
 ```python
-from pydantic import BaseModel
-from r2x_core.parser import BaseParser, ParserConfig
+from r2x_core.parser import BaseParser
+from r2x_core.plugin_config import PluginConfig
 from r2x_core.store import DataStore
 from r2x_core.exceptions import ValidationError, ParserError, ComponentCreationError
 
-# Define model configuration
-class MyModelConfig(ParserConfig):
+# Define configuration
+class MyModelConfig(PluginConfig):
     """Configuration for MyModel parser."""
 
     model_year: int
@@ -43,7 +44,7 @@ config = MyModelConfig(model_year=2030, scenario_name="base")
 data_store = DataStore.from_json("mappings.json", folder="/data")
 parser = MyModelParser(config, data_store)
 system = parser.build_system()
-```
+````
 
 # ... validate inputs before building
 
@@ -246,7 +247,7 @@ class MyModelParser(BaseParser):
 # ... work with multiple model years
 
 ```python
-class MultiYearConfig(ParserConfig):
+class MultiYearConfig(PluginConfig):
     """Configuration supporting multiple years."""
 
     model_years: list[int]
@@ -308,4 +309,53 @@ class MyModelParser(BaseParser):
                 capacity=row["capacity"],  # Already float64
             )
             self.add_component(gen)
+```
+
+# ... use plugin standards for configuration
+
+:::{seealso}
+For complete details on plugin standards, see the [Plugin Standards Guide](plugin-standards.md).
+:::
+
+```python
+from r2x_core import PluginConfig, BaseParser
+
+class MyModelConfig(PluginConfig):
+    """Model configuration with defaults."""
+
+    solve_year: int
+    scenario: str = "reference"
+
+# Load defaults from config/constants.json
+defaults = MyModelConfig.load_defaults()
+config = MyModelConfig(solve_year=2030, defaults=defaults)
+
+# Access default values
+excluded_techs = config.defaults.get("excluded_techs", [])
+default_capacity = config.defaults.get("default_capacity", 100.0)
+```
+
+# ... discover file mappings
+
+```python
+# Get file mapping path for your parser
+mapping_path = MyModelParser.get_file_mapping_path()
+print(f"File mappings at: {mapping_path}")
+
+# Load mappings and create DataStore
+if mapping_path.exists():
+    data_store = DataStore.from_json(mapping_path, folder="/data/mymodel")
+```
+
+# ... generate CLI schemas
+
+```python
+# Generate CLI-friendly schema
+schema = MyModelConfig.get_cli_schema()
+
+# Use for building CLI tools
+for field_name, field_info in schema["properties"].items():
+    print(f"{field_name} -> {field_info['cli_flag']}")
+    # solve_year -> --solve-year
+    # scenario -> --scenario
 ```

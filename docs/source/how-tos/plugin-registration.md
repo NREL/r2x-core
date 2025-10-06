@@ -1,10 +1,13 @@
 # ... register a complete model plugin
 
-```python
-from pydantic import BaseModel
-from r2x_core import BaseParser, BaseExporter, PluginManager, DataStore, System
+:::{note}
+For plugin structure and standards (configuration, file mappings, CLI schema), see the [Plugin Standards Guide](plugin-standards.md).
+:::
 
-class MyModelConfig(BaseModel):
+```python
+from r2x_core import BaseParser, BaseExporter, PluginManager, PluginConfig, DataStore, System
+
+class MyModelConfig(PluginConfig):
     input_folder: str
     output_folder: str
     weather_year: int = 2012

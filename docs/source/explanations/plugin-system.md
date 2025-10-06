@@ -22,11 +22,15 @@ r2x-core supports three distinct plugin types, each serving a different purpose:
 #### Model Plugins
 Model plugins register parser and/or exporter classes for specific energy models (e.g., ReEDS, PLEXOS, Sienna). Each model plugin consists of:
 
-- **Configuration**: A Pydantic `BaseModel` defining the model's parameters
+- **Configuration**: A Pydantic `PluginConfig` or `BaseModel` defining the model's parameters
 - **Parser** (optional): A `BaseParser` subclass to read model input files
 - **Exporter** (optional): A `BaseExporter` subclass to write model output files
 
 **Rationale**: Separating parser and exporter allows flexible model translation workflows (input-only, output-only, or bidirectional).
+
+```{seealso}
+See :doc:`../how-tos/plugin-standards` for configuration best practices and standards.
+```
 
 #### System Modifier Plugins
 System modifiers are functions that post-process a `System` after parsing. They enable:

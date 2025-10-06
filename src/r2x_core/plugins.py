@@ -92,10 +92,14 @@ Design Decisions:
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import entry_points
-from typing import Any, ClassVar, Protocol
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from loguru import logger
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from r2x_core.parser import BaseParser
 
 
 class SystemModifier(Protocol):
@@ -497,7 +501,7 @@ class PluginManager:
         """
         return self._filter_registry.copy()
 
-    def load_parser(self, name: str) -> type | None:
+    def load_parser(self, name: str) -> "type[BaseParser] | None":
         """Load a parser class by name.
 
         Parameters
@@ -507,7 +511,7 @@ class PluginManager:
 
         Returns
         -------
-        type | None
+        type[BaseParser] | None
             Parser class or None if not found
 
         Examples
@@ -565,3 +569,66 @@ class PluginManager:
         """
         plugin = self._registry.get(name)
         return plugin.config if plugin else None
+
+    def get_file_mapping_path(self, plugin_name: str) -> Path | None:
+        """Get the file mapping path for a registered plugin.
+
+        This is a convenience method that loads the plugin's parser class
+        and delegates to its get_file_mapping_path() classmethod. This allows
+        getting the file mapping path without directly importing the parser class.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the registered plugin
+
+        Returns
+        -------
+        Path | None
+            Absolute path to the plugin's file_mapping.json, or None if the
+            plugin doesn't have a parser registered.
+
+        Examples
+        --------
+        Get file mapping path for a registered plugin:
+
+        >>> from r2x_core import PluginManager
+        >>> manager = PluginManager()
+        >>> mapping_path = manager.get_file_mapping_path("reeds")
+        >>> if mapping_path:
+        ...     print(f"ReEDS mapping: {mapping_path}")
+        ...     if mapping_path.exists():
+        ...         import json
+        ...         with open(mapping_path) as f:
+        ...             mappings = json.load(f)
+
+        Use in CLI tools:
+
+        >>> import sys
+        >>> plugin = sys.argv[1]  # e.g., "switch"
+        >>> manager = PluginManager()
+        >>> path = manager.get_file_mapping_path(plugin)
+        >>> if path and path.exists():
+        ...     # Load and process mappings
+        ...     pass
+        ... else:
+        ...     print(f"No file mapping found for {plugin}")
+
+        See Also
+        --------
+        BaseParser.get_file_mapping_path : Parser classmethod this delegates to
+        load_parser : Load the parser class directly
+
+        Notes
+        -----
+        This method requires the plugin to have a parser registered. If only
+        an exporter is registered, it will return None.
+
+        The file may not exist even if a path is returned - the method only
+        constructs the expected path based on the parser module location.
+        """
+        parser_class = self.load_parser(plugin_name)
+        if parser_class is None:
+            return None
+
+        return parser_class.get_file_mapping_path()

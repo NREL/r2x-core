@@ -82,6 +82,7 @@ exporter-basics
 ```{toctree}
 :maxdepth: 1
 
+plugin-standards
 plugin-registration
 plugin-usage
 filter-examples

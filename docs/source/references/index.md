@@ -10,7 +10,7 @@ R2X Core provides data file management, parser, and exporter framework classes:
    DataStore
    DataReader
    BaseParser
-   ParserConfig
+   PluginConfig
    BaseExporter
 ```
 

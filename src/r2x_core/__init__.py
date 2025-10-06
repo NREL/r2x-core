@@ -16,7 +16,8 @@ from .exceptions import (
 )
 from .exporter import BaseExporter
 from .file_types import FileFormat
-from .parser import BaseParser, ParserConfig
+from .parser import BaseParser
+from .plugin_config import PluginConfig
 from .plugins import (
     FilterFunction,
     PluginComponent,
@@ -34,7 +35,7 @@ __all__ = [
     "FileFormat",
     "BaseParser",
     "BaseExporter",
-    "ParserConfig",
+    "PluginConfig",
     "System",
     "ParserError",
     "ValidationError",

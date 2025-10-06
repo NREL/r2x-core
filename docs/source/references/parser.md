@@ -3,7 +3,7 @@
 ## Parser Configuration
 
 ```{eval-rst}
-.. autopydantic_model:: r2x_core.ParserConfig
+.. autopydantic_model:: r2x_core.PluginConfig
    :model-show-json: False
    :model-show-config-summary: False
    :model-show-validator-members: False
