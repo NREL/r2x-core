@@ -1,6 +1,6 @@
 [project]
 name = "r2x-core"
-version = "0.0.5b2"
+version = "0.0.5b3"
 authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
     { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
