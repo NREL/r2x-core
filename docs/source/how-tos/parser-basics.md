@@ -1,7 +1,7 @@
 # ... create a basic parser
 
-````python from pydantic import BaseModel
 ```python
+from pydantic import BaseModel
 from r2x_core.parser import BaseParser
 from r2x_core.plugin_config import PluginConfig
 from r2x_core.store import DataStore
@@ -44,7 +44,7 @@ config = MyModelConfig(model_year=2030, scenario_name="base")
 data_store = DataStore.from_json("mappings.json", folder="/data")
 parser = MyModelParser(config, data_store)
 system = parser.build_system()
-````
+```
 
 # ... validate inputs before building
 

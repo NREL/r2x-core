@@ -1,10 +1,8 @@
 # ... follow plugin standards
 
-## Overview
-
 r2x-core defines standards for plugin structure and configuration to ensure consistency across model plugins. This guide covers the standard directory structure, file naming conventions, and methods that plugins should implement.
 
-## Directory Structure
+# ... use standard directory structure
 
 Plugins should follow this standard structure:
 
@@ -19,9 +17,7 @@ my_plugin/
     └── file_mapping.json   # File path mappings
 ```
 
-## Configuration Standards
-
-### PluginConfig Base Class
+# ... create configuration classes
 
 All plugin configurations should inherit from `PluginConfig`:
 
@@ -37,7 +33,7 @@ class MyModelConfig(PluginConfig):
     output_dir: str = "./output"
 ```
 
-### Loading Default Constants
+# ... load default constants
 
 Use `load_defaults()` to load model-specific constants from JSON:
 
@@ -81,9 +77,7 @@ config = ReEDSConfig(
 defaults = ReEDSConfig.load_defaults("/path/to/custom_constants.json")
 ```
 
-## File Mapping Standards
-
-### Standard Location
+# ... create file mappings
 
 Plugins should store file mapping in `config/file_mapping.json`:
 
@@ -96,7 +90,7 @@ Plugins should store file mapping in `config/file_mapping.json`:
 }
 ```
 
-### Getting File Mapping Path
+# ... get file mapping path
 
 Use `get_file_mapping_path()` to get the path to file mappings:
 
@@ -121,7 +115,7 @@ if mapping_path.exists():
         mappings = json.load(f)
 ```
 
-### Custom Mapping Filename
+# ... use custom mapping filename
 
 Override `FILE_MAPPING_NAME` to use a different filename:
 
@@ -139,7 +133,7 @@ class CustomParser(BaseParser):
 path = CustomParser.get_file_mapping_path()
 ```
 
-### Using PluginManager
+# ... get mapping path from PluginManager
 
 Get mapping path by plugin name without importing the parser:
 
@@ -156,9 +150,7 @@ if mapping_path and mapping_path.exists():
         print(f"Found {len(mappings)} file mappings")
 ```
 
-## CLI Schema Generation
-
-### Dynamic CLI Arguments
+# ... generate CLI schemas
 
 Use `get_cli_schema()` to generate CLI-friendly schemas from configuration classes:
 
@@ -172,8 +164,9 @@ class MyModelConfig(PluginConfig):
 
 # Get CLI schema
 schema = MyModelConfig.get_cli_schema()
+```
 
-### Building CLI Tools
+# ... build CLI tools from schema
 
 Use the schema to build argument parsers dynamically:
 
@@ -224,7 +217,7 @@ config = MyModelConfig(
 )
 ```
 
-### CLI Flag Naming Convention
+# ... understand CLI flag naming
 
 Field names are automatically converted to CLI-friendly flags:
 
@@ -235,7 +228,7 @@ Field names are automatically converted to CLI-friendly flags:
 | `model_version_string` | `--model-version-string` |
 | `output_dir`           | `--output-dir`           |
 
-## Complete Plugin Example
+# ... see complete plugin example
 
 Here's a complete plugin following all standards:
 
@@ -336,9 +329,9 @@ parser = MyModelParser(config, store)
 system = parser.build_system()
 ```
 
-## Best Practices
+# ... follow best practices
 
-### 1. Always Use Standard Directory Structure
+## Always use standard directory structure
 
 ```
 plugin/
@@ -349,7 +342,7 @@ plugin/
     └── file_mapping.json
 ```
 
-### 2. Load Defaults in Configuration
+## Load defaults in configuration
 
 ```python
 # Good - loads defaults automatically
@@ -360,7 +353,7 @@ config = MyConfig(year=2030, defaults=defaults)
 config = MyConfig(year=2030, defaults={"tech": ["solar", "wind"]})
 ```
 
-### 3. Use File Mapping Discovery
+## Use file mapping discovery
 
 ```python
 # Good - uses standard discovery
@@ -371,7 +364,7 @@ store = DataStore.from_json(mapping_path, folder=data_folder)
 store = DataStore.from_json("/hardcoded/path/mappings.json", folder=data_folder)
 ```
 
-### 4. Generate CLI Schema for Tools
+## Generate CLI schema for tools
 
 ```python
 # Good - dynamic schema generation
@@ -384,7 +377,7 @@ parser.add_argument("--weather-year", type=int, required=True)
 # ... manually list all arguments
 ```
 
-### 5. Document Configuration Fields
+## Document configuration fields
 
 ```python
 from pydantic import Field
@@ -396,7 +389,7 @@ class MyConfig(PluginConfig):
     scenario: str = Field("reference", description="Scenario name")
 ```
 
-## See Also
+# ... see also
 
 - [Plugin Registration](plugin-registration.md) - How to register plugins
 - [Parser Basics](parser-basics.md) - Creating custom parsers

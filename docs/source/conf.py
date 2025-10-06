@@ -71,7 +71,7 @@ copybutton_copy_empty_lines = False
 report_doccov_packages = {
     "src": {
         "name": "r2x_core",
-        "directory": "/Users/psanchez/dev/r2x-core/dev/src/r2x_core",
+        "directory": "src/",
         "fail_below": 90,
         "levels": "default",
     }
