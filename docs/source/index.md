@@ -3,6 +3,7 @@
 :hidden:
 
 install
+tutorials/index
 how-tos/index
 explanations/index
 references/index
