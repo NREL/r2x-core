@@ -7,7 +7,7 @@ import polars as pl
 import pytest
 
 from r2x_core.file_readers import read_file_by_type
-from r2x_core.file_types import H5File, JSONFile, TableFile, XMLFile
+from r2x_core.file_types import H5Format, JSONFormat, TableFormat, XMLFormat
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ def h5_file_group(tmp_path):
 
 
 def test_read_csv_file(csv_file):
-    result = read_file_by_type(TableFile(), csv_file)
+    result = read_file_by_type(TableFormat(), csv_file)
 
     assert isinstance(result, pl.LazyFrame)
     df = result.collect()
@@ -79,7 +79,7 @@ def test_read_csv_file(csv_file):
 
 
 def test_read_tsv_file(tsv_file):
-    result = read_file_by_type(TableFile(), tsv_file)
+    result = read_file_by_type(TableFormat(), tsv_file)
 
     assert isinstance(result, pl.LazyFrame)
     df = result.collect()
@@ -88,7 +88,7 @@ def test_read_tsv_file(tsv_file):
 
 
 def test_read_csv_with_kwargs(csv_file):
-    result = read_file_by_type(TableFile(), csv_file, skip_rows=1)
+    result = read_file_by_type(TableFormat(), csv_file, skip_rows=1)
 
     assert isinstance(result, pl.LazyFrame)
     df = result.collect()
@@ -96,7 +96,7 @@ def test_read_csv_with_kwargs(csv_file):
 
 
 def test_read_json_file(json_file):
-    result = read_file_by_type(JSONFile(), json_file)
+    result = read_file_by_type(JSONFormat(), json_file)
 
     assert isinstance(result, dict)
     assert result["key1"] == "value1"
@@ -105,7 +105,7 @@ def test_read_json_file(json_file):
 
 
 def test_read_xml_file(xml_file):
-    result = read_file_by_type(XMLFile(), xml_file)
+    result = read_file_by_type(XMLFormat(), xml_file)
 
     assert isinstance(result, ElementTree.Element)
     assert result.tag == "root"
@@ -115,7 +115,7 @@ def test_read_xml_file(xml_file):
 
 
 def test_read_h5_file_1d(h5_file_1d):
-    result = read_file_by_type(H5File(), h5_file_1d)
+    result = read_file_by_type(H5Format(), h5_file_1d)
 
     assert isinstance(result, pl.LazyFrame)
     df = result.collect()
@@ -124,7 +124,7 @@ def test_read_h5_file_1d(h5_file_1d):
 
 
 def test_read_h5_file_2d(h5_file_2d):
-    result = read_file_by_type(H5File(), h5_file_2d)
+    result = read_file_by_type(H5Format(), h5_file_2d)
 
     assert isinstance(result, pl.LazyFrame)
     df = result.collect()
@@ -135,7 +135,7 @@ def test_read_h5_file_2d(h5_file_2d):
 
 
 def test_read_h5_file_group_fallback(h5_file_group):
-    result = read_file_by_type(H5File(), h5_file_group)
+    result = read_file_by_type(H5Format(), h5_file_group)
 
     assert isinstance(result, pl.LazyFrame)
     df = result.collect()

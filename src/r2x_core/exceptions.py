@@ -4,8 +4,6 @@
 class R2XCoreError(Exception):
     """Base exception for all r2x-core errors."""
 
-    pass
-
 
 class ParserError(R2XCoreError):
     """Exception raised for parser-related errors.
@@ -24,8 +22,6 @@ class ParserError(R2XCoreError):
     >>> raise ParserError("Required file 'buses.csv' not found in data store")
     """
 
-    pass
-
 
 class ValidationError(R2XCoreError):
     """Exception raised for validation errors.
@@ -43,8 +39,6 @@ class ValidationError(R2XCoreError):
     >>> raise ValidationError("Model year 2019 not found in available years: [2020, 2025, 2030]")
     """
 
-    pass
-
 
 class ComponentCreationError(R2XCoreError):
     """Exception raised when component creation fails.
@@ -61,8 +55,6 @@ class ComponentCreationError(R2XCoreError):
     --------
     >>> raise ComponentCreationError("Failed to create Bus: missing required field 'voltage'")
     """
-
-    pass
 
 
 class ExporterError(R2XCoreError):
@@ -82,5 +74,3 @@ class ExporterError(R2XCoreError):
     >>> raise ExporterError("No Generator components found in system")
     >>> raise ExporterError("Output directory does not exist: /path/to/output")
     """
-
-    pass

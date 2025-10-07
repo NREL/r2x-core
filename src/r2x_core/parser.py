@@ -7,20 +7,23 @@ leveraging the DataStore and DataReader for file management.
 
 Classes
 -------
-ParserConfig
-    Base configuration class for parser inputs and model parameters.
 BaseParser
     Abstract base parser class for building infrasys.System objects.
+
+See Also
+--------
+r2x_core.plugin_config.PluginConfig : Base configuration class for all plugins
 
 Examples
 --------
 Create a model-specific parser:
 
 >>> from pydantic import BaseModel
->>> from r2x_core.parser import BaseParser, ParserConfig
+>>> from r2x_core.plugin_config import PluginConfig
+>>> from r2x_core.parser import BaseParser
 >>> from r2x_core.store import DataStore
 >>>
->>> class MyModelConfig(ParserConfig):
+>>> class MyModelConfig(PluginConfig):
 ...     model_year: int
 ...     scenario: str
 >>>
@@ -75,88 +78,15 @@ This separation enables:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from pathlib import Path
+from typing import Any, ClassVar
 
 from loguru import logger
-from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 
 from .exceptions import ComponentCreationError, ParserError
+from .plugin_config import PluginConfig
 from .store import DataStore
-
-
-class ParserConfig(BaseModel):
-    """Base configuration class for parser inputs and model parameters.
-
-    Applications should inherit from this class to define model-specific
-    configuration parameters. This base class provides common fields that
-    most parsers will need, while allowing full customization through inheritance.
-
-    Parameters
-    ----------
-    defaults : dict, optional
-        Default values for model-specific parameters. Can include device mappings,
-        technology categorizations, filtering rules, etc. Default is empty dict.
-
-    Attributes
-    ----------
-    defaults : dict
-        Dictionary of default values and mappings.
-
-    Examples
-    --------
-    Create a model-specific configuration:
-
-    >>> class ReEDSConfig(ParserConfig):
-    ...     '''Configuration for ReEDS parser.'''
-    ...     model_year: int
-    ...     weather_year: int
-    ...     scenario: str = "base"
-    ...
-    >>> config = ReEDSConfig(
-    ...     model_year=2030,
-    ...     weather_year=2012,
-    ...     defaults={"excluded_techs": ["coal", "oil"]}
-    ... )
-
-    With validation:
-
-    >>> from pydantic import field_validator
-    >>>
-    >>> class ValidatedConfig(ParserConfig):
-    ...     model_year: int
-    ...
-    ...     @field_validator("model_year")
-    ...     @classmethod
-    ...     def validate_year(cls, v):
-    ...         if v < 2020 or v > 2050:
-    ...             raise ValueError("Year must be between 2020 and 2050")
-    ...         return v
-
-    See Also
-    --------
-    BaseParser : Uses this configuration class
-    pydantic.BaseModel : Parent class providing validation
-
-    Notes
-    -----
-    The ParserConfig uses Pydantic for:
-    - Automatic type checking and validation
-    - JSON serialization/deserialization
-    - Field validation and transformation
-    - Default value management
-
-    Subclasses can add:
-    - Model-specific years (solve_year, weather_year, horizon_year, etc.)
-    - Scenario identifiers
-    - Feature flags
-    - File path overrides
-    - Custom validation logic
-    """
-
-    defaults: dict[str, Any] = Field(
-        default_factory=dict, description="Default values and model-specific mappings"
-    )
 
 
 class BaseParser(ABC):
@@ -170,7 +100,7 @@ class BaseParser(ABC):
     1. Inheriting from BaseParser
     2. Implementing required abstract methods
     3. Optionally overriding hook methods for custom behavior
-    4. Defining a model-specific ParserConfig subclass
+    4. Defining a model-specific PluginConfig subclass
 
     The typical workflow is:
     1. Initialize parser with configuration and data store
@@ -179,7 +109,7 @@ class BaseParser(ABC):
 
     Parameters
     ----------
-    config : ParserConfig
+    config : PluginConfig
         Model-specific configuration instance containing model parameters,
         default values, and file mappings.
     data_store : DataStore
@@ -197,7 +127,7 @@ class BaseParser(ABC):
 
     Attributes
     ----------
-    config : ParserConfig
+    config : PluginConfig
         The model configuration instance.
     data_store : DataStore
         Data store for file management and reading.
@@ -249,10 +179,11 @@ class BaseParser(ABC):
     --------
     Create a simple parser:
 
-    >>> from r2x_core.parser import BaseParser, ParserConfig
+    >>> from r2x_core.parser import BaseParser
+    >>> from r2x_core.plugin_config import PluginConfig
     >>> from r2x_core.store import DataStore
     >>>
-    >>> class MyModelConfig(ParserConfig):
+    >>> class MyModelConfig(PluginConfig):
     ...     model_year: int
     >>>
     >>> class MyModelParser(BaseParser):
@@ -300,7 +231,7 @@ class BaseParser(ABC):
 
     See Also
     --------
-    ParserConfig : Base configuration class
+    r2x_core.plugin_config.PluginConfig : Base configuration class
     DataStore : Data file management
     DataReader : File reading operations
     infrasys.system.System : Target system class
@@ -323,15 +254,84 @@ class BaseParser(ABC):
     - Hook methods: validate_inputs(), post_process_system() (optional overrides)
     """
 
+    # Standard file mapping filename - can be overridden in subclasses
+    FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
+
+    @classmethod
+    def get_file_mapping_path(cls) -> Path:
+        """Get the path to this parser's file mapping JSON.
+
+        This method uses Python's inspect module to locate the parser class file,
+        then constructs the path to the file mapping JSON in the config directory.
+        By convention, plugins should store their file_mapping.json in a config/
+        subdirectory next to the parser module.
+
+        The filename can be customized by overriding the FILE_MAPPING_NAME class variable.
+
+        Returns
+        -------
+        Path
+            Absolute path to the file_mapping.json file. Note that this path may
+            not exist if the plugin hasn't created the file yet.
+
+        Examples
+        --------
+        Get file mapping path for a parser:
+
+        >>> from r2x_reeds.parser import ReEDSParser
+        >>> mapping_path = ReEDSParser.get_file_mapping_path()
+        >>> print(mapping_path)
+        /path/to/r2x_reeds/config/file_mapping.json
+
+        Override the filename in a custom parser:
+
+        >>> class CustomParser(BaseParser):
+        ...     FILE_MAPPING_NAME = "custom_mapping.json"
+        ...
+        >>> path = CustomParser.get_file_mapping_path()
+        >>> print(path.name)
+        custom_mapping.json
+
+        See Also
+        --------
+        PluginConfig.load_defaults : Similar pattern for loading defaults
+        PluginManager.get_file_mapping_path : Get mapping path by plugin name
+
+        Notes
+        -----
+        This method follows the same discovery pattern as PluginConfig.load_defaults(),
+        using inspect.getfile() to locate the module and construct relative paths.
+        """
+        import inspect
+
+        module_file = inspect.getfile(cls)
+        module_path = Path(module_file).parent
+        return module_path / "config" / cls.FILE_MAPPING_NAME
+
     def __init__(
         self,
-        config: ParserConfig,
+        config: PluginConfig,
         data_store: DataStore,
         *,
         name: str | None = None,
         auto_add_composed_components: bool = True,
         skip_validation: bool = False,
     ) -> None:
+        """Initialize the parser with configuration and data store.
+
+        Parameters
+        ----------
+        config : PluginConfig
+            Model-specific configuration instance.
+        data_store : DataStore
+            Initialized DataStore instance with file mappings.
+        name : str, optional
+            Name for the system being built.
+        auto_add_composed_components : bool, default=True
+            Whether to automatically add composed components.
+        skip_validation : bool, default=False
+            Skip Pydantic validation when creating components.
+        """
         self.config = config
         self.data_store = data_store
         self.system: Any = None  # Will be assigned System instance in build_system
@@ -636,13 +636,9 @@ class BaseParser(ABC):
                 # Normal validation
                 return component_class.model_validate(valid_fields)
         except PydanticValidationError as e:
-            raise ComponentCreationError(
-                f"Failed to create {component_class.__name__}: {e}"
-            ) from e
+            raise ComponentCreationError(f"Failed to create {component_class.__name__}: {e}") from e
         except Exception as e:
-            raise ComponentCreationError(
-                f"Failed to create {component_class.__name__}: {e}"
-            ) from e
+            raise ComponentCreationError(f"Failed to create {component_class.__name__}: {e}") from e
 
     def add_component(self, component: Any) -> None:
         """Add a component to the system with logging.
@@ -740,9 +736,7 @@ class BaseParser(ABC):
             )
 
         self.system.add_time_series(time_series, component, **kwargs)
-        logger.debug(
-            "Added time series to {}: {}", component.__class__.__name__, component.name
-        )
+        logger.debug("Added time series to {}: {}", component.__class__.__name__, component.name)
 
     def validate_inputs(self) -> None:
         """Validate configuration and data before building system.
@@ -802,7 +796,6 @@ class BaseParser(ABC):
         - Verify cross-field constraints
         - Fail fast with clear error messages
         """
-        pass
 
     @abstractmethod
     def build_system_components(self) -> None:
@@ -900,7 +893,6 @@ class BaseParser(ABC):
         - Create connections (branches, interfaces)
         - Establish relationships (generator.bus = bus_instance)
         """
-        pass
 
     @abstractmethod
     def build_time_series(self) -> None:
@@ -980,7 +972,6 @@ class BaseParser(ABC):
         - Price curves (cost over time)
         - Reserve requirements (operating reserve levels)
         """
-        pass
 
     def post_process_system(self) -> None:
         """Perform post-processing after system construction.
@@ -1039,4 +1030,3 @@ class BaseParser(ABC):
         - Computing derived quantities
         - Setting up cross-component relationships
         """
-        pass

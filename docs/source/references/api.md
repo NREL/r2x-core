@@ -2,6 +2,17 @@
 
 # API Reference
 
+Complete API documentation for all r2x-core classes and functions.
+
+## System
+
+```{eval-rst}
+.. autoclass:: r2x_core.System
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
 ## Data Management
 
 ```{eval-rst}
@@ -14,6 +25,15 @@
    :members:
 ```
 
+```{eval-rst}
+.. autopydantic_model:: r2x_core.DataFile
+   :model-show-json: False
+   :model-show-config-summary: False
+   :model-show-validator-members: False
+   :model-show-validator-summary: False
+   :field-list-validators: False
+```
+
 ## Parser Framework
 
 ```{eval-rst}
@@ -24,7 +44,7 @@
 ```
 
 ```{eval-rst}
-.. autopydantic_model:: r2x_core.ParserConfig
+.. autopydantic_model:: r2x_core.PluginConfig
    :model-show-json: False
    :model-show-config-summary: False
    :model-show-validator-members: False
@@ -40,3 +60,78 @@
    :undoc-members:
    :show-inheritance:
 ```
+
+## Plugin System
+
+```{eval-rst}
+.. autoclass:: r2x_core.PluginManager
+   :members:
+   :undoc-members:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.PluginComponent
+   :members:
+   :undoc-members:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.SystemModifier
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.FilterFunction
+   :members:
+   :show-inheritance:
+```
+
+## File Types
+
+```{eval-rst}
+.. autoclass:: r2x_core.FileFormat
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
+## Exceptions
+
+```{eval-rst}
+.. autoclass:: r2x_core.ParserError
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.ValidationError
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.ComponentCreationError
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.ExporterError
+   :members:
+   :show-inheritance:
+```
+
+## Utilities
+
+```{eval-rst}
+.. autofunction:: r2x_core.utils.filter_valid_kwargs
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.utils.validate_file_extension
+```
+
+## Data Processors
+
+See {doc}`processors` for complete processor documentation.

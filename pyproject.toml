@@ -1,30 +1,50 @@
 [project]
 name = "r2x-core"
-version = "0.0.3"
+version = "0.0.5"
 authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
     { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
     { name = "Vivienne Liu", email = "vivienne.liu@nrel.gov"},
     { name = "Micah Webb", email = "micahpw@user.noreply.github.com"},
+    { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
+    { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
+    { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
+    { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
-description = "R2X Core Framework"
+description = "Extensible framework for building power system model translators with plugin architecture"
+readme = "README.md"
 license = {file = "LICENSE.txt"}
 requires-python = ">=3.11"
+keywords = [
+    "power-systems",
+    "energy-modeling",
+    "model-translation",
+    "reeds",
+    "plexos",
+    "switch",
+    "sienna",
+    "plugin-architecture",
+]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
-    "Topic :: Software Development :: Build Tools",
-    "Programming Language :: Python :: 3.10",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Operating System :: OS Independent",
     "Topic :: File Formats :: JSON",
-    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator"
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 dependencies = [
     "h5py>=3.13.0",
@@ -33,6 +53,13 @@ dependencies = [
     "polars>=1.33.1",
     "pydantic>=2.11.9,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/NREL/r2x-core"
+Documentation = "https://nrel.github.io/r2x-core/"
+Repository = "https://github.com/NREL/r2x-core"
+Issues = "https://github.com/NREL/r2x-core/issues"
+Changelog = "https://nrel.github.io/r2x-core/CHANGELOG.html"
 
 [dependency-groups]
 dev = [
@@ -45,10 +72,13 @@ dev = [
 ]
 docs = [
     "autodoc-pydantic",
+    "docstr-coverage>=2.3.2",
     "furo>=2025.9.25",
     "ghp-import",
     "myst-parser",
+    "sphinx>=8.0.0",
     "sphinx-copybutton",
+    "sphinx-reports",
     "sphinx-tabs",
 ]
 
@@ -66,3 +96,53 @@ plugins = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+# Line length
+line-length = 110
+
+# Exclude common directories
+extend-exclude = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable pycodestyle, pyflakes, isort, and more
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "PIE",    # flake8-pie
+    "PERF",   # perflint (performance)
+    "RUF",    # ruff-specific rules
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "B027",   # Empty method in abstract class without @abstractmethod (intentional for hooks)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use assert statements
+"tests/**/*.py" = [
+    "S101",   # Use of assert
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["r2x_core"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.mccabe]
+# Cyclomatic complexity threshold
+max-complexity = 10
