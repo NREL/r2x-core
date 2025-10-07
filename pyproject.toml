@@ -5,6 +5,7 @@ authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
     { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
     { name = "Vivienne Liu", email = "vivienne.liu@nrel.gov"},
+    { name = "Micah Webb", email = "micahpw@user.noreply.github.com"},
     { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
     { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
