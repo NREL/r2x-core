@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from r2x_core import DataFile
 from r2x_core.file_types import EXTENSION_MAPPING
 
+
 @pytest.mark.parametrize(
     "extension,expected_file_type",
     [(k, v) for k, v in EXTENSION_MAPPING.items()],
