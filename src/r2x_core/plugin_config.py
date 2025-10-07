@@ -119,7 +119,7 @@ class PluginConfig(BaseModel):
     def get_file_mapping_path(cls) -> Path:
         """Get the path to this plugin's file mapping JSON.
 
-        This method uses importlib.resources to locate the plugin module,
+        This method uses inspect.getfile() to locate the plugin module file,
         then constructs the path to the file mapping JSON in the config directory.
         By convention, plugins should store their file_mapping.json in a config/
         subdirectory next to the config module.
