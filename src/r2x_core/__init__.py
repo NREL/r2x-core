@@ -2,8 +2,6 @@
 
 from importlib.metadata import version
 
-# Disable default loguru handler for library usage
-# Applications using this library should configure their own handlers
 from loguru import logger
 
 from .datafile import (

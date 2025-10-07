@@ -111,12 +111,54 @@ def test_load_defaults_integration(tmp_path):
         scenario: str = "base"
 
     defaults = TestConfig.load_defaults(defaults_file)
-    config = TestConfig(model_year=2030, defaults=defaults)
+    config = TestConfig(model_year=2030)
 
     assert config.model_year == 2030
     assert config.scenario == "base"
-    assert config.defaults == defaults_data
-    assert config.defaults["excluded_techs"] == ["coal"]
+    assert defaults == defaults_data
+    assert defaults["excluded_techs"] == ["coal"]
+
+
+def test_load_defaults_custom_filename(tmp_path):
+    """Test that DEFAULTS_FILE_NAME can be overridden."""
+    defaults_data = {"custom_setting": "value"}
+
+    # Create config directory and custom defaults file
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    custom_file = config_dir / "my_defaults.json"
+    with open(custom_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    # Create a test module file in tmp_path
+    module_file = tmp_path / "test_module.py"
+    module_file.write_text("# test module")
+
+    class CustomDefaultsConfig(PluginConfig):
+        DEFAULTS_FILE_NAME = "my_defaults.json"
+        model_year: int
+
+    # Mock inspect.getfile to return our test module
+    import inspect
+
+    original_getfile = inspect.getfile
+
+    def mock_getfile(cls):
+        if cls == CustomDefaultsConfig:
+            return str(module_file)
+        return original_getfile(cls)
+
+    inspect.getfile = mock_getfile
+    try:
+        defaults = CustomDefaultsConfig.load_defaults()
+        assert defaults == defaults_data
+    finally:
+        inspect.getfile = original_getfile
+
+
+def test_defaults_file_name_default():
+    """Test that default DEFAULTS_FILE_NAME is defaults.json."""
+    assert PluginConfig.DEFAULTS_FILE_NAME == "defaults.json"
 
 
 def test_get_file_mapping_path_returns_path(tmp_path):
@@ -296,7 +338,7 @@ def test_get_cli_schema_integration_with_config_class():
 
     schema = RealisticConfig.get_cli_schema()
 
-    assert len(schema["properties"]) == 6
+    assert len(schema["properties"]) == 5  # 5 user-defined fields
     assert schema["properties"]["solve_year"]["required"] is True
     assert schema["properties"]["weather_year"]["required"] is True
     assert schema["properties"]["scenario"]["required"] is False

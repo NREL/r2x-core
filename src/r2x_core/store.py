@@ -172,12 +172,6 @@ class DataStore:
         >>> store.list_data_files()
         ['generators', 'buses', 'transmission']
 
-        With defaults:
-
-        >>> defaults = ReEDSConfig.load_defaults()
-        >>> config = ReEDSConfig(solve_year=2030, defaults=defaults)
-        >>> store = DataStore.from_plugin_config(config, folder="/data/reeds")
-
         See Also
         --------
         from_json : Create from an explicit JSON file path

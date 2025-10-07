@@ -31,13 +31,13 @@ Create a model-specific configuration:
 >>> config = ReEDSConfig(
 ...     model_year=2030,
 ...     weather_year=2012,
-...     defaults={"excluded_techs": ["coal", "oil"]}
+...     scenario="high_re"
 ... )
 
-Load defaults from JSON:
+Load constants from JSON:
 
->>> defaults = ReEDSConfig.load_defaults()
->>> config = ReEDSConfig(model_year=2030, weather_year=2012, defaults=defaults)
+>>> constants = ReEDSConfig.load_defaults()
+>>> # Use constants in your parser/exporter logic
 
 See Also
 --------
@@ -49,7 +49,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class PluginConfig(BaseModel):
@@ -57,19 +57,7 @@ class PluginConfig(BaseModel):
 
     Applications should inherit from this class to define model-specific
     configuration parameters for parsers, exporters, and system modifiers.
-    This base class provides common fields that most plugins will need,
-    while allowing full customization through inheritance.
-
-    Parameters
-    ----------
-    defaults : dict, optional
-        Default values for model-specific parameters. Can include device mappings,
-        technology categorizations, filtering rules, etc. Default is empty dict.
-
-    Attributes
-    ----------
-    defaults : dict
-        Dictionary of default values and mappings.
+    Subclasses define their own fields for model-specific parameters.
 
     Examples
     --------
@@ -84,7 +72,7 @@ class PluginConfig(BaseModel):
     >>> config = ReEDSConfig(
     ...     model_year=2030,
     ...     weather_year=2012,
-    ...     defaults={"excluded_techs": ["coal", "oil"]}
+    ...     scenario="high_re"
     ... )
 
     With validation:
@@ -123,12 +111,9 @@ class PluginConfig(BaseModel):
     - Custom validation logic
     """
 
-    defaults: dict[str, Any] = Field(
-        default_factory=dict, description="Default values and model-specific mappings"
-    )
-
-    # Standard file mapping filename - can be overridden in subclasses
+    CONFIG_DIR: ClassVar[str] = "config"
     FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
+    DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
 
     @classmethod
     def get_file_mapping_path(cls) -> Path:
@@ -178,31 +163,16 @@ class PluginConfig(BaseModel):
 
         Notes
         -----
-        This method uses importlib.resources.files() which properly handles
-        both installed packages and editable installs, making the resources
-        discoverable in all installation scenarios.
+        This method uses inspect.getfile() to locate the module file, then
+        navigates to the config directory. This works for both installed
+        packages and editable installs.
         """
-        from importlib.resources import files
+        import inspect
 
-        # Get the package where the config class is defined
-        module = cls.__module__
-        package_name = module.rsplit(".", 1)[0]  # Remove the module name, keep package
-
-        # Use importlib.resources to get the package path
-        package_files = files(package_name)
-        config_path = package_files / "config" / cls.FILE_MAPPING_NAME
-
-        # Convert Traversable to Path
-        try:
-            # Try to get as Path - works for file system paths
-            return Path(str(config_path))
-        except Exception:
-            # Fallback for edge cases
-            import inspect
-
-            module_file = inspect.getfile(cls)
-            module_path = Path(module_file).parent
-            return module_path / "config" / cls.FILE_MAPPING_NAME
+        # Get the file where the config class is defined
+        module_file = inspect.getfile(cls)
+        module_path = Path(module_file).parent
+        return module_path / cls.CONFIG_DIR / cls.FILE_MAPPING_NAME
 
     @classmethod
     def load_defaults(cls, defaults_file: Path | str | None = None) -> dict[str, Any]:
@@ -210,13 +180,14 @@ class PluginConfig(BaseModel):
 
         Provides a standardized way to load model-specific constants, mappings,
         and default values from JSON files. If no file path is provided, automatically
-        looks for 'constants.json' in the config directory next to the module.
+        looks for the file specified by DEFAULTS_FILE_NAME in the config directory.
 
         Parameters
         ----------
         defaults_file : Path, str, or None, optional
-            Path to defaults JSON file. If None, looks for 'constants.json'
-            in a 'config' subdirectory relative to the calling module.
+            Path to defaults JSON file. If None, looks for the file specified
+            by DEFAULTS_FILE_NAME (default: 'defaults.json') in the CONFIG_DIR
+            subdirectory relative to the config module.
 
         Returns
         -------
@@ -245,28 +216,14 @@ class PluginConfig(BaseModel):
         PluginConfig : Base configuration class
         get_file_mapping_path : Related file discovery method
         """
+        import inspect
         import json
-        from importlib.resources import files
 
         if defaults_file is None:
-            # Get the package where the config class is defined
-            module = cls.__module__
-            package_name = module.rsplit(".", 1)[0]
-
-            # Use importlib.resources to get the package path
-            package_files = files(package_name)
-            config_path = package_files / "config" / "constants.json"
-
-            # Convert Traversable to Path
-            try:
-                defaults_file = Path(str(config_path))
-            except Exception:
-                # Fallback for edge cases
-                import inspect
-
-                config_module_file = inspect.getfile(cls)
-                config_dir = Path(config_module_file).parent
-                defaults_file = config_dir / "config" / "constants.json"
+            # Get the file where the config class is defined
+            module_file = inspect.getfile(cls)
+            module_path = Path(module_file).parent
+            defaults_file = module_path / cls.CONFIG_DIR / cls.DEFAULTS_FILE_NAME
         else:
             defaults_file = Path(defaults_file)
 
