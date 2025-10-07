@@ -2,8 +2,9 @@
 
 from importlib.metadata import version
 
-__version__ = version("r2x_core")
-
+# Disable default loguru handler for library usage
+# Applications using this library should configure their own handlers
+from loguru import logger
 
 from .datafile import (
     DataFile,
@@ -27,6 +28,12 @@ from .plugins import (
 from .reader import DataReader
 from .store import DataStore
 from .system import System
+
+__version__ = version("r2x_core")
+
+# Disable default loguru handler for library usage
+# Applications using this library should configure their own handlers
+logger.disable("r2x_core")
 
 __all__ = [
     "BaseExporter",

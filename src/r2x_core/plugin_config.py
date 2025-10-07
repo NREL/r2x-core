@@ -271,7 +271,7 @@ class PluginConfig(BaseModel):
             defaults_file = Path(defaults_file)
 
         if not defaults_file.exists():
-            logger.debug(f"Defaults file not found: {defaults_file}")
+            logger.debug("Defaults file not found: {}", defaults_file)
             return {}
 
         try:
@@ -279,7 +279,7 @@ class PluginConfig(BaseModel):
                 data: dict[str, Any] = json.load(f)
                 return data
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse defaults JSON from {defaults_file}: {e}")
+            logger.error("Failed to parse defaults JSON from {}: {}", defaults_file, e)
             return {}
 
     @classmethod

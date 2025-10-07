@@ -291,11 +291,11 @@ class PluginManager:
                 try:
                     register_func = ep.load()
                     register_func()
-                    logger.debug(f"Loaded plugin from entry point: {ep.name}")
+                    logger.debug("Loaded plugin from entry point: {}", ep.name)
                 except Exception as e:
-                    logger.warning(f"Failed to load plugin '{ep.name}': {e}")
+                    logger.warning("Failed to load plugin '{}': {}", ep.name, e)
         except Exception as e:
-            logger.debug(f"Entry point discovery not available: {e}")
+            logger.debug("Entry point discovery not available: {}", e)
 
     @classmethod
     def register_model_plugin(
@@ -344,14 +344,14 @@ class PluginManager:
         ... )
         """
         if parser is None and exporter is None:
-            logger.warning(f"Plugin '{name}' registered with neither parser nor exporter")
+            logger.warning("Plugin '{}' registered with neither parser nor exporter", name)
 
         cls._registry[name] = PluginComponent(
             config=config,
             parser=parser,
             exporter=exporter,
         )
-        logger.debug(f"Registered model plugin: {name}")
+        logger.debug("Registered model plugin: {}", name)
 
     @classmethod
     def register_system_modifier(
@@ -392,7 +392,7 @@ class PluginManager:
             """Internal decorator that registers the system modifier function."""
             modifier_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._modifier_registry[modifier_name] = func
-            logger.debug(f"Registered system modifier: {modifier_name}")
+            logger.debug("Registered system modifier: {}", modifier_name)
             return func
 
         # If used as @register_system_modifier (without parentheses)
@@ -440,7 +440,7 @@ class PluginManager:
             """Internal decorator that registers the filter function."""
             filter_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._filter_registry[filter_name] = func
-            logger.debug(f"Registered filter: {filter_name}")
+            logger.debug("Registered filter: {}", filter_name)
             return func
 
         # If used as @register_filter (without parentheses)

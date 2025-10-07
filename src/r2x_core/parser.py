@@ -358,7 +358,7 @@ class BaseParser(ABC):
         self.validate_inputs()
 
         # Step 2: Create the r2x_core.System instance
-        logger.debug(f"Creating System instance: {self.name}")
+        logger.debug("Creating System instance: {}", self.name)
         self.system = System(
             name=self.name,
             auto_add_composed_components=self.auto_add_composed_components,
@@ -634,7 +634,7 @@ class BaseParser(ABC):
             )
 
         self.system.add_component(component)
-        logger.debug(f"Added {component.__class__.__name__}: {component.name}")
+        logger.debug("Added {}: {}", component.__class__.__name__, component.name)
 
     def add_time_series(self, component: Any, time_series: Any, **kwargs: Any) -> None:
         """Attach time series data to a component.

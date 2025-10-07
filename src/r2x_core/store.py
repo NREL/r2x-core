@@ -99,6 +99,7 @@ class DataStore:
         self._reader = reader or DataReader()
         self.folder = folder_path.resolve()
         self._cache: dict[str, DataFile] = {}
+        logger.debug("Initialized DataStore with folder: {}", self.folder)
 
     def __contains__(self, name: str) -> bool:
         """Check if a data file exists in the store.
@@ -189,6 +190,8 @@ class DataStore:
         It's the recommended way to create a DataStore for plugin-based workflows.
         """
         mapping_path = config.__class__.get_file_mapping_path()
+        logger.info("Loading DataStore from plugin config: {}", config.__class__.__name__)
+        logger.debug("File mapping path: {}", mapping_path)
         return cls.from_json(mapping_path, folder)
 
     @classmethod
@@ -278,6 +281,7 @@ class DataStore:
 
         data_files = [DataFile(**file_data) for file_data in data_files_json]
         store.add_data_files(data_files)
+        logger.info("Loaded {} data files from {}", len(data_files), fpath)
         return store
 
     def add_data_file(self, data_file: DataFile, overwrite: bool = False) -> None:
