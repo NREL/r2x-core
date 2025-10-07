@@ -31,7 +31,7 @@ keywords = [
     "plugin-architecture",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
@@ -100,10 +100,7 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.ruff]
-# Line length
 line-length = 110
-
-# Exclude common directories
 extend-exclude = [
     ".venv",
     "venv",
@@ -113,7 +110,6 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-# Enable pycodestyle, pyflakes, isort, and more
 select = [
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
@@ -128,15 +124,12 @@ select = [
     "PERF",   # perflint (performance)
     "RUF",    # ruff-specific rules
 ]
-
-# Ignore specific rules
 ignore = [
     "E501",   # Line too long (handled by formatter)
     "B027",   # Empty method in abstract class without @abstractmethod (intentional for hooks)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Tests can use assert statements
 "tests/**/*.py" = [
     "S101",   # Use of assert
 ]
