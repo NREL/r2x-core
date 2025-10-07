@@ -10,9 +10,7 @@ from pydantic import ValidationInfo
 from .file_types import EXTENSION_MAPPING
 
 
-def filter_valid_kwargs(
-    func: Callable[..., Any], kwargs: dict[str, Any]
-) -> dict[str, Any]:
+def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
     """Filter kwargs to only include valid parameters for the given function."""
     sig = inspect.signature(func)
     valid_params = set(sig.parameters.keys())
@@ -57,7 +55,7 @@ def validate_file_extension(path: Path, info: ValidationInfo) -> Path:
     ext = path.suffix.lower()
     if ext not in EXTENSION_MAPPING:
         msg = f"{ext=} not found on `EXTENSION_MAPPING`. "
-        msg += "Check spelling of file type or verify it is a supported `FileType`."
-        msg += f"List of supported `FileType`: {EXTENSION_MAPPING.keys()}"
+        msg += "Check spelling of file type or verify it is a supported `FileFormat`."
+        msg += f"List of supported `FileFormat`: {EXTENSION_MAPPING.keys()}"
         raise KeyError(msg)
     return path

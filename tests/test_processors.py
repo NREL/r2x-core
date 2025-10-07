@@ -7,7 +7,7 @@ import pytest
 from polars import Int32, LazyFrame
 
 from r2x_core.datafile import DataFile
-from r2x_core.file_types import TableFile
+from r2x_core.file_types import TableFormat
 from r2x_core.processors import (
     apply_transformation,
     json_apply_filters,
@@ -71,9 +71,7 @@ def json_store(tmp_path) -> DataFile:
     """Create FileMapping for unitdata.csv."""
     test_file = tmp_path / "test_data.json"
     test_file.write_text('{"name":"test"}')
-    data_file = DataFile(
-        name="json", fpath=str(test_file), key_mapping={"name": "TestRemap"}
-    )
+    data_file = DataFile(name="json", fpath=str(test_file), key_mapping={"name": "TestRemap"})
     store = DataStore(folder=tmp_path)
     store.add_data_file(data_file)
     yield store
@@ -90,7 +88,7 @@ def test_transform_tabular_data(csv_store):
 
     datafile = store.get_data_file_by_name("unitdata")
     assert isinstance(datafile, DataFile)
-    assert isinstance(datafile.file_type, TableFile)
+    assert isinstance(datafile.file_type, TableFormat)
 
     file = store.read_data_file(name="unitdata")
     schema = file.collect_schema()
@@ -108,7 +106,7 @@ def test_transform_json(json_store):
 
     file = store.read_data_file(name="json")
     assert isinstance(file, dict)
-    assert "TestRemap" in file.keys()
+    assert "TestRemap" in file
 
 
 # =============================================================================
@@ -120,9 +118,7 @@ def test_transform_json(json_store):
 def sample_csv(tmp_path):
     """Create a sample CSV file."""
     csv_file = tmp_path / "test.csv"
-    csv_file.write_text(
-        "name,age,city,score\nAlice,30,NYC,85.5\nBob,25,LA,92.3\nCharlie,35,CHI,78.9\n"
-    )
+    csv_file.write_text("name,age,city,score\nAlice,30,NYC,85.5\nBob,25,LA,92.3\nCharlie,35,CHI,78.9\n")
     return csv_file
 
 
@@ -179,9 +175,7 @@ def test_pl_rename_columns(sample_csv):
 def test_pl_rename_columns_non_existing(sample_csv):
     """Test renaming columns that don't exist."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, column_mapping={"nonexistent": "new_name"}
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, column_mapping={"nonexistent": "new_name"})
 
     result = pl_rename_columns(data_file, df)
     # Should return df unchanged
@@ -191,9 +185,7 @@ def test_pl_rename_columns_non_existing(sample_csv):
 def test_pl_cast_schema(sample_csv):
     """Test casting column types."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, column_schema={"age": "int32", "score": "float"}
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, column_schema={"age": "int32", "score": "float"})
 
     result = pl_cast_schema(data_file, df)
     schema = result.collect_schema()
@@ -205,9 +197,7 @@ def test_pl_cast_schema(sample_csv):
 def test_pl_cast_schema_non_existing_column(sample_csv):
     """Test casting non-existing columns."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, column_schema={"nonexistent": "int"}
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, column_schema={"nonexistent": "int"})
 
     result = pl_cast_schema(data_file, df)
     # Should return df unchanged
@@ -217,9 +207,7 @@ def test_pl_cast_schema_non_existing_column(sample_csv):
 def test_pl_cast_schema_unsupported_type(sample_csv):
     """Test error handling for unsupported type strings."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, column_schema={"age": "unsupported_type"}
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, column_schema={"age": "unsupported_type"})
 
     with pytest.raises(ValueError, match="Unsupported data type"):
         pl_cast_schema(data_file, df).collect()
@@ -239,9 +227,7 @@ def test_pl_apply_filters_single_value(sample_csv):
 def test_pl_apply_filters_list_values(sample_csv):
     """Test filtering with list of values."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, filter_by={"name": ["Alice", "Bob"]}
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, filter_by={"name": ["Alice", "Bob"]})
 
     result = pl_apply_filters(data_file, df).collect()
 
@@ -252,9 +238,7 @@ def test_pl_apply_filters_list_values(sample_csv):
 def test_pl_apply_filters_multiple_conditions(sample_csv):
     """Test filtering with multiple conditions."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, filter_by={"name": "Alice", "city": "NYC"}
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, filter_by={"name": "Alice", "city": "NYC"})
 
     result = pl_apply_filters(data_file, df).collect()
 
@@ -266,9 +250,7 @@ def test_pl_apply_filters_multiple_conditions(sample_csv):
 def test_pl_select_columns_with_value_columns(sample_csv):
     """Test selecting specific columns."""
     df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test", fpath=sample_csv, index_columns=["name"], value_columns=["score"]
-    )
+    data_file = DataFile(name="test", fpath=sample_csv, index_columns=["name"], value_columns=["score"])
 
     result = pl_select_columns(data_file, df)
     result_cols = result.collect_schema().names()
@@ -331,9 +313,7 @@ def test_json_apply_filters(sample_json_file):
 def test_json_apply_filters_list(sample_json_file):
     """Test filtering JSON with list values."""
     data = {"name": "Alice", "age": 30, "city": "NYC"}
-    data_file = DataFile(
-        name="test", fpath=sample_json_file, filter_by={"name": ["Alice", "Bob"]}
-    )
+    data_file = DataFile(name="test", fpath=sample_json_file, filter_by={"name": ["Alice", "Bob"]})
 
     result = json_apply_filters(data_file, data)
 

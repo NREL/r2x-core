@@ -37,9 +37,7 @@ def data_container_with_files(tmp_path) -> DataStore:
     yield store
 
 
-def test_data_container_add_data_file(
-    data_container_empty: DataStore, empty_file: Path
-) -> None:
+def test_data_container_add_data_file(data_container_empty: DataStore, empty_file: Path) -> None:
     store: DataStore = data_container_empty
 
     example_file: DataFile = DataFile(name="generators", fpath=empty_file)
@@ -77,9 +75,7 @@ def test_data_container_add_data_file_overwrite_true_succeeds(
     assert store.get_data_file_by_name(name="generators") == example_file2
 
 
-def test_data_container_add_data_files_multiple(
-    data_container_empty: DataStore, tmp_path: Path
-) -> None:
+def test_data_container_add_data_files_multiple(data_container_empty: DataStore, tmp_path: Path) -> None:
     store: DataStore = data_container_empty
 
     # Create test files
@@ -270,9 +266,7 @@ def test_data_container_folder_nonexistent_raises_assertion_error() -> None:
         DataStore(folder="/nonexistent/path")
 
 
-def test_data_container_to_json(
-    data_container_with_files: DataStore, tmp_path: Path
-) -> None:
+def test_data_container_to_json(data_container_with_files: DataStore, tmp_path: Path) -> None:
     store: DataStore = data_container_with_files
 
     output_file = tmp_path / "output.json"
@@ -320,7 +314,7 @@ def test_from_json_partial_missing_files(tmp_path: Path) -> None:
     ]
     json_file.write_text(json.dumps(config))
 
-    with pytest.raises(FileNotFoundError, match="missing.*were not found"):
+    with pytest.raises(FileNotFoundError, match=r"missing.*were not found"):
         DataStore.from_json(json_file, folder=tmp_path)
 
 

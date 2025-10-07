@@ -76,3 +76,13 @@ timeseries-files
 
 exporter-basics
 ```
+
+## Plugin System
+
+```{toctree}
+:maxdepth: 1
+
+plugin-standards
+plugin-registration
+plugin-usage
+```
