@@ -78,7 +78,6 @@ This separation enables:
 """
 
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any, ClassVar
 
 from loguru import logger
@@ -254,59 +253,7 @@ class BaseParser(ABC):
     - Hook methods: validate_inputs(), post_process_system() (optional overrides)
     """
 
-    # Standard file mapping filename - can be overridden in subclasses
-    FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
-
-    @classmethod
-    def get_file_mapping_path(cls) -> Path:
-        """Get the path to this parser's file mapping JSON.
-
-        This method uses Python's inspect module to locate the parser class file,
-        then constructs the path to the file mapping JSON in the config directory.
-        By convention, plugins should store their file_mapping.json in a config/
-        subdirectory next to the parser module.
-
-        The filename can be customized by overriding the FILE_MAPPING_NAME class variable.
-
-        Returns
-        -------
-        Path
-            Absolute path to the file_mapping.json file. Note that this path may
-            not exist if the plugin hasn't created the file yet.
-
-        Examples
-        --------
-        Get file mapping path for a parser:
-
-        >>> from r2x_reeds.parser import ReEDSParser
-        >>> mapping_path = ReEDSParser.get_file_mapping_path()
-        >>> print(mapping_path)
-        /path/to/r2x_reeds/config/file_mapping.json
-
-        Override the filename in a custom parser:
-
-        >>> class CustomParser(BaseParser):
-        ...     FILE_MAPPING_NAME = "custom_mapping.json"
-        ...
-        >>> path = CustomParser.get_file_mapping_path()
-        >>> print(path.name)
-        custom_mapping.json
-
-        See Also
-        --------
-        PluginConfig.load_defaults : Similar pattern for loading defaults
-        PluginManager.get_file_mapping_path : Get mapping path by plugin name
-
-        Notes
-        -----
-        This method follows the same discovery pattern as PluginConfig.load_defaults(),
-        using inspect.getfile() to locate the module and construct relative paths.
-        """
-        import inspect
-
-        module_file = inspect.getfile(cls)
-        module_path = Path(module_file).parent
-        return module_path / "config" / cls.FILE_MAPPING_NAME
+    PLUGIN_TYPE: ClassVar[str] = "parser"
 
     def __init__(
         self,

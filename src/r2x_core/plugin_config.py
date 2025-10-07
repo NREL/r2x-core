@@ -46,7 +46,7 @@ r2x_core.exporter.BaseExporter : Uses this configuration class
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -127,6 +127,83 @@ class PluginConfig(BaseModel):
         default_factory=dict, description="Default values and model-specific mappings"
     )
 
+    # Standard file mapping filename - can be overridden in subclasses
+    FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
+
+    @classmethod
+    def get_file_mapping_path(cls) -> Path:
+        """Get the path to this plugin's file mapping JSON.
+
+        This method uses importlib.resources to locate the plugin module,
+        then constructs the path to the file mapping JSON in the config directory.
+        By convention, plugins should store their file_mapping.json in a config/
+        subdirectory next to the config module.
+
+        The filename can be customized by overriding the FILE_MAPPING_NAME class variable.
+
+        Returns
+        -------
+        Path
+            Absolute path to the file_mapping.json file. Note that this path may
+            not exist if the plugin hasn't created the file yet.
+
+        Examples
+        --------
+        Get file mapping path for a config:
+
+        >>> from r2x_reeds.config import ReEDSConfig
+        >>> mapping_path = ReEDSConfig.get_file_mapping_path()
+        >>> print(mapping_path)
+        /path/to/r2x_reeds/config/file_mapping.json
+
+        Override the filename in a custom config:
+
+        >>> class CustomConfig(PluginConfig):
+        ...     FILE_MAPPING_NAME = "custom_mapping.json"
+        ...
+        >>> path = CustomConfig.get_file_mapping_path()
+        >>> print(path.name)
+        custom_mapping.json
+
+        Use with DataStore:
+
+        >>> from r2x_core import DataStore
+        >>> mapping_path = MyModelConfig.get_file_mapping_path()
+        >>> store = DataStore.from_json(mapping_path, folder="/data/mymodel")
+
+        See Also
+        --------
+        load_defaults : Similar pattern for loading constants
+        DataStore.from_plugin_config : Direct DataStore creation from config
+
+        Notes
+        -----
+        This method uses importlib.resources.files() which properly handles
+        both installed packages and editable installs, making the resources
+        discoverable in all installation scenarios.
+        """
+        from importlib.resources import files
+
+        # Get the package where the config class is defined
+        module = cls.__module__
+        package_name = module.rsplit(".", 1)[0]  # Remove the module name, keep package
+
+        # Use importlib.resources to get the package path
+        package_files = files(package_name)
+        config_path = package_files / "config" / cls.FILE_MAPPING_NAME
+
+        # Convert Traversable to Path
+        try:
+            # Try to get as Path - works for file system paths
+            return Path(str(config_path))
+        except Exception:
+            # Fallback for edge cases
+            import inspect
+
+            module_file = inspect.getfile(cls)
+            module_path = Path(module_file).parent
+            return module_path / "config" / cls.FILE_MAPPING_NAME
+
     @classmethod
     def load_defaults(cls, defaults_file: Path | str | None = None) -> dict[str, Any]:
         """Load default constants from JSON file.
@@ -166,29 +243,43 @@ class PluginConfig(BaseModel):
         See Also
         --------
         PluginConfig : Base configuration class
-        r2x_core.parser.BaseParser.get_file_mapping_path : Related file discovery method
+        get_file_mapping_path : Related file discovery method
         """
-        import inspect
         import json
+        from importlib.resources import files
 
         if defaults_file is None:
-            # Get the module where the config class is defined
-            config_module_file = inspect.getfile(cls)
-            config_dir = Path(config_module_file).parent
-            defaults_file = config_dir / "config" / "constants.json"
+            # Get the package where the config class is defined
+            module = cls.__module__
+            package_name = module.rsplit(".", 1)[0]
 
-        defaults_path = Path(defaults_file)
+            # Use importlib.resources to get the package path
+            package_files = files(package_name)
+            config_path = package_files / "config" / "constants.json"
 
-        if not defaults_path.exists():
-            logger.debug(f"Defaults file not found: {defaults_path}")
+            # Convert Traversable to Path
+            try:
+                defaults_file = Path(str(config_path))
+            except Exception:
+                # Fallback for edge cases
+                import inspect
+
+                config_module_file = inspect.getfile(cls)
+                config_dir = Path(config_module_file).parent
+                defaults_file = config_dir / "config" / "constants.json"
+        else:
+            defaults_file = Path(defaults_file)
+
+        if not defaults_file.exists():
+            logger.debug(f"Defaults file not found: {defaults_file}")
             return {}
 
         try:
-            with open(defaults_path) as f:
+            with open(defaults_file) as f:
                 data: dict[str, Any] = json.load(f)
                 return data
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse defaults JSON from {defaults_path}: {e}")
+            logger.error(f"Failed to parse defaults JSON from {defaults_file}: {e}")
             return {}
 
     @classmethod

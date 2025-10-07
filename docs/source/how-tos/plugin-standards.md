@@ -92,20 +92,17 @@ Plugins should store file mapping in `config/file_mapping.json`:
 
 # ... get file mapping path
 
-Use `get_file_mapping_path()` to get the path to file mappings:
+Use `get_file_mapping_path()` from your config class to get the path to file mappings:
 
 ```python
-from r2x_core import BaseParser
+from r2x_core import PluginConfig
 
-class MyModelParser(BaseParser):
-    def build_system_components(self):
-        pass
-
-    def build_time_series(self):
-        pass
+class MyModelConfig(PluginConfig):
+    solve_year: int
+    weather_year: int
 
 # Get the mapping file path
-mapping_path = MyModelParser.get_file_mapping_path()
+mapping_path = MyModelConfig.get_file_mapping_path()
 print(f"Mappings at: {mapping_path}")
 
 # Load mappings if file exists
@@ -120,17 +117,33 @@ if mapping_path.exists():
 Override `FILE_MAPPING_NAME` to use a different filename:
 
 ```python
-class CustomParser(BaseParser):
+class CustomConfig(PluginConfig):
     FILE_MAPPING_NAME = "data_mappings.json"  # Instead of file_mapping.json
-
-    def build_system_components(self):
-        pass
-
-    def build_time_series(self):
-        pass
+    solve_year: int
 
 # Will look for config/data_mappings.json
-path = CustomParser.get_file_mapping_path()
+path = CustomConfig.get_file_mapping_path()
+```
+
+# ... create DataStore from config
+
+Use `DataStore.from_plugin_config()` for the cleanest API:
+
+```python
+from r2x_core import DataStore, PluginConfig
+
+class MyModelConfig(PluginConfig):
+    solve_year: int
+    weather_year: int
+
+# Create config
+config = MyModelConfig(solve_year=2030, weather_year=2012)
+
+# Create DataStore directly from config
+store = DataStore.from_plugin_config(config, folder="/data/mymodel")
+
+# The store automatically discovers and loads config/file_mapping.json
+print(store.list_data_files())
 ```
 
 # ... get mapping path from PluginManager
@@ -317,11 +330,11 @@ config = MyModelConfig(
     defaults=defaults
 )
 
-# Get file mapping path
-mapping_path = MyModelParser.get_file_mapping_path()
-print(f"File mappings: {mapping_path}")
+# Create data store directly from config (recommended)
+store = DataStore.from_plugin_config(config, folder="/data/mymodel")
 
-# Create data store
+# Or manually get mapping path
+mapping_path = MyModelConfig.get_file_mapping_path()
 store = DataStore.from_json(mapping_path, folder="/data/mymodel")
 
 # Build system
@@ -356,8 +369,12 @@ config = MyConfig(year=2030, defaults={"tech": ["solar", "wind"]})
 ## Use file mapping discovery
 
 ```python
-# Good - uses standard discovery
-mapping_path = MyParser.get_file_mapping_path()
+# Good - uses from_plugin_config (cleanest)
+config = MyConfig(year=2030, defaults=defaults)
+store = DataStore.from_plugin_config(config, folder=data_folder)
+
+# Also good - uses standard discovery
+mapping_path = MyConfig.get_file_mapping_path()
 store = DataStore.from_json(mapping_path, folder=data_folder)
 
 # Not recommended - hardcoding paths

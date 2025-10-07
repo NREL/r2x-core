@@ -3,13 +3,16 @@
 import json
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from .datafile import DataFile
 from .reader import DataReader
 from .utils import filter_valid_kwargs
+
+if TYPE_CHECKING:
+    from .plugin_config import PluginConfig
 
 
 class DataStore:
@@ -127,6 +130,66 @@ class DataStore:
         raising exceptions.
         """
         return name in self._cache
+
+    @classmethod
+    def from_plugin_config(cls, config: "PluginConfig", folder: Path | str) -> "DataStore":
+        """Create a DataStore instance from a PluginConfig.
+
+        This is a convenience constructor that automatically discovers and loads
+        the file mapping JSON associated with a plugin configuration class.
+
+        Parameters
+        ----------
+        config : PluginConfig
+            Plugin configuration instance. The file mapping path will be
+            discovered from the config class using get_file_mapping_path().
+        folder : Path or str
+            Base directory containing the data files referenced in the configuration.
+
+        Returns
+        -------
+        DataStore
+            A new DataStore instance populated with DataFile configurations
+            from the plugin's file mapping.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the configuration file does not exist or if data files are missing.
+        TypeError
+            If the JSON file does not contain a valid array structure.
+        ValidationError
+            If any DataFile configuration in the JSON is invalid.
+
+        Examples
+        --------
+        Simple usage:
+
+        >>> from r2x_reeds.config import ReEDSConfig
+        >>> config = ReEDSConfig(solve_year=2030, weather_year=2012)
+        >>> store = DataStore.from_plugin_config(config, folder="/data/reeds")
+        >>> store.list_data_files()
+        ['generators', 'buses', 'transmission']
+
+        With defaults:
+
+        >>> defaults = ReEDSConfig.load_defaults()
+        >>> config = ReEDSConfig(solve_year=2030, defaults=defaults)
+        >>> store = DataStore.from_plugin_config(config, folder="/data/reeds")
+
+        See Also
+        --------
+        from_json : Create from an explicit JSON file path
+        PluginConfig.get_file_mapping_path : Get the file mapping path
+
+        Notes
+        -----
+        This method provides a cleaner API than manually calling
+        config.get_file_mapping_path() and then DataStore.from_json().
+        It's the recommended way to create a DataStore for plugin-based workflows.
+        """
+        mapping_path = config.__class__.get_file_mapping_path()
+        return cls.from_json(mapping_path, folder)
 
     @classmethod
     def from_json(cls, fpath: Path | str, folder: Path | str) -> "DataStore":

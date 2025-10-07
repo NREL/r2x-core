@@ -96,10 +96,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from loguru import logger
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from r2x_core.parser import BaseParser
+
+    from .plugin_config import PluginConfig
 
 
 class SystemModifier(Protocol):
@@ -170,7 +171,7 @@ class PluginComponent:
 
     Parameters
     ----------
-    config : type[BaseModel]
+    config : type[PluginConfig]
         Pydantic config class for the model
     parser : type | None
         Parser class (BaseParser subclass)
@@ -179,7 +180,7 @@ class PluginComponent:
 
     Attributes
     ----------
-    config : type[BaseModel]
+    config : type[PluginConfig]
         Configuration class
     parser : type | None
         Parser class or None
@@ -187,7 +188,7 @@ class PluginComponent:
         Exporter class or None
     """
 
-    config: type[BaseModel]
+    config: type["PluginConfig"]
     parser: type | None = None
     exporter: type | None = None
 
@@ -300,7 +301,7 @@ class PluginManager:
     def register_model_plugin(
         cls,
         name: str,
-        config: type[BaseModel],
+        config: type["PluginConfig"],
         parser: type | None = None,
         exporter: type | None = None,
     ) -> None:
@@ -314,7 +315,7 @@ class PluginManager:
         ----------
         name : str
             Plugin name (e.g., "switch", "plexos")
-        config : type[BaseModel]
+        config : type[PluginConfig]
             Pydantic configuration class
         parser : type | None, optional
             Parser class (BaseParser subclass)
@@ -541,7 +542,7 @@ class PluginManager:
         plugin = self._registry.get(name)
         return plugin.exporter if plugin else None
 
-    def load_config_class(self, name: str) -> type[BaseModel] | None:
+    def load_config_class(self, name: str) -> type["PluginConfig"] | None:
         """Load configuration class for a plugin.
 
         Parameters
@@ -551,7 +552,7 @@ class PluginManager:
 
         Returns
         -------
-        type[BaseModel] | None
+        type[PluginConfig] | None
             Configuration class or None if not found
 
         Examples
@@ -567,9 +568,9 @@ class PluginManager:
     def get_file_mapping_path(self, plugin_name: str) -> Path | None:
         """Get the file mapping path for a registered plugin.
 
-        This is a convenience method that loads the plugin's parser class
+        This is a convenience method that loads the plugin's config class
         and delegates to its get_file_mapping_path() classmethod. This allows
-        getting the file mapping path without directly importing the parser class.
+        getting the file mapping path without directly importing the config class.
 
         Parameters
         ----------
@@ -580,7 +581,7 @@ class PluginManager:
         -------
         Path | None
             Absolute path to the plugin's file_mapping.json, or None if the
-            plugin doesn't have a parser registered.
+            plugin is not registered.
 
         Examples
         --------
@@ -610,19 +611,16 @@ class PluginManager:
 
         See Also
         --------
-        BaseParser.get_file_mapping_path : Parser classmethod this delegates to
-        load_parser : Load the parser class directly
+        PluginConfig.get_file_mapping_path : Config classmethod this delegates to
+        load_config_class : Load the config class directly
 
         Notes
         -----
-        This method requires the plugin to have a parser registered. If only
-        an exporter is registered, it will return None.
-
         The file may not exist even if a path is returned - the method only
-        constructs the expected path based on the parser module location.
+        constructs the expected path based on the config module location.
         """
-        parser_class = self.load_parser(plugin_name)
-        if parser_class is None:
+        config_class = self.load_config_class(plugin_name)
+        if config_class is None:
             return None
 
-        return parser_class.get_file_mapping_path()
+        return config_class.get_file_mapping_path()
