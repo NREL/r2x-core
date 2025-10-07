@@ -4,3 +4,7 @@
 extend-exclude = [
     "tests/*",
 ]
+
+[default.extend-words]
+# Pydantic core schema function name (not a typo)
+ser = "ser"

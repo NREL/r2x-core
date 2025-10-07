@@ -69,9 +69,7 @@ class DataStore:
     The store itself does not cache file contents, only the DataFile configurations.
     """
 
-    def __init__(
-        self, folder: str | Path | None = None, reader: DataReader | None = None
-    ) -> None:
+    def __init__(self, folder: str | Path | None = None, reader: DataReader | None = None) -> None:
         """Initialize the DataStore.
 
         Parameters
@@ -207,9 +205,7 @@ class DataStore:
         for file_data in data_files_json:
             updated_fpath = Path(folder) / file_data["fpath"]
             if not updated_fpath.exists():
-                logger.warning(
-                    "File {} not found on: {}", file_data["name"], updated_fpath
-                )
+                logger.warning("File {} not found on: {}", file_data["name"], updated_fpath)
                 files_not_found.append(file_data["name"])
                 continue
             file_data["fpath"] = updated_fpath
@@ -260,9 +256,7 @@ class DataStore:
         self._cache[data_file.name] = data_file
         logger.debug("Added data file '{}' to store", data_file.name)
 
-    def add_data_files(
-        self, data_files: Iterable[DataFile], overwrite: bool = False
-    ) -> None:
+    def add_data_files(self, data_files: Iterable[DataFile], overwrite: bool = False) -> None:
         """Add multiple data files to the store.
 
         Parameters
@@ -390,9 +384,7 @@ class DataStore:
         """
         if name not in self._cache:
             available_files = list(self._cache.keys())
-            raise KeyError(
-                f"'{name}' not present in store. Available files: {available_files}"
-            )
+            raise KeyError(f"'{name}' not present in store. Available files: {available_files}")
 
         return self._cache[name]
 

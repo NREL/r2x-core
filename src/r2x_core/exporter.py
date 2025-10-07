@@ -259,6 +259,7 @@ class BaseExporter(ABC):
         export workflow for their specific model format.
 
         The implementation should:
+
         1. Export component data using system.export_components_to_csv() or
            system.components_to_records()
         2. Export time series data using export_time_series()
@@ -298,7 +299,7 @@ class BaseExporter(ABC):
         r2x_core.system.System.components_to_records : Get component records
         r2x_core.exceptions.ExporterError : Export error exception
         """
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abstractmethod
     def export_time_series(self) -> None:
@@ -349,17 +350,17 @@ class BaseExporter(ABC):
         Export with file type matching:
 
         >>> def export_time_series(self) -> None:
-        ...     from r2x_core.file_types import TableFile, H5File, ParquetFile
+        ...     from r2x_core.file_types import TableFormat, H5Format, ParquetFormat
         ...     for datafile in self.data_store.data_files.values():
         ...         if not datafile.is_timeseries:
         ...             continue
         ...         ts_data = self._collect_time_series(datafile.name)
         ...         match datafile.file_type:
-        ...             case TableFile():
+        ...             case TableFormat():
         ...                 ts_data.write_csv(datafile.file_path)
-        ...             case H5File():
+        ...             case H5Format():
         ...                 self._write_h5(datafile, ts_data)
-        ...             case ParquetFile():
+        ...             case ParquetFormat():
         ...                 ts_data.write_parquet(datafile.file_path)
 
         See Also
@@ -368,4 +369,4 @@ class BaseExporter(ABC):
         r2x_core.datafile.DataFile.is_timeseries : Check if file is for time series
         r2x_core.file_types : File type classes for format handling
         """
-        pass  # pragma: no cover
+        # pragma: no cover

@@ -1,7 +1,8 @@
 """Simplified data transformations for different data types."""
 
+from collections.abc import Callable
 from functools import partial
-from typing import Any, Callable
+from typing import Any
 
 import polars as pl
 from loguru import logger
@@ -101,9 +102,7 @@ def pl_drop_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
         return df
 
     # Only drop columns that actually exist
-    existing_cols = [
-        col for col in data_file.drop_columns if col in df.collect_schema().names()
-    ]
+    existing_cols = [col for col in data_file.drop_columns if col in df.collect_schema().names()]
     if existing_cols:
         logger.debug("Dropping columns {} from {}", existing_cols, data_file.name)
         return df.drop(existing_cols)
@@ -117,9 +116,7 @@ def pl_rename_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
 
     # Only rename columns that exist
     valid_mapping = {
-        old: new
-        for old, new in data_file.column_mapping.items()
-        if old in df.collect_schema().names()
+        old: new for old, new in data_file.column_mapping.items() if old in df.collect_schema().names()
     }
     if valid_mapping:
         logger.debug("Renaming columns {} in {}", valid_mapping, data_file.name)
@@ -179,11 +176,7 @@ def pl_select_columns(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     cols_to_select.extend(data_file.value_columns)
 
     # Keep only existing columns, preserve order, remove duplicates
-    unique_cols = list(
-        dict.fromkeys(
-            col for col in cols_to_select if col in df.collect_schema().names()
-        )
-    )
+    unique_cols = list(dict.fromkeys(col for col in cols_to_select if col in df.collect_schema().names()))
 
     if unique_cols:
         logger.debug("Selecting {} columns from {}", len(unique_cols), data_file.name)
@@ -255,15 +248,11 @@ def apply_transformation(data_file: DataFile, data: Any) -> Any:
         if isinstance(data, registered_types):
             return transform_func(data_file, data)
 
-    logger.debug(
-        "No transformation for type {} in {}", type(data).__name__, data_file.name
-    )
+    logger.debug("No transformation for type {} in {}", type(data).__name__, data_file.name)
     return data
 
 
-def register_transformation(
-    data_types: type | tuple[type, ...], func: TransformFunction
-) -> None:
+def register_transformation(data_types: type | tuple[type, ...], func: TransformFunction) -> None:
     """Register a custom transformation function.
 
     Parameters
