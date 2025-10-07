@@ -34,6 +34,13 @@ class DataReader:
     """
 
     def __init__(self, max_cache_size: int = MAX_CACHE_SIZE) -> None:
+        """Initialize the data reader with cache configuration.
+
+        Parameters
+        ----------
+        max_cache_size : int, optional
+            Maximum number of files to keep in cache. Default is 100.
+        """
         self._cache: dict[str, Any] = {}
         self.max_cache_size = max_cache_size
 
@@ -56,11 +63,9 @@ class DataReader:
         # Include file path, modification time, and DataFile hash
         mtime = file_path.stat().st_mtime if file_path.exists() else 0
         key_data = f"{file_path}:{mtime}:{data_file.name}"
-        return hashlib.md5(key_data.encode()).hexdigest()
+        return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def read_data_file(
-        self, folder: Path, data_file: DataFile, use_cache: bool = True
-    ) -> Any:
+    def read_data_file(self, folder: Path, data_file: DataFile, use_cache: bool = True) -> Any:
         """Read a data file using cache if available.
 
         Parameters
@@ -101,16 +106,12 @@ class DataReader:
         # Check for custom reader function first
         reader_kwargs = data_file.reader_kwargs or {}
         if data_file.reader_function is not None:
-            logger.debug(
-                "Using custom callable reader function for: {}", data_file.name
-            )
+            logger.debug("Using custom callable reader function for: {}", data_file.name)
             raw_data = data_file.reader_function(file_path, **reader_kwargs)
         else:
             # Use single dispatch to read based on file type
             file_type_instance = data_file.file_type
-            logger.debug(
-                "Reading file {} as {}", file_path, type(file_type_instance).__name__
-            )
+            logger.debug("Reading file {} as {}", file_path, type(file_type_instance).__name__)
             raw_data = read_file_by_type(file_type_instance, file_path, **reader_kwargs)
 
         processed_data = apply_transformation(data_file, raw_data)

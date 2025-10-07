@@ -7,13 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       base_bump:
-        description: "Select base version bump (major, minor, patch)"
-        required: true
+        description: "Select base version bump (major, minor, patch, stable, or empty to bump prerelease only)"
+        required: false
         type: choice
+        default: ""
         options:
+          - ""
           - patch
           - minor
           - major
+          - stable
 
       prerelease:
         description: "Optional: Add a pre-release tag (dev, alpha, beta, rc)"
@@ -41,16 +44,58 @@ jobs:
   determine-version:
     runs-on: ubuntu-latest
     outputs:
-      BASE_BUMP: ${{ steps.release_type.outputs.BASE_BUMP  }}
-      PRERELEASE: ${{ steps.release_type.outputs.PRERELEASE  }}
+      NEW_VERSION: ${{ steps.calculate_version.outputs.NEW_VERSION }}
     steps:
       - uses: actions/checkout@v4
-      - name: Determine version bump
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Calculate new version
         if: github.event_name == 'workflow_dispatch'
-        id: release_type
+        id: calculate_version
         run: |
-          echo "BASE_BUMP=${{ github.event.inputs.base_bump }}" >> $GITHUB_OUTPUT
-          echo "PRERELEASE=${{ github.event.inputs.prerelease }}" >> $GITHUB_OUTPUT
+          BASE_BUMP="${{ github.event.inputs.base_bump }}"
+          PRERELEASE="${{ github.event.inputs.prerelease }}"
+          CURRENT_VERSION=$(uv version --short)
+
+          echo "Current version: $CURRENT_VERSION"
+
+          # Build the uv version command based on inputs
+          if [[ -n "$BASE_BUMP" && -n "$PRERELEASE" ]]; then
+            # Both specified: base bump + prerelease
+            NEW_VERSION=$(uv version --bump "$BASE_BUMP" --bump "$PRERELEASE" --dry-run | awk '{print $NF}')
+          elif [[ -n "$BASE_BUMP" ]]; then
+            # Only base bump (includes 'stable')
+            NEW_VERSION=$(uv version --bump "$BASE_BUMP" --dry-run | awk '{print $NF}')
+          elif [[ -n "$PRERELEASE" ]]; then
+            # Only prerelease: bump the prerelease counter
+            NEW_VERSION=$(uv version --bump "$PRERELEASE" --dry-run | awk '{print $NF}')
+          else
+            echo "Error: Must specify either base_bump or prerelease"
+            exit 1
+          fi
+
+          echo "New version: $NEW_VERSION"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # Add to workflow summary
+          echo "## 🎉 Version Bump Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Current Version:** \`$CURRENT_VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "**New Version:** \`$NEW_VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "$BASE_BUMP" && -n "$PRERELEASE" ]]; then
+            echo "📦 Creating first **$PRERELEASE** prerelease for new **$BASE_BUMP** version" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$BASE_BUMP" == "stable" ]]; then
+            echo "✅ Promoting to **stable** release" >> $GITHUB_STEP_SUMMARY
+          elif [[ -n "$PRERELEASE" ]]; then
+            echo "🔄 Bumping **$PRERELEASE** counter" >> $GITHUB_STEP_SUMMARY
+          elif [[ -n "$BASE_BUMP" ]]; then
+            echo "📈 Standard **$BASE_BUMP** version bump" >> $GITHUB_STEP_SUMMARY
+          fi
 
   bumpversion:
     needs: determine-version
@@ -78,19 +123,13 @@ jobs:
       - name: Bump version using UV
         id: version
         run: |
-          BASE_BUMP="${{ needs.determine-version.outputs.BASE_BUMP }}"
-          PRERELEASE="${{ needs.determine-version.outputs.PRERELEASE }}"
+          NEW_VERSION="${{ needs.determine-version.outputs.NEW_VERSION }}"
 
-          if [[ -n "$PRERELEASE" ]]; then
-            echo "Creating pre-release: bumping $BASE_BUMP + $PRERELEASE"
-            uv version --bump "$BASE_BUMP" --bump "$PRERELEASE"
-          else
-            echo "Creating standard release: bumping $BASE_BUMP"
-            uv version --bump "$BASE_BUMP"
-          fi
+          echo "Setting version to: $NEW_VERSION"
+          uv version "$NEW_VERSION"
 
-          echo "NEW_VERSION=$(uv version --short)" >> $GITHUB_ENV
-          echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v4
@@ -123,7 +162,7 @@ jobs:
           git config --global user.name "${{ steps.import-gpg.outputs.name }}"
           git commit -S -m "Bump version to v${{ env.NEW_VERSION}}"
           git tag -s v${{ env.NEW_VERSION }} -m "Release version ${{ env.NEW_VERSION }}"
-          git push origin main --tags
+          git push origin ${{ github.ref_name }} --tags
 
       - name: Build package
         run: |

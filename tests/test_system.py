@@ -4,7 +4,6 @@ import pytest
 
 from r2x_core import System
 
-
 # Basic System tests
 
 
@@ -13,6 +12,21 @@ def test_system_creation():
     system = System(name="TestSystem")
     assert system.name == "TestSystem"
     assert isinstance(system, System)
+
+
+def test_to_json_raises_on_existing_file_without_overwrite(tmp_path):
+    """Test that to_json raises error when file exists and overwrite=False."""
+    from infrasys.exceptions import ISFileExists
+
+    system = System(name="TestSystem")
+    output_file = tmp_path / "system.json"
+
+    # First save
+    system.to_json(output_file)
+
+    # Try to save again without overwrite should raise
+    with pytest.raises(ISFileExists):
+        system.to_json(output_file, overwrite=False)
 
 
 def test_system_with_description():
@@ -119,6 +133,8 @@ def test_to_json_with_overwrite(tmp_path):
 
 def test_to_json_no_overwrite_raises(tmp_path):
     """Test that to_json raises error when file exists and overwrite=False."""
+    from infrasys.exceptions import ISFileExists
+
     system = System(name="TestSystem")
     output_file = tmp_path / "system.json"
 
@@ -126,7 +142,7 @@ def test_to_json_no_overwrite_raises(tmp_path):
     system.to_json(output_file)
 
     # Try to save again without overwrite should raise
-    with pytest.raises(Exception):  # FileExistsError or similar from infrasys
+    with pytest.raises(ISFileExists):
         system.to_json(output_file, overwrite=False)
 
 
@@ -194,8 +210,9 @@ def test_components_to_records_with_key_mapping():
 
 def test_export_components_to_csv_to_file(tmp_path):
     """Test export_components_to_csv to file."""
-    from infrasys import Component
     import csv
+
+    from infrasys import Component
 
     system = System(name="FileTest")
     system.add_components(Component(name="comp1"), Component(name="comp2"))
@@ -206,7 +223,7 @@ def test_export_components_to_csv_to_file(tmp_path):
     assert output_file.exists()
 
     # Read and verify CSV
-    with open(output_file, "r") as f:
+    with open(output_file) as f:
         reader = csv.DictReader(f)
         rows = list(reader)
         assert len(rows) == 2

@@ -2,11 +2,11 @@
 
 # Installation
 
-The only pre-requisite to install R2X Core is [Python 3.10](https://www.python.org/downloads/release/python-3100/) or greater.
+The only pre-requisite to install R2X Core is [Python 3.11](https://www.python.org/downloads/release/python-3110/) or greater.
 
 ## Python version support
 
-Python 3.10, 3.11, 3.12, 3.13.
+Python 3.11, 3.12, 3.13.
 
 ## Installation options
 
