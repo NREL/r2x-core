@@ -326,7 +326,7 @@ class MyModelConfig(PluginConfig):
     solve_year: int
     scenario: str = "reference"
 
-# Load defaults from config/constants.json
+# Load defaults from config/defaults.json
 defaults = MyModelConfig.load_defaults()
 config = MyModelConfig(solve_year=2030, defaults=defaults)
 

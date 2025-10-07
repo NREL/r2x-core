@@ -13,7 +13,7 @@ my_plugin/
 ├── exporter.py         # Exporter implementation (optional)
 ├── config.py           # Configuration classes
 └── config/
-    ├── constants.json      # Default values and mappings
+    ├── defaults.json       # Default values and mappings
     └── file_mapping.json   # File path mappings
 ```
 
@@ -33,6 +33,46 @@ class MyModelConfig(PluginConfig):
     output_dir: str = "./output"
 ```
 
+# ... customize file and directory names
+
+`PluginConfig` provides class variables to customize where configuration files are located:
+
+```python
+from r2x_core import PluginConfig
+
+class MyModelConfig(PluginConfig):
+    """Configuration with custom file locations."""
+
+    # Customize directory name (default: "config")
+    CONFIG_DIR = "resources"
+
+    # Customize file mapping filename (default: "file_mapping.json")
+    FILE_MAPPING_NAME = "data_files.json"
+
+    # Customize defaults filename (default: "defaults.json")
+    DEFAULTS_FILE_NAME = "constants.json"
+
+    solve_year: int
+    weather_year: int
+```
+
+**Directory structure with custom names:**
+
+```
+my_plugin/
+├── __init__.py
+├── config.py
+└── resources/              # Custom CONFIG_DIR
+    ├── constants.json      # Custom DEFAULTS_FILE_NAME
+    └── data_files.json     # Custom FILE_MAPPING_NAME
+```
+
+**Available class variables:**
+
+- `CONFIG_DIR`: Directory name for configuration files (default: `"config"`)
+- `FILE_MAPPING_NAME`: Filename for file mappings (default: `"file_mapping.json"`)
+- `DEFAULTS_FILE_NAME`: Filename for default constants (default: `"defaults.json"`)
+
 # ... load default constants
 
 Use `load_defaults()` to load model-specific constants from JSON:
@@ -47,7 +87,8 @@ class ReEDSConfig(PluginConfig):
     solve_year: int
     weather_year: int
 
-# Auto-discovers config/constants.json next to the config module
+# Auto-discovers config/defaults.json next to the config module
+# (customizable via DEFAULTS_FILE_NAME class variable)
 defaults = ReEDSConfig.load_defaults()
 config = ReEDSConfig(
     solve_year=2030,
@@ -56,7 +97,7 @@ config = ReEDSConfig(
 )
 ```
 
-**constants.json example:**
+**defaults.json example:**
 
 ```json
 {
@@ -74,7 +115,19 @@ config = ReEDSConfig(
 
 ```python
 # Load from custom location
-defaults = ReEDSConfig.load_defaults("/path/to/custom_constants.json")
+defaults = ReEDSConfig.load_defaults("/path/to/custom_defaults.json")
+```
+
+**Custom filename:**
+
+```python
+class MyModelConfig(PluginConfig):
+    """Config with custom defaults filename."""
+    DEFAULTS_FILE_NAME = "my_constants.json"
+    solve_year: int
+
+# Will look for config/my_constants.json
+defaults = MyModelConfig.load_defaults()
 ```
 
 # ... create file mappings
@@ -292,7 +345,7 @@ class MyModelParser(BaseParser):
         pass
 ```
 
-**my_plugin/config/constants.json:**
+**my_plugin/config/defaults.json:**
 
 ```json
 {
@@ -351,7 +404,7 @@ plugin/
 ├── config.py
 ├── parser.py
 └── config/
-    ├── constants.json
+    ├── defaults.json
     └── file_mapping.json
 ```
 
