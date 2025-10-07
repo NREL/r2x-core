@@ -31,13 +31,13 @@ Create a model-specific configuration:
 >>> config = ReEDSConfig(
 ...     model_year=2030,
 ...     weather_year=2012,
-...     defaults={"excluded_techs": ["coal", "oil"]}
+...     scenario="high_re"
 ... )
 
-Load defaults from JSON:
+Load constants from JSON:
 
->>> defaults = ReEDSConfig.load_defaults()
->>> config = ReEDSConfig(model_year=2030, weather_year=2012, defaults=defaults)
+>>> constants = ReEDSConfig.load_defaults()
+>>> # Use constants in your parser/exporter logic
 
 See Also
 --------
@@ -46,10 +46,10 @@ r2x_core.exporter.BaseExporter : Uses this configuration class
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class PluginConfig(BaseModel):
@@ -57,19 +57,7 @@ class PluginConfig(BaseModel):
 
     Applications should inherit from this class to define model-specific
     configuration parameters for parsers, exporters, and system modifiers.
-    This base class provides common fields that most plugins will need,
-    while allowing full customization through inheritance.
-
-    Parameters
-    ----------
-    defaults : dict, optional
-        Default values for model-specific parameters. Can include device mappings,
-        technology categorizations, filtering rules, etc. Default is empty dict.
-
-    Attributes
-    ----------
-    defaults : dict
-        Dictionary of default values and mappings.
+    Subclasses define their own fields for model-specific parameters.
 
     Examples
     --------
@@ -84,7 +72,7 @@ class PluginConfig(BaseModel):
     >>> config = ReEDSConfig(
     ...     model_year=2030,
     ...     weather_year=2012,
-    ...     defaults={"excluded_techs": ["coal", "oil"]}
+    ...     scenario="high_re"
     ... )
 
     With validation:
@@ -123,9 +111,68 @@ class PluginConfig(BaseModel):
     - Custom validation logic
     """
 
-    defaults: dict[str, Any] = Field(
-        default_factory=dict, description="Default values and model-specific mappings"
-    )
+    CONFIG_DIR: ClassVar[str] = "config"
+    FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
+    DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
+
+    @classmethod
+    def get_file_mapping_path(cls) -> Path:
+        """Get the path to this plugin's file mapping JSON.
+
+        This method uses inspect.getfile() to locate the plugin module file,
+        then constructs the path to the file mapping JSON in the config directory.
+        By convention, plugins should store their file_mapping.json in a config/
+        subdirectory next to the config module.
+
+        The filename can be customized by overriding the FILE_MAPPING_NAME class variable.
+
+        Returns
+        -------
+        Path
+            Absolute path to the file_mapping.json file. Note that this path may
+            not exist if the plugin hasn't created the file yet.
+
+        Examples
+        --------
+        Get file mapping path for a config:
+
+        >>> from r2x_reeds.config import ReEDSConfig
+        >>> mapping_path = ReEDSConfig.get_file_mapping_path()
+        >>> print(mapping_path)
+        /path/to/r2x_reeds/config/file_mapping.json
+
+        Override the filename in a custom config:
+
+        >>> class CustomConfig(PluginConfig):
+        ...     FILE_MAPPING_NAME = "custom_mapping.json"
+        ...
+        >>> path = CustomConfig.get_file_mapping_path()
+        >>> print(path.name)
+        custom_mapping.json
+
+        Use with DataStore:
+
+        >>> from r2x_core import DataStore
+        >>> mapping_path = MyModelConfig.get_file_mapping_path()
+        >>> store = DataStore.from_json(mapping_path, folder="/data/mymodel")
+
+        See Also
+        --------
+        load_defaults : Similar pattern for loading constants
+        DataStore.from_plugin_config : Direct DataStore creation from config
+
+        Notes
+        -----
+        This method uses inspect.getfile() to locate the module file, then
+        navigates to the config directory. This works for both installed
+        packages and editable installs.
+        """
+        import inspect
+
+        # Get the file where the config class is defined
+        module_file = inspect.getfile(cls)
+        module_path = Path(module_file).parent
+        return module_path / cls.CONFIG_DIR / cls.FILE_MAPPING_NAME
 
     @classmethod
     def load_defaults(cls, defaults_file: Path | str | None = None) -> dict[str, Any]:
@@ -133,18 +180,19 @@ class PluginConfig(BaseModel):
 
         Provides a standardized way to load model-specific constants, mappings,
         and default values from JSON files. If no file path is provided, automatically
-        looks for 'constants.json' in the config directory next to the module.
+        looks for the file specified by DEFAULTS_FILE_NAME in the config directory.
 
         Parameters
         ----------
         defaults_file : Path, str, or None, optional
-            Path to defaults JSON file. If None, looks for 'constants.json'
-            in a 'config' subdirectory relative to the calling module.
+            Path to defaults JSON file. If None, looks for the file specified
+            by DEFAULTS_FILE_NAME (default: 'defaults.json') in the CONFIG_DIR
+            subdirectory relative to the config module.
 
         Returns
         -------
         dict[str, Any]
-            Dictionary of default constants to use in the `defaults` field.
+            Dictionary of default constants to use in your parser/exporter logic.
             Returns empty dict if file doesn't exist.
 
         Examples
@@ -156,8 +204,9 @@ class PluginConfig(BaseModel):
         >>> config = ReEDSConfig(
         ...     solve_years=2030,
         ...     weather_years=2012,
-        ...     defaults=defaults
         ... )
+        >>> # Use defaults dict in your parser/exporter logic
+        >>> excluded_techs = defaults.get("excluded_techs", [])
 
         Load from custom path:
 
@@ -166,29 +215,29 @@ class PluginConfig(BaseModel):
         See Also
         --------
         PluginConfig : Base configuration class
-        r2x_core.parser.BaseParser.get_file_mapping_path : Related file discovery method
+        get_file_mapping_path : Related file discovery method
         """
         import inspect
         import json
 
         if defaults_file is None:
-            # Get the module where the config class is defined
-            config_module_file = inspect.getfile(cls)
-            config_dir = Path(config_module_file).parent
-            defaults_file = config_dir / "config" / "constants.json"
+            # Get the file where the config class is defined
+            module_file = inspect.getfile(cls)
+            module_path = Path(module_file).parent
+            defaults_file = module_path / cls.CONFIG_DIR / cls.DEFAULTS_FILE_NAME
+        else:
+            defaults_file = Path(defaults_file)
 
-        defaults_path = Path(defaults_file)
-
-        if not defaults_path.exists():
-            logger.debug(f"Defaults file not found: {defaults_path}")
+        if not defaults_file.exists():
+            logger.debug("Defaults file not found: {}", defaults_file)
             return {}
 
         try:
-            with open(defaults_path) as f:
+            with open(defaults_file) as f:
                 data: dict[str, Any] = json.load(f)
                 return data
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse defaults JSON from {defaults_path}: {e}")
+            logger.error("Failed to parse defaults JSON from {}: {}", defaults_file, e)
             return {}
 
     @classmethod

@@ -96,10 +96,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from loguru import logger
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from r2x_core.parser import BaseParser
+
+    from .plugin_config import PluginConfig
 
 
 class SystemModifier(Protocol):
@@ -170,7 +171,7 @@ class PluginComponent:
 
     Parameters
     ----------
-    config : type[BaseModel]
+    config : type[PluginConfig]
         Pydantic config class for the model
     parser : type | None
         Parser class (BaseParser subclass)
@@ -179,7 +180,7 @@ class PluginComponent:
 
     Attributes
     ----------
-    config : type[BaseModel]
+    config : type[PluginConfig]
         Configuration class
     parser : type | None
         Parser class or None
@@ -187,7 +188,7 @@ class PluginComponent:
         Exporter class or None
     """
 
-    config: type[BaseModel]
+    config: type["PluginConfig"]
     parser: type | None = None
     exporter: type | None = None
 
@@ -290,17 +291,17 @@ class PluginManager:
                 try:
                     register_func = ep.load()
                     register_func()
-                    logger.debug(f"Loaded plugin from entry point: {ep.name}")
+                    logger.debug("Loaded plugin from entry point: {}", ep.name)
                 except Exception as e:
-                    logger.warning(f"Failed to load plugin '{ep.name}': {e}")
+                    logger.warning("Failed to load plugin '{}': {}", ep.name, e)
         except Exception as e:
-            logger.debug(f"Entry point discovery not available: {e}")
+            logger.debug("Entry point discovery not available: {}", e)
 
     @classmethod
     def register_model_plugin(
         cls,
         name: str,
-        config: type[BaseModel],
+        config: type["PluginConfig"],
         parser: type | None = None,
         exporter: type | None = None,
     ) -> None:
@@ -314,7 +315,7 @@ class PluginManager:
         ----------
         name : str
             Plugin name (e.g., "switch", "plexos")
-        config : type[BaseModel]
+        config : type[PluginConfig]
             Pydantic configuration class
         parser : type | None, optional
             Parser class (BaseParser subclass)
@@ -343,14 +344,14 @@ class PluginManager:
         ... )
         """
         if parser is None and exporter is None:
-            logger.warning(f"Plugin '{name}' registered with neither parser nor exporter")
+            logger.warning("Plugin '{}' registered with neither parser nor exporter", name)
 
         cls._registry[name] = PluginComponent(
             config=config,
             parser=parser,
             exporter=exporter,
         )
-        logger.debug(f"Registered model plugin: {name}")
+        logger.debug("Registered model plugin: {}", name)
 
     @classmethod
     def register_system_modifier(
@@ -391,7 +392,7 @@ class PluginManager:
             """Internal decorator that registers the system modifier function."""
             modifier_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._modifier_registry[modifier_name] = func
-            logger.debug(f"Registered system modifier: {modifier_name}")
+            logger.debug("Registered system modifier: {}", modifier_name)
             return func
 
         # If used as @register_system_modifier (without parentheses)
@@ -439,7 +440,7 @@ class PluginManager:
             """Internal decorator that registers the filter function."""
             filter_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._filter_registry[filter_name] = func
-            logger.debug(f"Registered filter: {filter_name}")
+            logger.debug("Registered filter: {}", filter_name)
             return func
 
         # If used as @register_filter (without parentheses)
@@ -541,7 +542,7 @@ class PluginManager:
         plugin = self._registry.get(name)
         return plugin.exporter if plugin else None
 
-    def load_config_class(self, name: str) -> type[BaseModel] | None:
+    def load_config_class(self, name: str) -> type["PluginConfig"] | None:
         """Load configuration class for a plugin.
 
         Parameters
@@ -551,7 +552,7 @@ class PluginManager:
 
         Returns
         -------
-        type[BaseModel] | None
+        type[PluginConfig] | None
             Configuration class or None if not found
 
         Examples
@@ -567,9 +568,9 @@ class PluginManager:
     def get_file_mapping_path(self, plugin_name: str) -> Path | None:
         """Get the file mapping path for a registered plugin.
 
-        This is a convenience method that loads the plugin's parser class
+        This is a convenience method that loads the plugin's config class
         and delegates to its get_file_mapping_path() classmethod. This allows
-        getting the file mapping path without directly importing the parser class.
+        getting the file mapping path without directly importing the config class.
 
         Parameters
         ----------
@@ -580,7 +581,7 @@ class PluginManager:
         -------
         Path | None
             Absolute path to the plugin's file_mapping.json, or None if the
-            plugin doesn't have a parser registered.
+            plugin is not registered.
 
         Examples
         --------
@@ -610,19 +611,16 @@ class PluginManager:
 
         See Also
         --------
-        BaseParser.get_file_mapping_path : Parser classmethod this delegates to
-        load_parser : Load the parser class directly
+        PluginConfig.get_file_mapping_path : Config classmethod this delegates to
+        load_config_class : Load the config class directly
 
         Notes
         -----
-        This method requires the plugin to have a parser registered. If only
-        an exporter is registered, it will return None.
-
         The file may not exist even if a path is returned - the method only
-        constructs the expected path based on the parser module location.
+        constructs the expected path based on the config module location.
         """
-        parser_class = self.load_parser(plugin_name)
-        if parser_class is None:
+        config_class = self.load_config_class(plugin_name)
+        if config_class is None:
             return None
 
-        return parser_class.get_file_mapping_path()
+        return config_class.get_file_mapping_path()

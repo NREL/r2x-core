@@ -80,7 +80,6 @@ def sample_config():
     return MockModelConfig(
         model_year=2030,
         scenario="test",
-        defaults={"tech_map": {"wind": "renewable"}},
     )
 
 
@@ -112,16 +111,6 @@ def test_config_creation():
     config = MockModelConfig(model_year=2030, scenario="test")
     assert config.model_year == 2030
     assert config.scenario == "test"
-    assert config.defaults == {}
-
-
-def test_config_with_defaults():
-    """Test config with defaults."""
-    config = MockModelConfig(
-        model_year=2025,
-        defaults={"excluded_techs": ["coal"]},
-    )
-    assert config.defaults == {"excluded_techs": ["coal"]}
 
 
 def test_config_validation():

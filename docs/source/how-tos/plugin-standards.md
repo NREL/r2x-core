@@ -13,7 +13,7 @@ my_plugin/
 ├── exporter.py         # Exporter implementation (optional)
 ├── config.py           # Configuration classes
 └── config/
-    ├── constants.json      # Default values and mappings
+    ├── defaults.json       # Default values and mappings
     └── file_mapping.json   # File path mappings
 ```
 
@@ -33,6 +33,46 @@ class MyModelConfig(PluginConfig):
     output_dir: str = "./output"
 ```
 
+# ... customize file and directory names
+
+`PluginConfig` provides class variables to customize where configuration files are located:
+
+```python
+from r2x_core import PluginConfig
+
+class MyModelConfig(PluginConfig):
+    """Configuration with custom file locations."""
+
+    # Customize directory name (default: "config")
+    CONFIG_DIR = "resources"
+
+    # Customize file mapping filename (default: "file_mapping.json")
+    FILE_MAPPING_NAME = "data_files.json"
+
+    # Customize defaults filename (default: "defaults.json")
+    DEFAULTS_FILE_NAME = "constants.json"
+
+    solve_year: int
+    weather_year: int
+```
+
+**Directory structure with custom names:**
+
+```
+my_plugin/
+├── __init__.py
+├── config.py
+└── resources/              # Custom CONFIG_DIR
+    ├── constants.json      # Custom DEFAULTS_FILE_NAME
+    └── data_files.json     # Custom FILE_MAPPING_NAME
+```
+
+**Available class variables:**
+
+- `CONFIG_DIR`: Directory name for configuration files (default: `"config"`)
+- `FILE_MAPPING_NAME`: Filename for file mappings (default: `"file_mapping.json"`)
+- `DEFAULTS_FILE_NAME`: Filename for default constants (default: `"defaults.json"`)
+
 # ... load default constants
 
 Use `load_defaults()` to load model-specific constants from JSON:
@@ -47,16 +87,18 @@ class ReEDSConfig(PluginConfig):
     solve_year: int
     weather_year: int
 
-# Auto-discovers config/constants.json next to the config module
+# Auto-discovers config/defaults.json next to the config module
+# (customizable via DEFAULTS_FILE_NAME class variable)
 defaults = ReEDSConfig.load_defaults()
 config = ReEDSConfig(
     solve_year=2030,
     weather_year=2012,
-    defaults=defaults
 )
+# Use defaults dict in your parser/exporter logic
+excluded_techs = defaults.get("excluded_techs", [])
 ```
 
-**constants.json example:**
+**defaults.json example:**
 
 ```json
 {
@@ -74,7 +116,19 @@ config = ReEDSConfig(
 
 ```python
 # Load from custom location
-defaults = ReEDSConfig.load_defaults("/path/to/custom_constants.json")
+defaults = ReEDSConfig.load_defaults("/path/to/custom_defaults.json")
+```
+
+**Custom filename:**
+
+```python
+class MyModelConfig(PluginConfig):
+    """Config with custom defaults filename."""
+    DEFAULTS_FILE_NAME = "my_constants.json"
+    solve_year: int
+
+# Will look for config/my_constants.json
+defaults = MyModelConfig.load_defaults()
 ```
 
 # ... create file mappings
@@ -92,20 +146,17 @@ Plugins should store file mapping in `config/file_mapping.json`:
 
 # ... get file mapping path
 
-Use `get_file_mapping_path()` to get the path to file mappings:
+Use `get_file_mapping_path()` from your config class to get the path to file mappings:
 
 ```python
-from r2x_core import BaseParser
+from r2x_core import PluginConfig
 
-class MyModelParser(BaseParser):
-    def build_system_components(self):
-        pass
-
-    def build_time_series(self):
-        pass
+class MyModelConfig(PluginConfig):
+    solve_year: int
+    weather_year: int
 
 # Get the mapping file path
-mapping_path = MyModelParser.get_file_mapping_path()
+mapping_path = MyModelConfig.get_file_mapping_path()
 print(f"Mappings at: {mapping_path}")
 
 # Load mappings if file exists
@@ -120,17 +171,33 @@ if mapping_path.exists():
 Override `FILE_MAPPING_NAME` to use a different filename:
 
 ```python
-class CustomParser(BaseParser):
+class CustomConfig(PluginConfig):
     FILE_MAPPING_NAME = "data_mappings.json"  # Instead of file_mapping.json
-
-    def build_system_components(self):
-        pass
-
-    def build_time_series(self):
-        pass
+    solve_year: int
 
 # Will look for config/data_mappings.json
-path = CustomParser.get_file_mapping_path()
+path = CustomConfig.get_file_mapping_path()
+```
+
+# ... create DataStore from config
+
+Use `DataStore.from_plugin_config()` for the cleanest API:
+
+```python
+from r2x_core import DataStore, PluginConfig
+
+class MyModelConfig(PluginConfig):
+    solve_year: int
+    weather_year: int
+
+# Create config
+config = MyModelConfig(solve_year=2030, weather_year=2012)
+
+# Create DataStore directly from config
+store = DataStore.from_plugin_config(config, folder="/data/mymodel")
+
+# The store automatically discovers and loads config/file_mapping.json
+print(store.list_data_files())
 ```
 
 # ... get mapping path from PluginManager
@@ -279,7 +346,7 @@ class MyModelParser(BaseParser):
         pass
 ```
 
-**my_plugin/config/constants.json:**
+**my_plugin/config/defaults.json:**
 
 ```json
 {
@@ -309,19 +376,22 @@ from r2x_core import DataStore
 from my_plugin.config import MyModelConfig
 from my_plugin.parser import MyModelParser
 
-# Load configuration with defaults
+# Load configuration and defaults
 defaults = MyModelConfig.load_defaults()
 config = MyModelConfig(
     solve_year=2030,
     weather_year=2012,
-    defaults=defaults
 )
 
-# Get file mapping path
-mapping_path = MyModelParser.get_file_mapping_path()
-print(f"File mappings: {mapping_path}")
+# Create data store directly from config (recommended)
+store = DataStore.from_plugin_config(config, folder="/data/mymodel")
 
-# Create data store
+# Use defaults in parser logic
+parser = MyModelParser(config, store)
+parser.excluded_techs = defaults.get("excluded_techs", [])
+
+# Or manually get mapping path
+mapping_path = MyModelConfig.get_file_mapping_path()
 store = DataStore.from_json(mapping_path, folder="/data/mymodel")
 
 # Build system
@@ -338,26 +408,33 @@ plugin/
 ├── config.py
 ├── parser.py
 └── config/
-    ├── constants.json
+    ├── defaults.json
     └── file_mapping.json
 ```
 
 ## Load defaults in configuration
 
 ```python
-# Good - loads defaults automatically
+# Good - loads defaults automatically and uses in parser logic
 defaults = MyConfig.load_defaults()
-config = MyConfig(year=2030, defaults=defaults)
+config = MyConfig(year=2030)
+# Use defaults dict in your parser/exporter
+excluded = defaults.get("excluded_techs", [])
 
 # Not recommended - hardcoding defaults
-config = MyConfig(year=2030, defaults={"tech": ["solar", "wind"]})
+defaults = {"tech": ["solar", "wind"]}
 ```
 
 ## Use file mapping discovery
 
 ```python
-# Good - uses standard discovery
-mapping_path = MyParser.get_file_mapping_path()
+# Good - uses from_plugin_config (cleanest)
+defaults = MyConfig.load_defaults()
+config = MyConfig(year=2030)
+store = DataStore.from_plugin_config(config, folder=data_folder)
+
+# Also good - uses standard discovery
+mapping_path = MyConfig.get_file_mapping_path()
 store = DataStore.from_json(mapping_path, folder=data_folder)
 
 # Not recommended - hardcoding paths

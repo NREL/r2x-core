@@ -96,7 +96,7 @@ class SimpleGridConfig(BaseModel):
 ```
 
 ```{tip}
-For production plugins, consider using `PluginConfig` instead of `BaseModel` to leverage plugin standards like automatic defaults loading from `config/constants.json` and CLI schema generation. See :doc:`../how-tos/plugin-standards` for details.
+For production plugins, consider using `PluginConfig` instead of `BaseModel` to leverage plugin standards like automatic defaults loading from `config/defaults.json` and CLI schema generation. See :doc:`../how-tos/plugin-standards` for details.
 ```
 
 

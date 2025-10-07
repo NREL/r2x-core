@@ -111,45 +111,77 @@ def test_load_defaults_integration(tmp_path):
         scenario: str = "base"
 
     defaults = TestConfig.load_defaults(defaults_file)
-    config = TestConfig(model_year=2030, defaults=defaults)
+    config = TestConfig(model_year=2030)
 
     assert config.model_year == 2030
     assert config.scenario == "base"
-    assert config.defaults == defaults_data
-    assert config.defaults["excluded_techs"] == ["coal"]
+    assert defaults == defaults_data
+    assert defaults["excluded_techs"] == ["coal"]
+
+
+def test_load_defaults_custom_filename(tmp_path):
+    """Test that DEFAULTS_FILE_NAME can be overridden."""
+    defaults_data = {"custom_setting": "value"}
+
+    # Create config directory and custom defaults file
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    custom_file = config_dir / "my_defaults.json"
+    with open(custom_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    # Create a test module file in tmp_path
+    module_file = tmp_path / "test_module.py"
+    module_file.write_text("# test module")
+
+    class CustomDefaultsConfig(PluginConfig):
+        DEFAULTS_FILE_NAME = "my_defaults.json"
+        model_year: int
+
+    # Mock inspect.getfile to return our test module
+    import inspect
+
+    original_getfile = inspect.getfile
+
+    def mock_getfile(cls):
+        if cls == CustomDefaultsConfig:
+            return str(module_file)
+        return original_getfile(cls)
+
+    inspect.getfile = mock_getfile
+    try:
+        defaults = CustomDefaultsConfig.load_defaults()
+        assert defaults == defaults_data
+    finally:
+        inspect.getfile = original_getfile
+
+
+def test_defaults_file_name_default():
+    """Test that default DEFAULTS_FILE_NAME is defaults.json."""
+    assert PluginConfig.DEFAULTS_FILE_NAME == "defaults.json"
 
 
 def test_get_file_mapping_path_returns_path(tmp_path):
     """Test that get_file_mapping_path returns a Path object."""
-    parser_dir = tmp_path / "test_parser"
-    parser_dir.mkdir()
-    config_dir = parser_dir / "config"
+    config_dir = tmp_path / "test_config"
     config_dir.mkdir()
+    config_subdir = config_dir / "config"
+    config_subdir.mkdir()
 
-    parser_file = parser_dir / "parser.py"
-    parser_file.write_text(
+    config_file = config_dir / "config.py"
+    config_file.write_text(
         """
-from r2x_core.parser import BaseParser
 from r2x_core.plugin_config import PluginConfig
-from r2x_core.store import DataStore
 
-class TestParser(BaseParser):
-    def build_system_components(self):
-        pass
-
-    def build_time_series(self):
-        pass
+class TestConfig(PluginConfig):
+    model_year: int
 """
     )
 
-    class ConcreteTestParser(BaseParser):
-        def build_system_components(self):
-            pass
+    class ConcreteTestConfig(PluginConfig):
+        model_year: int
 
-        def build_time_series(self):
-            pass
-
-    mapping_path = ConcreteTestParser.get_file_mapping_path()
+    mapping_path = ConcreteTestConfig.get_file_mapping_path()
 
     assert isinstance(mapping_path, Path)
     assert mapping_path.name == "file_mapping.json"
@@ -159,16 +191,11 @@ class TestParser(BaseParser):
 def test_get_file_mapping_path_custom_filename():
     """Test that FILE_MAPPING_NAME can be overridden."""
 
-    class CustomParser(BaseParser):
+    class CustomConfig(PluginConfig):
         FILE_MAPPING_NAME = "custom_mapping.json"
+        model_year: int
 
-        def build_system_components(self):
-            pass
-
-        def build_time_series(self):
-            pass
-
-    mapping_path = CustomParser.get_file_mapping_path()
+    mapping_path = CustomConfig.get_file_mapping_path()
 
     assert mapping_path.name == "custom_mapping.json"
     assert mapping_path.parent.name == "config"
@@ -177,30 +204,22 @@ def test_get_file_mapping_path_custom_filename():
 def test_get_file_mapping_path_default_filename():
     """Test that default FILE_MAPPING_NAME is file_mapping.json."""
 
-    class DefaultParser(BaseParser):
-        def build_system_components(self):
-            pass
+    class DefaultConfig(PluginConfig):
+        model_year: int
 
-        def build_time_series(self):
-            pass
-
-    mapping_path = DefaultParser.get_file_mapping_path()
+    mapping_path = DefaultConfig.get_file_mapping_path()
 
     assert mapping_path.name == "file_mapping.json"
-    assert DefaultParser.FILE_MAPPING_NAME == "file_mapping.json"
+    assert DefaultConfig.FILE_MAPPING_NAME == "file_mapping.json"
 
 
 def test_get_file_mapping_path_is_absolute():
     """Test that the returned path is absolute."""
 
-    class AbsoluteTestParser(BaseParser):
-        def build_system_components(self):
-            pass
+    class AbsoluteTestConfig(PluginConfig):
+        model_year: int
 
-        def build_time_series(self):
-            pass
-
-    mapping_path = AbsoluteTestParser.get_file_mapping_path()
+    mapping_path = AbsoluteTestConfig.get_file_mapping_path()
 
     assert mapping_path.is_absolute()
 
@@ -208,14 +227,10 @@ def test_get_file_mapping_path_is_absolute():
 def test_get_file_mapping_path_works_with_actual_file(tmp_path):
     """Test that get_file_mapping_path can locate an actual file."""
 
-    class RealFileParser(BaseParser):
-        def build_system_components(self):
-            pass
+    class RealFileConfig(PluginConfig):
+        model_year: int
 
-        def build_time_series(self):
-            pass
-
-    mapping_path = RealFileParser.get_file_mapping_path()
+    mapping_path = RealFileConfig.get_file_mapping_path()
 
     assert "tests" in str(mapping_path) or "test_plugin" in str(mapping_path)
     assert mapping_path.name == "file_mapping.json"
@@ -323,7 +338,7 @@ def test_get_cli_schema_integration_with_config_class():
 
     schema = RealisticConfig.get_cli_schema()
 
-    assert len(schema["properties"]) == 6
+    assert len(schema["properties"]) == 5  # 5 user-defined fields
     assert schema["properties"]["solve_year"]["required"] is True
     assert schema["properties"]["weather_year"]["required"] is True
     assert schema["properties"]["scenario"]["required"] is False
@@ -360,7 +375,7 @@ def test_plugin_manager_get_file_mapping_path_with_parser():
 
 
 def test_plugin_manager_get_file_mapping_path_without_parser():
-    """Test that get_file_mapping_path returns None for plugins without parsers."""
+    """Test that get_file_mapping_path works even for plugins without parsers."""
     from r2x_core.exporter import BaseExporter
 
     class TestExporter(BaseExporter):
@@ -377,9 +392,11 @@ def test_plugin_manager_get_file_mapping_path_without_parser():
         exporter=TestExporter,
     )
 
+    # Should still work since config is registered
     mapping_path = manager.get_file_mapping_path("exporter_only")
 
-    assert mapping_path is None
+    assert mapping_path is not None
+    assert isinstance(mapping_path, Path)
 
 
 def test_plugin_manager_get_file_mapping_path_nonexistent_plugin():
@@ -392,11 +409,13 @@ def test_plugin_manager_get_file_mapping_path_nonexistent_plugin():
 
 
 def test_plugin_manager_get_file_mapping_path_delegates_to_parser():
-    """Test that PluginManager delegates to parser's get_file_mapping_path."""
+    """Test that PluginManager delegates to config's get_file_mapping_path."""
+
+    class CustomMappingConfig(PluginConfig):
+        FILE_MAPPING_NAME = "custom_file_map.json"
+        model_year: int
 
     class CustomMappingParser(BaseParser):
-        FILE_MAPPING_NAME = "custom_file_map.json"
-
         def build_system_components(self):
             pass
 
@@ -406,7 +425,7 @@ def test_plugin_manager_get_file_mapping_path_delegates_to_parser():
     manager = PluginManager()
     manager.register_model_plugin(
         name="custom_mapping",
-        config=PluginConfig,
+        config=CustomMappingConfig,
         parser=CustomMappingParser,
     )
 
