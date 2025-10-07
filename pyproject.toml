@@ -5,10 +5,12 @@ authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
     { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
     { name = "Vivienne Liu", email = "vivienne.liu@nrel.gov"},
+    { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
     { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
 maintainers = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
+    { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
     { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
 ]
 description = "Extensible framework for building power system model translators with plugin architecture"
