@@ -1,10 +1,9 @@
 # Models
 
-```{eval-rst}
-.. autopydantic_model:: r2x_core.DataFile
-   :model-show-json: False
-   :model-show-config-summary: False
-   :model-show-validator-members: False
-   :model-show-validator-summary: False
-   :field-list-validators: False
-```
+For complete API documentation of data models, see {doc}`api`.
+
+## Quick Reference
+
+- {py:class}`~r2x_core.DataFile` - Data file configuration model
+- {py:class}`~r2x_core.DataStore` - Data store container
+- {py:class}`~r2x_core.DataReader` - Data reader utility

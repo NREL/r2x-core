@@ -1,10 +1,7 @@
 # Exporter Framework
 
-## Base Exporter
+For complete API documentation of the exporter framework, see {doc}`api`.
 
-```{eval-rst}
-.. autoclass:: r2x_core.BaseExporter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+## Quick Reference
+
+- {py:class}`~r2x_core.BaseExporter` - Exporter base class

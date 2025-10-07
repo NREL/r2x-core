@@ -203,9 +203,7 @@ class System(InfrasysSystem):
         to_json : Serialize system to JSON file
         """
         logger.info("Deserializing system from {}", filename)
-        return super().from_json(
-            filename=filename, upgrade_handler=upgrade_handler, **kwargs
-        )  # type: ignore
+        return super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore
 
     def components_to_records(
         self,
@@ -266,16 +264,11 @@ class System(InfrasysSystem):
 
         # Filter fields if specified
         if fields is not None:
-            records = [
-                {k: v for k, v in record.items() if k in fields} for record in records
-            ]
+            records = [{k: v for k, v in record.items() if k in fields} for record in records]
 
         # Apply key mapping if provided
         if key_mapping is not None:
-            records = [
-                {key_mapping.get(k, k): v for k, v in record.items()}
-                for record in records
-            ]
+            records = [{key_mapping.get(k, k): v for k, v in record.items()} for record in records]
 
         return records
 
@@ -343,9 +336,7 @@ class System(InfrasysSystem):
         get_components : Retrieve components by type with filtering
         """
         # Get records using components_to_records method
-        records = self.components_to_records(
-            filter_func=filter_func, fields=fields, key_mapping=key_mapping
-        )
+        records = self.components_to_records(filter_func=filter_func, fields=fields, key_mapping=key_mapping)
 
         # Fail fast if no records to export
         if not records:
@@ -357,9 +348,7 @@ class System(InfrasysSystem):
         fpath.parent.mkdir(parents=True, exist_ok=True)
 
         with open(fpath, "w", newline="") as f:
-            writer = csv.DictWriter(
-                f, fieldnames=records[0].keys(), **dict_writer_kwargs
-            )
+            writer = csv.DictWriter(f, fieldnames=records[0].keys(), **dict_writer_kwargs)
             writer.writeheader()
             writer.writerows(records)
         logger.info("Exported {} components to {}", len(records), fpath)

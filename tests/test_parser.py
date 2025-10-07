@@ -1,17 +1,19 @@
 """Tests for parser module."""
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 from infrasys import Component
-from r2x_core.parser import BaseParser, ParserConfig
-from r2x_core.store import DataStore
+
 from r2x_core.datafile import DataFile
-from r2x_core.exceptions import ParserError, ValidationError, ComponentCreationError
+from r2x_core.exceptions import ComponentCreationError, ParserError, ValidationError
+from r2x_core.parser import BaseParser
+from r2x_core.plugin_config import PluginConfig
+from r2x_core.store import DataStore
 
 
 # Mock configuration for testing
-class MockModelConfig(ParserConfig):
+class MockModelConfig(PluginConfig):
     """Test configuration."""
 
     model_year: int
@@ -64,7 +66,7 @@ class MockParser(BaseParser):
         self.time_series_built = True
         # Mock time series attachment
         mock_ts = Mock()
-        bus = list(self.system.get_components(MockBus))[0]
+        bus = next(iter(self.system.get_components(MockBus)))
         self.add_time_series(bus, mock_ts)
 
     def post_process_system(self) -> None:
@@ -102,7 +104,7 @@ def mock_parser(sample_config, sample_data_store):
     return MockParser(sample_config, sample_data_store)
 
 
-# ParserConfig tests
+# PluginConfig tests
 
 
 def test_config_creation():
@@ -124,7 +126,9 @@ def test_config_with_defaults():
 
 def test_config_validation():
     """Test Pydantic validation works."""
-    with pytest.raises(Exception):  # Pydantic ValidationError
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         MockModelConfig(scenario="test")  # Missing required model_year
 
 
@@ -454,7 +458,7 @@ def test_parser_with_custom_validation(tmp_path):
     data_store = DataStore(folder=tmp_path)
     data_store.add_data_file(DataFile(name="buses", fpath=bus_file))
 
-    config = ParserConfig()
+    config = PluginConfig()
     parser = ValidatingParser(config, data_store)
 
     # Use patch for System
@@ -536,11 +540,11 @@ def test_empty_hook_methods_coverage(tmp_path):
 
         def build_system_components(self):
             """Minimal implementation."""
-            pass  # Line 952
+            # Line 952
 
         def build_time_series(self):
             """Minimal implementation."""
-            pass  # Line 1064
+            # Line 1064
 
         # validate_inputs() not overridden - uses base class pass (line 816)
         # post_process_system() not overridden - uses base class pass (line 1123)
@@ -550,7 +554,7 @@ def test_empty_hook_methods_coverage(tmp_path):
     data_store = DataStore(folder=tmp_path)
     data_store.add_data_file(DataFile(name="buses", fpath=bus_file))
 
-    config = ParserConfig()
+    config = PluginConfig()
     parser = MinimalParser(config, data_store)
 
     with patch("r2x_core.system.System") as mock_system_class:
