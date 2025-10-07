@@ -93,8 +93,9 @@ defaults = ReEDSConfig.load_defaults()
 config = ReEDSConfig(
     solve_year=2030,
     weather_year=2012,
-    defaults=defaults
 )
+# Use defaults dict in your parser/exporter logic
+excluded_techs = defaults.get("excluded_techs", [])
 ```
 
 **defaults.json example:**
@@ -375,16 +376,19 @@ from r2x_core import DataStore
 from my_plugin.config import MyModelConfig
 from my_plugin.parser import MyModelParser
 
-# Load configuration with defaults
+# Load configuration and defaults
 defaults = MyModelConfig.load_defaults()
 config = MyModelConfig(
     solve_year=2030,
     weather_year=2012,
-    defaults=defaults
 )
 
 # Create data store directly from config (recommended)
 store = DataStore.from_plugin_config(config, folder="/data/mymodel")
+
+# Use defaults in parser logic
+parser = MyModelParser(config, store)
+parser.excluded_techs = defaults.get("excluded_techs", [])
 
 # Or manually get mapping path
 mapping_path = MyModelConfig.get_file_mapping_path()
@@ -411,19 +415,22 @@ plugin/
 ## Load defaults in configuration
 
 ```python
-# Good - loads defaults automatically
+# Good - loads defaults automatically and uses in parser logic
 defaults = MyConfig.load_defaults()
-config = MyConfig(year=2030, defaults=defaults)
+config = MyConfig(year=2030)
+# Use defaults dict in your parser/exporter
+excluded = defaults.get("excluded_techs", [])
 
 # Not recommended - hardcoding defaults
-config = MyConfig(year=2030, defaults={"tech": ["solar", "wind"]})
+defaults = {"tech": ["solar", "wind"]}
 ```
 
 ## Use file mapping discovery
 
 ```python
 # Good - uses from_plugin_config (cleanest)
-config = MyConfig(year=2030, defaults=defaults)
+defaults = MyConfig.load_defaults()
+config = MyConfig(year=2030)
 store = DataStore.from_plugin_config(config, folder=data_folder)
 
 # Also good - uses standard discovery

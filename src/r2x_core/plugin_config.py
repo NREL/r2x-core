@@ -192,7 +192,7 @@ class PluginConfig(BaseModel):
         Returns
         -------
         dict[str, Any]
-            Dictionary of default constants to use in the `defaults` field.
+            Dictionary of default constants to use in your parser/exporter logic.
             Returns empty dict if file doesn't exist.
 
         Examples
@@ -204,8 +204,9 @@ class PluginConfig(BaseModel):
         >>> config = ReEDSConfig(
         ...     solve_years=2030,
         ...     weather_years=2012,
-        ...     defaults=defaults
         ... )
+        >>> # Use defaults dict in your parser/exporter logic
+        >>> excluded_techs = defaults.get("excluded_techs", [])
 
         Load from custom path:
 

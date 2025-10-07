@@ -328,11 +328,11 @@ class MyModelConfig(PluginConfig):
 
 # Load defaults from config/defaults.json
 defaults = MyModelConfig.load_defaults()
-config = MyModelConfig(solve_year=2030, defaults=defaults)
+config = MyModelConfig(solve_year=2030)
 
-# Access default values
-excluded_techs = config.defaults.get("excluded_techs", [])
-default_capacity = config.defaults.get("default_capacity", 100.0)
+# Access default values in your parser logic
+excluded_techs = defaults.get("excluded_techs", [])
+default_capacity = defaults.get("default_capacity", 100.0)
 ```
 
 # ... discover file mappings
