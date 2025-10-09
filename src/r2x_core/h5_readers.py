@@ -4,7 +4,7 @@ This module provides a generic H5 reader that adapts to any file structure
 through configuration parameters, without hardcoded model-specific logic.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import numpy as np
@@ -98,11 +98,12 @@ def _parse_datetime_array(dt_strings: Any, strip_timezone: bool) -> Any:
         Array of datetime strings in ISO 8601 format.
     strip_timezone : bool
         Whether to convert timezone-aware datetimes to timezone-naive.
+        If False, converts to UTC before making naive.
 
     Returns
     -------
     np.ndarray
-        Array of datetime64[us] values.
+        Array of datetime64[us] values (always timezone-naive).
 
     Raises
     ------
@@ -114,8 +115,13 @@ def _parse_datetime_array(dt_strings: Any, strip_timezone: bool) -> Any:
         try:
             dt_obj = datetime.fromisoformat(dt_str)
 
-            if strip_timezone and dt_obj.tzinfo is not None:
-                dt_obj = dt_obj.replace(tzinfo=None)
+            if dt_obj.tzinfo is not None:
+                if strip_timezone:
+                    # Strip timezone info (keep local time)
+                    dt_obj = dt_obj.replace(tzinfo=None)
+                else:
+                    # Convert to UTC then make naive
+                    dt_obj = dt_obj.astimezone(UTC).replace(tzinfo=None)
 
             parsed.append(dt_obj)
         except (ValueError, AttributeError) as e:

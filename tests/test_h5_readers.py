@@ -5,6 +5,7 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import pytest
 
 from r2x_core.h5_readers import configurable_h5_reader
 
@@ -187,5 +188,176 @@ def test_configurable_h5_reader_no_config_defaults():
 
         assert "data" in result
         assert len(result["data"]) == 3
+    finally:
+        tmp_path.unlink()
+
+
+def test_1d_data_with_columns():
+    """Test 1D data when columns_key is provided (line 47)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            columns = np.array(["single_col"], dtype="S")
+            data = np.array([1.0, 2.0, 3.0])
+            f.create_dataset("columns", data=columns)
+            f.create_dataset("data", data=data)
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="data",
+                columns_key="columns",
+            )
+
+        assert "single_col" in result
+        assert len(result["single_col"]) == 3
+    finally:
+        tmp_path.unlink()
+
+
+def test_1d_data_without_columns_key():
+    """Test 1D data without columns_key (lines 50-51)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            data = np.array([10.0, 20.0, 30.0])
+            f.create_dataset("my_data", data=data)
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="my_data",
+            )
+
+        assert "my_data" in result
+        assert len(result["my_data"]) == 3
+    finally:
+        tmp_path.unlink()
+
+
+def test_2d_data_without_columns_key():
+    """Test 2D data without columns_key (line 52)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            data = np.array([[1.0, 2.0], [3.0, 4.0]])
+            f.create_dataset("values", data=data)
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="values",
+            )
+
+        assert "values_col_0" in result
+        assert "values_col_1" in result
+        assert result["values_col_0"][0] == 1.0
+    finally:
+        tmp_path.unlink()
+
+
+def test_non_string_datetime():
+    """Test datetime data that's not strings (line 64)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            data = np.array([1.0, 2.0])
+            dt_numeric = np.array([1609459200, 1609545600])
+            f.create_dataset("data", data=data)
+            f.create_dataset("time", data=dt_numeric)
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="data",
+                datetime_key="time",
+            )
+
+        assert "datetime" in result
+        assert len(result["datetime"]) == 2
+    finally:
+        tmp_path.unlink()
+
+
+def test_datetime_with_timezone_kept():
+    """Test datetime parsing with timezone kept (lines 118-119)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            data = np.array([1.0, 2.0])
+            dt_strings = np.array(
+                ["2007-01-01T00:00:00-06:00", "2007-01-01T01:00:00-06:00"],
+                dtype="S",
+            )
+            f.create_dataset("data", data=data)
+            f.create_dataset("time", data=dt_strings)
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="data",
+                datetime_key="time",
+                strip_timezone=False,
+            )
+
+        assert "datetime" in result
+    finally:
+        tmp_path.unlink()
+
+
+def test_datetime_parsing_error():
+    """Test datetime parsing error handling (lines 121-123)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            data = np.array([1.0, 2.0])
+            dt_strings = np.array(["invalid-datetime", "also-invalid"], dtype="S")
+            f.create_dataset("data", data=data)
+            f.create_dataset("time", data=dt_strings)
+
+        with (
+            h5py.File(str(tmp_path), "r") as f,
+            pytest.raises(ValueError, match="Failed to parse datetime string"),
+        ):
+            configurable_h5_reader(
+                f,
+                data_key="data",
+                datetime_key="time",
+            )
+    finally:
+        tmp_path.unlink()
+
+
+def test_format_column_name_year():
+    """Test _format_column_name for year variations (line 134)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            data = np.array([1.0, 2.0])
+            f.create_dataset("data", data=data)
+            f.create_dataset("model_year", data=np.array([2030, 2035]))
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="data",
+                additional_keys=["model_year"],
+            )
+
+        assert "year" in result
     finally:
         tmp_path.unlink()
