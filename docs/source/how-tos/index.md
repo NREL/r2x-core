@@ -19,6 +19,7 @@ configuration
 :maxdepth: 1
 
 data-reading
+h5_readers
 ```
 
 ## Working with DataFiles
