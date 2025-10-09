@@ -179,7 +179,7 @@ class System(InfrasysSystem):
                         x.model_dump_custom() for x in self._supplemental_attr_mgr.iter_all()
                     ],
                     "time_series": {
-                        "directory": time_series_dir.name,
+                        "directory": str(time_series_dir),
                     },
                 }
                 extra = self.serialize_system_attributes()
