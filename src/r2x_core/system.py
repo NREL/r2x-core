@@ -1,13 +1,17 @@
 """R2X Core System class - subclass of infrasys.System with R2X-specific functionality."""
 
 import csv
+import sys
+import tempfile
 from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
 from typing import Any
 
+import orjson
 from infrasys.component import Component
 from infrasys.system import System as InfrasysSystem
+from infrasys.utils.sqlite import backup
 from loguru import logger
 
 
@@ -119,17 +123,19 @@ class System(InfrasysSystem):
 
     def to_json(
         self,
-        filename: Path | str,
+        filename: Path | str | None = None,
         overwrite: bool = False,
         indent: int | None = None,
         data: Any = None,
     ) -> None:
-        """Serialize system to JSON file.
+        """Serialize system to JSON file or stdout.
 
         Parameters
         ----------
-        filename : Path or str
-            Output JSON file path.
+        filename : Path or str, optional
+            Output JSON file path. If None, prints JSON to stdout.
+            Note: When writing to stdout, time series are serialized to a temporary
+            directory that will be cleaned up automatically.
         overwrite : bool, default False
             If True, overwrite existing file. If False, raise error if file exists.
         indent : int, optional
@@ -149,13 +155,62 @@ class System(InfrasysSystem):
         Examples
         --------
         >>> system.to_json("output/system.json", overwrite=True, indent=2)
+        >>> system.to_json()  # Print to stdout
 
         See Also
         --------
         from_json : Load system from JSON file
         """
-        logger.info("Serializing system '{}' to {}", self.name, filename)
-        return super().to_json(filename, overwrite=overwrite, indent=indent, data=data)
+        if filename is None:
+            logger.info("Serializing system '{}' to stdout", self.name)
+            # Use a temporary directory for time series
+            with tempfile.TemporaryDirectory() as tmpdir:
+                time_series_dir = Path(tmpdir) / "time_series"
+                time_series_dir.mkdir(exist_ok=True)
+
+                # Build the system data dictionary (same as parent class)
+                system_data: dict[str, Any] = {
+                    "name": self.name,
+                    "description": self.description,
+                    "uuid": str(self.uuid),
+                    "data_format_version": self.data_format_version,
+                    "components": [x.model_dump_custom() for x in self._component_mgr.iter_all()],
+                    "supplemental_attributes": [
+                        x.model_dump_custom() for x in self._supplemental_attr_mgr.iter_all()
+                    ],
+                    "time_series": {
+                        "directory": time_series_dir.name,
+                    },
+                }
+                extra = self.serialize_system_attributes()
+                system_data.update(extra)
+
+                if data is None:
+                    data = system_data
+                else:
+                    if "system" not in data:
+                        data["system"] = system_data
+
+                # Serialize time series to temporary directory
+                backup(self._con, time_series_dir / self.DB_FILENAME)
+                self._time_series_mgr.serialize(
+                    system_data["time_series"], time_series_dir, db_name=self.DB_FILENAME
+                )
+
+                # Serialize to JSON and write to stdout
+                if indent is not None:
+                    json_bytes = orjson.dumps(data, option=orjson.OPT_INDENT_2)
+                else:
+                    json_bytes = orjson.dumps(data)
+
+                sys.stdout.buffer.write(json_bytes)
+                sys.stdout.buffer.write(b"\n")
+                sys.stdout.buffer.flush()
+
+                logger.debug("Time series data written to temporary directory (will be cleaned up)")
+        else:
+            logger.info("Serializing system '{}' to {}", self.name, filename)
+            return super().to_json(filename, overwrite=overwrite, indent=indent, data=data)
 
     @classmethod
     def from_json(
