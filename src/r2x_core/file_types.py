@@ -68,6 +68,7 @@ class H5Format(FileFormat):
     """HDF5 data format.
 
     Supports time series data storage with hierarchical organization.
+    Use reader_kwargs to configure how the file is read.
     """
 
     __slots__ = ()

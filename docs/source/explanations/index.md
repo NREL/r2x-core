@@ -8,6 +8,7 @@ Explanations provide background and context about r2x-core's design and architec
 :maxdepth: 2
 
 plugin-system
+h5-readers
 ```
 
 ## When to Read Explanations

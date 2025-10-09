@@ -3,7 +3,7 @@
 import json
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from xml.etree import ElementTree
 
 from h5py import File as h5pyFile
@@ -74,46 +74,58 @@ def _(file_type_class: H5Format, file_path: Path, **reader_kwargs: Any) -> LazyF
     Parameters
     ----------
     file_type_class : H5Format
-        H5Format class (not used, but required for dispatch).
+        H5Format instance.
     file_path : Path
         Path to the HDF5 file.
     reader_kwargs: dict[str, Any]
-        Additional kwargs for reader function.
+        Configuration describing the H5 file structure. Common options:
+
+        - **data_key** (str): Key for main data array
+        - **columns_key** (str): Key for column names dataset
+        - **index_key** (str): Key for index data
+        - **datetime_key** (str): Key for datetime strings that need parsing
+        - **additional_keys** (list[str]): Additional datasets to include as columns
+        - **decode_bytes** (bool): Whether to decode byte strings (default: True)
+        - **strip_timezone** (bool): Whether to strip timezone info (default: True)
 
     Returns
     -------
     pl.LazyFrame
         Lazy DataFrame containing the HDF5 data.
 
-    Notes
-    -----
-    This implementation reads the first dataset found in the HDF5 file.
-    For more complex HDF5 structures, customize this method based on your needs.
+    Examples
+    --------
+    >>> from r2x_core.file_types import H5Format
+    >>> # Default reader (reads first dataset)
+    >>> df = read_file_by_type(H5Format(), Path("data.h5"))
+    >>>
+    >>> # Describe file structure with configuration
+    >>> df = read_file_by_type(
+    ...     H5Format(),
+    ...     Path("load.h5"),
+    ...     data_key="data",
+    ...     columns_key="columns",
+    ...     datetime_key="index_datetime",
+    ...     additional_keys=["index_year"]
+    ... )
+    >>>
+    >>> # Custom tabular format
+    >>> df = read_file_by_type(
+    ...     H5Format(),
+    ...     Path("data.h5"),
+    ...     data_key="values",
+    ...     columns_key="col_names",
+    ...     index_key="timestamps"
+    ... )
     """
+    from . import h5_readers
+
     logger.debug("Reading H5 file: {}", file_path)
     with h5pyFile(str(file_path), "r") as f:
-        # Get the first dataset key
-        dataset_key = next(iter(f.keys()))
-        dataset = f[dataset_key]
-
-        # Read dataset data
-        if hasattr(dataset, "shape") and hasattr(dataset, "__getitem__"):
-            data_array = dataset[:]
-            # Convert to DataFrame - adjust based on your data structure
-            # Cast to Any to simplify type handling - we know this is numpy-like at runtime
-            array_data = cast(Any, data_array)
-            if array_data.ndim == 1:
-                df = DataFrame({dataset_key: array_data})
-            else:
-                # For multi-dimensional arrays, flatten or handle appropriately
-                df = DataFrame(
-                    {f"{dataset_key}_col_{i}": array_data[:, i] for i in range(array_data.shape[1])}
-                )
-            return df.lazy()
-        else:
-            # Fallback for non-array datasets
-            df = DataFrame({dataset_key: [str(dataset)]})
-            return df.lazy()
+        # Use configurable reader with reader_kwargs
+        data_dict = h5_readers.configurable_h5_reader(f, **reader_kwargs)
+        df = DataFrame(data_dict)
+        return df.lazy()
 
 
 @read_file_by_type.register

@@ -146,6 +146,84 @@ def test_to_json_no_overwrite_raises(tmp_path):
         system.to_json(output_file, overwrite=False)
 
 
+def test_to_json_stdout(capsys):
+    """Test serializing system to stdout."""
+    import json
+
+    system = System(name="TestSystem", description="Test stdout")
+
+    # Serialize to stdout
+    system.to_json()
+
+    # Capture the output
+    captured = capsys.readouterr()
+    output_data = json.loads(captured.out)
+
+    # Verify the JSON structure
+    assert output_data["name"] == "TestSystem"
+    assert output_data["description"] == "Test stdout"
+    assert "uuid" in output_data
+    assert "components" in output_data
+
+
+def test_to_json_stdout_with_indent(capsys):
+    """Test serializing system to stdout with indentation."""
+    import json
+
+    system = System(name="TestSystem", description="Test stdout with indent")
+
+    # Serialize to stdout with indentation
+    system.to_json(indent=2)
+
+    # Capture the output
+    captured = capsys.readouterr()
+    output_data = json.loads(captured.out)
+
+    # Verify the JSON structure
+    assert output_data["name"] == "TestSystem"
+    assert output_data["description"] == "Test stdout with indent"
+
+    # Verify it's formatted (has newlines indicating indentation)
+    assert "\n" in captured.out
+
+
+def test_to_json_stdout_with_time_series(capsys):
+    """Test serializing system with time series to stdout."""
+    import json
+    from datetime import datetime, timedelta
+
+    import numpy as np
+    from infrasys import Component
+    from infrasys.time_series_models import SingleTimeSeries
+
+    system = System(name="TestSystem", description="Test stdout with time series")
+
+    # Add a component
+    component = Component(name="TestComponent")
+    system.add_components(component)
+
+    # Add time series data
+    ts_data = SingleTimeSeries.from_array(
+        data=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
+        name="test_variable",
+        initial_timestamp=datetime(2024, 1, 1),
+        resolution=timedelta(hours=1),
+    )
+    system.add_time_series(ts_data, component)
+
+    # Serialize to stdout
+    system.to_json()
+
+    # Capture the output
+    captured = capsys.readouterr()
+    output_data = json.loads(captured.out)
+
+    # Verify the JSON structure includes time series metadata
+    assert output_data["name"] == "TestSystem"
+    assert "time_series" in output_data
+    assert "directory" in output_data["time_series"]
+
+
 # System export tests
 
 
