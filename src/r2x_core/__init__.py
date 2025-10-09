@@ -4,6 +4,7 @@ from importlib.metadata import version
 
 from loguru import logger
 
+from . import h5_readers
 from .datafile import (
     DataFile,
 )
@@ -14,7 +15,7 @@ from .exceptions import (
     ValidationError,
 )
 from .exporter import BaseExporter
-from .file_types import FileFormat
+from .file_types import FileFormat, H5Format
 from .parser import BaseParser
 from .plugin_config import PluginConfig
 from .plugins import (
@@ -43,6 +44,7 @@ __all__ = [
     "ExporterError",
     "FileFormat",
     "FilterFunction",
+    "H5Format",
     "ParserError",
     "PluginComponent",
     "PluginConfig",
@@ -50,4 +52,5 @@ __all__ = [
     "System",
     "SystemModifier",
     "ValidationError",
+    "h5_readers",
 ]
