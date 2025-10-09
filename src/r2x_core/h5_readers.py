@@ -4,6 +4,7 @@ This module provides a generic H5 reader that adapts to any file structure
 through configuration parameters, without hardcoded model-specific logic.
 """
 
+from datetime import datetime
 from typing import Any
 
 import numpy as np
@@ -56,11 +57,8 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
         if decode_bytes and dt_data.dtype.kind == "S":
             dt_data = dt_data.astype(str)
 
-        if reader_kwargs.get("strip_timezone", True) and len(dt_data) > 0 and isinstance(dt_data[0], str):
-            dt_parsed = np.array(
-                [s.split("T")[0] + "T" + s.split("T")[1][:8] if "T" in s else s for s in dt_data],
-                dtype="datetime64[h]",
-            ).astype("datetime64[us]")
+        if len(dt_data) > 0 and isinstance(dt_data[0], str):
+            dt_parsed = _parse_datetime_array(dt_data, reader_kwargs.get("strip_timezone", True))
             result[reader_kwargs.get("datetime_column_name", "datetime")] = dt_parsed
         else:
             result[reader_kwargs.get("datetime_column_name", "datetime")] = dt_data
@@ -81,13 +79,50 @@ def _read_first_dataset(h5_file: Any) -> dict[str, Any]:
     key = next(iter(h5_file.keys()))
     dataset = h5_file[key]
 
-    if not (hasattr(dataset, "shape") and hasattr(dataset, "__getitem__")):
+    try:
+        data = dataset[:]
+    except (TypeError, AttributeError):
         return {key: [str(dataset)]}
 
-    data = dataset[:]
     if data.ndim == 1:
         return {key: data}
     return {f"{key}_col_{i}": data[:, i] for i in range(data.shape[1])}
+
+
+def _parse_datetime_array(dt_strings: Any, strip_timezone: bool) -> Any:
+    """Parse array of datetime strings using standard library.
+
+    Parameters
+    ----------
+    dt_strings : array-like
+        Array of datetime strings in ISO 8601 format.
+    strip_timezone : bool
+        Whether to convert timezone-aware datetimes to timezone-naive.
+
+    Returns
+    -------
+    np.ndarray
+        Array of datetime64[us] values.
+
+    Raises
+    ------
+    ValueError
+        If datetime strings cannot be parsed.
+    """
+    parsed: list[datetime] = []
+    for i, dt_str in enumerate(dt_strings):
+        try:
+            dt_obj = datetime.fromisoformat(dt_str)
+
+            if strip_timezone and dt_obj.tzinfo is not None:
+                dt_obj = dt_obj.replace(tzinfo=None)
+
+            parsed.append(dt_obj)
+        except (ValueError, AttributeError) as e:
+            msg = f"Failed to parse datetime string at index {i}: '{dt_str}'. Expected ISO 8601 format. Error: {e}"
+            raise ValueError(msg) from e
+
+    return np.array(parsed, dtype="datetime64[us]")
 
 
 def _format_column_name(key: str) -> str:
