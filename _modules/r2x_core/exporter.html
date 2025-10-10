@@ -1,0 +1,793 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.09.25 -->
+        <title>r2x_core.exporter - r2x-core</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=580074bf" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-reports.089ed2e62f89368aa21ac7591d90c12a.css?v=83177741" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">r2x-core</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <span class="sidebar-brand-text">r2x-core</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tutorials/getting-started.html">Getting Started with R2X Core</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../how-tos/index.html">How-To Guides</a><input aria-label="Toggle navigation of How-To Guides" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/configuration.html">… create JSON configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/configuration.html#load-datastore-from-configuration">… load DataStore from configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/configuration.html#export-existing-configurations">… export existing configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/configuration.html#validate-configurations">… validate configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/configuration.html#manage-environment-specific-configurations">… manage environment-specific configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/data-reading.html">… read data files with DataReader</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/data-reading.html#configure-data-caching">… configure data caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/data-reading.html#handle-different-file-types">… handle different file types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/data-reading.html#work-with-optional-files">… work with optional files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html">Working with HDF5 Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#read-an-hdf5-file-with-default-settings">… read an HDF5 file with default settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#read-tabular-hdf5-data-with-column-names">… read tabular HDF5 data with column names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#read-hdf5-time-series-data">… read HDF5 time series data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#read-hdf5-files-with-metadata-fields">… read HDF5 files with metadata fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#configure-hdf5-reading-in-json">… configure HDF5 reading in JSON</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#create-a-datastore-with-multiple-hdf5-files">… create a DataStore with multiple HDF5 files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/h5_readers.html#process-hdf5-data-with-datetime-filtering">… process HDF5 data with datetime filtering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datafile-basics.html">… create a basic DataFile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datafile-basics.html#map-column-names-during-loading">… map column names during loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datafile-basics.html#filter-data-during-loading">… filter data during loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datafile-basics.html#work-with-different-file-types">… work with different file types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datafile-basics.html#use-custom-reader-functions">… use custom reader functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datastore-management.html">… create a DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datastore-management.html#add-files-to-a-datastore">… add files to a DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datastore-management.html#read-data-from-a-datastore">… read data from a DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datastore-management.html#manage-datastore-contents">… manage DataStore contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/datastore-management.html#save-and-load-datastore-configurations">… save and load DataStore configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/file-operations.html">… perform column operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/file-operations.html#filter-data-during-loading">… filter data during loading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/file-operations.html#reshape-data-with-pivot-operations">… reshape data with pivot operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/file-operations.html#select-specific-columns">… select specific columns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html">… create a basic parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#validate-inputs-before-building">… validate inputs before building</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#create-components-with-validation">… create components with validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#skip-validation-for-performance">… skip validation for performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#attach-time-series-to-components">… attach time series to components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#post-process-the-system">… post-process the system</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#use-parser-with-plugin-system">… use parser with plugin system</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#handle-errors-gracefully">… handle errors gracefully</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#customize-component-creation">… customize component creation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#work-with-multiple-model-years">… work with multiple model years</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#integrate-with-datastore-transformations">… integrate with DataStore transformations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#use-plugin-standards-for-configuration">… use plugin standards for configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#discover-file-mappings">… discover file mappings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/parser-basics.html#generate-cli-schemas">… generate CLI schemas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html">… get all components as records</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#filter-components-by-type">… filter components by type</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#filter-components-by-attributes">… filter components by attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#select-specific-fields">… select specific fields</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#rename-fields-with-key-mapping">… rename fields with key mapping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#combine-filtering-field-selection-and-renaming">… combine filtering, field selection, and renaming</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#use-records-for-data-analysis">… use records for data analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#export-components-to-csv">… export components to CSV</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/system-operations.html#count-components-by-type">… count components by type</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html">… mark a file as time series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#configure-time-series-files-in-datastore">… configure time series files in DataStore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#validate-time-series-file-formats">… validate time series file formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#store-multi-year-time-series-in-a-single-file">… store multi-year time series in a single file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#filter-time-series-files-in-a-parser">… filter time series files in a parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#handle-different-time-series-file-types">… handle different time series file types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#export-time-series-files">… export time series files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/timeseries-files.html#add-support-for-a-new-time-series-format">… add support for a new time series format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html">… create a basic exporter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#export-components-to-csv-files">… export components to CSV files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#export-time-series-data">… export time series data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#handle-multi-year-time-series-export">… handle multi-year time series export</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#validate-export-configuration">… validate export configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#use-custom-export-transformations">… use custom export transformations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#export-with-progress-logging">… export with progress logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/exporter-basics.html#handle-optional-time-series-files">… handle optional time series files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html">… follow plugin standards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#use-standard-directory-structure">… use standard directory structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#create-configuration-classes">… create configuration classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#customize-file-and-directory-names">… customize file and directory names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#load-default-constants">… load default constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#create-file-mappings">… create file mappings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#get-file-mapping-path">… get file mapping path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#use-custom-mapping-filename">… use custom mapping filename</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#create-datastore-from-config">… create DataStore from config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#get-mapping-path-from-pluginmanager">… get mapping path from PluginManager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#generate-cli-schemas">… generate CLI schemas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#build-cli-tools-from-schema">… build CLI tools from schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#understand-cli-flag-naming">… understand CLI flag naming</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#see-complete-plugin-example">… see complete plugin example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#follow-best-practices">… follow best practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-standards.html#see-also">… see also</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html">… register a complete model plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#register-a-parser-only-plugin">… register a parser-only plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#register-an-exporter-only-plugin">… register an exporter-only plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#register-a-system-modifier">… register a system modifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#register-a-system-modifier-with-context">… register a system modifier with context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#register-filter-functions">… register filter functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#register-a-polymorphic-filter">… register a polymorphic filter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#create-an-external-plugin-package">… create an external plugin package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-registration.html#test-plugin-registration">… test plugin registration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html">… discover registered plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#load-and-use-a-parser">… load and use a parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#load-and-use-an-exporter">… load and use an exporter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#apply-a-system-modifier">… apply a system modifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#apply-multiple-modifiers-in-sequence">… apply multiple modifiers in sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#apply-modifiers-with-context">… apply modifiers with context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#apply-a-filter-to-data">… apply a filter to data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#chain-multiple-filters">… chain multiple filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#use-filters-in-parser">… use filters in parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#discover-plugins-from-entry-points">… discover plugins from entry points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#build-a-translation-application">… build a translation application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#handle-missing-plugins-gracefully">… handle missing plugins gracefully</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../how-tos/plugin-usage.html#validate-translation-path">… validate translation path</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../explanations/index.html">Explanations</a><input aria-label="Toggle navigation of Explanations" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/plugin-system.html">Plugin System Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../explanations/h5-readers.html">HDF5 Reader System</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../references/index.html">Reference</a><input aria-label="Toggle navigation of Reference" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../references/api.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/system.html">System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/parser.html">Parser Framework</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/exporter.html">Exporter Framework</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/plugins.html">Plugin System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/processors.html">Data Processors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/utils.html">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/exceptions.html">Exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/file-formats.html">File Formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/file-types.html">File Types API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../references/models.html">Models</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../CHANGELOG.html">Changelog</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for r2x_core.exporter</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Base exporter framework for exporting infrasys System objects to model formats.</span>
+
+<span class="sd">This module provides the foundational exporter infrastructure that applications should use</span>
+<span class="sd">to create model-specific exporters (e.g., ReEDSExporter, PlexosExporter, SiennaExporter).</span>
+<span class="sd">The exporter coordinates component export, time series export, and file writing workflows</span>
+<span class="sd">while leveraging the DataStore for file management.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">BaseExporter</span>
+<span class="sd">    Abstract base exporter class for exporting infrasys.System objects.</span>
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">Create a model-specific exporter:</span>
+
+<span class="sd">&gt;&gt;&gt; from pydantic import BaseModel</span>
+<span class="sd">&gt;&gt;&gt; from r2x_core.exporter import BaseExporter</span>
+<span class="sd">&gt;&gt;&gt; from r2x_core.store import DataStore</span>
+<span class="sd">&gt;&gt;&gt; from r2x_core.system import System</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; class MyModelConfig(BaseModel):</span>
+<span class="sd">...     model_year: int</span>
+<span class="sd">...     scenario: str</span>
+<span class="sd">...     export_timeseries: bool = True</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; class MyModelExporter(BaseExporter):</span>
+<span class="sd">...     def __init__(self, config: MyModelConfig, system: System, data_store: DataStore, **kwargs):</span>
+<span class="sd">...         super().__init__(config, system, data_store, **kwargs)</span>
+<span class="sd">...         self.model_year = config.model_year</span>
+<span class="sd">...</span>
+<span class="sd">...     def export(self) -&gt; None:</span>
+<span class="sd">...         logger.info(f&quot;Exporting to MyModel format for year {self.model_year}&quot;)</span>
+<span class="sd">...         self._export_generators()</span>
+<span class="sd">...         self._export_buses()</span>
+<span class="sd">...         if self.config.export_timeseries:</span>
+<span class="sd">...             self.export_time_series()</span>
+<span class="sd">...         logger.info(&quot;Export complete&quot;)</span>
+<span class="sd">...</span>
+<span class="sd">...     def _export_generators(self) -&gt; None:</span>
+<span class="sd">...         gen_file = self.data_store.data_files[&quot;generators&quot;]</span>
+<span class="sd">...         self.system.export_components_to_csv(</span>
+<span class="sd">...             file_path=gen_file.file_path,</span>
+<span class="sd">...             filter_func=lambda c: isinstance(c, Generator)</span>
+<span class="sd">...         )</span>
+<span class="sd">...</span>
+<span class="sd">...     def _export_buses(self) -&gt; None:</span>
+<span class="sd">...         pass  # Implementation</span>
+<span class="sd">...</span>
+<span class="sd">...     def export_time_series(self) -&gt; None:</span>
+<span class="sd">...         for datafile in self.data_store.data_files.values():</span>
+<span class="sd">...             if datafile.is_timeseries:</span>
+<span class="sd">...                 # Export time series data for this file</span>
+<span class="sd">...                 pass  # Implementation</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; config = MyModelConfig(model_year=2030, scenario=&quot;base&quot;, export_timeseries=True)</span>
+<span class="sd">&gt;&gt;&gt; system = System()  # Already populated with components</span>
+<span class="sd">&gt;&gt;&gt; store = DataStore(data_files={...}, folder=&quot;/path/to/output&quot;)</span>
+<span class="sd">&gt;&gt;&gt; exporter = MyModelExporter(config, system, store)</span>
+<span class="sd">&gt;&gt;&gt; exporter.export()</span>
+
+<span class="sd">See Also</span>
+<span class="sd">--------</span>
+<span class="sd">r2x_core.store.DataStore : Data file management</span>
+<span class="sd">r2x_core.system.System : System component management and export methods</span>
+<span class="sd">r2x_core.datafile.DataFile : File configuration</span>
+<span class="sd">r2x_core.exceptions : Custom exception classes</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">The exporter framework follows the Template Method design pattern, where the base</span>
+<span class="sd">class (BaseExporter) defines the overall structure and subclasses implement</span>
+<span class="sd">specific export logic through the abstract export() method.</span>
+
+<span class="sd">The design separates concerns:</span>
+<span class="sd">- Component export: System.export_components_to_csv() and System.components_to_records()</span>
+<span class="sd">- File management: DataStore provides file paths and configuration</span>
+<span class="sd">- Time series export: Applications implement using infrasys get_time_series()</span>
+<span class="sd">- Export orchestration: Coordinated by exporter subclass</span>
+
+<span class="sd">This separation enables:</span>
+<span class="sd">- Independent testing of components</span>
+<span class="sd">- Reusability across different models</span>
+<span class="sd">- Clear separation of export logic from I/O</span>
+<span class="sd">- Flexible configuration management</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.store</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataStore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.system</span><span class="w"> </span><span class="kn">import</span> <span class="n">System</span>
+
+
+<div class="viewcode-block" id="BaseExporter">
+<a class="viewcode-back" href="../../references/api.html#r2x_core.BaseExporter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseExporter</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for exporting infrasys.System objects to model formats.</span>
+
+<span class="sd">    This class provides the foundational structure for model-specific exporters.</span>
+<span class="sd">    Subclasses must implement two abstract methods:</span>
+<span class="sd">    - export(): Define the overall export workflow</span>
+<span class="sd">    - export_time_series(): Export time series data from system</span>
+
+<span class="sd">    The BaseExporter provides access to:</span>
+<span class="sd">    - System with components and time series (self.system)</span>
+<span class="sd">    - DataStore with file paths and configuration (self.data_store)</span>
+<span class="sd">    - Export configuration (self.config)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    config : BaseModel</span>
+<span class="sd">        Configuration object containing export parameters. Applications should</span>
+<span class="sd">        define their own config class inheriting from pydantic.BaseModel.</span>
+<span class="sd">    system : System</span>
+<span class="sd">        R2X System object containing components and time series to export.</span>
+<span class="sd">    data_store : DataStore</span>
+<span class="sd">        DataStore containing output file paths and configuration.</span>
+<span class="sd">    **kwargs : dict, optional</span>
+<span class="sd">        Additional keyword arguments for subclass customization.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    config : BaseModel</span>
+<span class="sd">        Export configuration parameters.</span>
+<span class="sd">    system : System</span>
+<span class="sd">        System object with components and time series.</span>
+<span class="sd">    data_store : DataStore</span>
+<span class="sd">        DataStore with output file configuration.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Create a simple exporter:</span>
+
+<span class="sd">    &gt;&gt;&gt; from pydantic import BaseModel</span>
+<span class="sd">    &gt;&gt;&gt; from r2x_core import BaseExporter, DataStore, System, DataFile</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; class MyConfig(BaseModel):</span>
+<span class="sd">    ...     year: int</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; class MyExporter(BaseExporter):</span>
+<span class="sd">    ...     def export(self) -&gt; None:</span>
+<span class="sd">    ...         logger.info(f&quot;Exporting for year {self.config.year}&quot;)</span>
+<span class="sd">    ...         # Export all components to CSV</span>
+<span class="sd">    ...         output_file = self.data_store.data_files[&quot;components&quot;]</span>
+<span class="sd">    ...         self.system.export_components_to_csv(output_file.file_path)</span>
+<span class="sd">    ...         # Export time series</span>
+<span class="sd">    ...         self.export_time_series()</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     def export_time_series(self) -&gt; None:</span>
+<span class="sd">    ...         # Export time series data</span>
+<span class="sd">    ...         ts_file = self.data_store.data_files[&quot;timeseries&quot;]</span>
+<span class="sd">    ...         # ... implementation</span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; config = MyConfig(year=2030)</span>
+<span class="sd">    &gt;&gt;&gt; system = System(name=&quot;MySystem&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; data_store = DataStore(</span>
+<span class="sd">    ...     data_files={&quot;components&quot;: DataFile(name=&quot;components&quot;, file_path=&quot;output.csv&quot;)},</span>
+<span class="sd">    ...     folder=&quot;/output&quot;</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; exporter = MyExporter(config, system, data_store)</span>
+<span class="sd">    &gt;&gt;&gt; exporter.export()</span>
+
+<span class="sd">    Export with filtering:</span>
+
+<span class="sd">    &gt;&gt;&gt; class FilteredExporter(BaseExporter):</span>
+<span class="sd">    ...     def export(self) -&gt; None:</span>
+<span class="sd">    ...         # Export only specific component types</span>
+<span class="sd">    ...         gen_file = self.data_store.data_files[&quot;generators&quot;]</span>
+<span class="sd">    ...         self.system.export_components_to_csv(</span>
+<span class="sd">    ...             file_path=gen_file.file_path,</span>
+<span class="sd">    ...             filter_func=lambda c: c.__class__.__name__ == &quot;Generator&quot;</span>
+<span class="sd">    ...         )</span>
+<span class="sd">    ...         self.export_time_series()</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     def export_time_series(self) -&gt; None:</span>
+<span class="sd">    ...         # Export time series for generators only</span>
+<span class="sd">    ...         pass</span>
+
+<span class="sd">    Export with field selection and renaming:</span>
+
+<span class="sd">    &gt;&gt;&gt; class MappedExporter(BaseExporter):</span>
+<span class="sd">    ...     def export(self) -&gt; None:</span>
+<span class="sd">    ...         gen_file = self.data_store.data_files[&quot;generators&quot;]</span>
+<span class="sd">    ...         self.system.export_components_to_csv(</span>
+<span class="sd">    ...             file_path=gen_file.file_path,</span>
+<span class="sd">    ...             filter_func=lambda c: isinstance(c, Generator),</span>
+<span class="sd">    ...             fields=[&quot;name&quot;, &quot;max_active_power&quot;],</span>
+<span class="sd">    ...             key_mapping={&quot;max_active_power&quot;: &quot;capacity_mw&quot;}</span>
+<span class="sd">    ...         )</span>
+<span class="sd">    ...         self.export_time_series()</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     def export_time_series(self) -&gt; None:</span>
+<span class="sd">    ...         # Export time series data</span>
+<span class="sd">    ...         pass</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    r2x_core.system.System.export_components_to_csv : Export components to CSV</span>
+<span class="sd">    r2x_core.system.System.components_to_records : Get components as dict records</span>
+<span class="sd">    r2x_core.store.DataStore : File path management</span>
+<span class="sd">    infrasys.system.System.get_time_series : Get time series from components</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The BaseExporter provides a minimal interface with two abstract methods:</span>
+<span class="sd">    - export(): Orchestrate the complete export workflow</span>
+<span class="sd">    - export_time_series(): Handle time series data export</span>
+
+<span class="sd">    This gives applications maximum flexibility to:</span>
+<span class="sd">    - Define their own export workflow in export()</span>
+<span class="sd">    - Use any combination of System export methods</span>
+<span class="sd">    - Implement custom time series export logic</span>
+<span class="sd">    - Handle transformations and formatting as needed</span>
+
+<span class="sd">    Common export patterns:</span>
+<span class="sd">    1. Component export: Use system.export_components_to_csv()</span>
+<span class="sd">    2. Custom transformations: Use system.components_to_records() then transform</span>
+<span class="sd">    3. Time series export: Implement in export_time_series() using system.get_time_series()</span>
+<span class="sd">    4. Multi-file export: Iterate over data_store.data_files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">BaseModel</span><span class="p">,</span>
+        <span class="n">system</span><span class="p">:</span> <span class="n">System</span><span class="p">,</span>
+        <span class="n">data_store</span><span class="p">:</span> <span class="n">DataStore</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the exporter.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        config : BaseModel</span>
+<span class="sd">            Export configuration parameters.</span>
+<span class="sd">        system : System</span>
+<span class="sd">            System object to export.</span>
+<span class="sd">        data_store : DataStore</span>
+<span class="sd">            DataStore with output file paths.</span>
+<span class="sd">        **kwargs : dict</span>
+<span class="sd">            Additional arguments for subclass customization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">system</span> <span class="o">=</span> <span class="n">system</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_store</span> <span class="o">=</span> <span class="n">data_store</span>
+
+        <span class="c1"># Store additional kwargs for subclass use</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Initialized </span><span class="si">{}</span><span class="s2"> exporter&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BaseExporter.export">
+<a class="viewcode-back" href="../../references/api.html#r2x_core.BaseExporter.export">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">export</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Export the system to the target model format.</span>
+
+<span class="sd">        This method must be implemented by subclasses to define the complete</span>
+<span class="sd">        export workflow for their specific model format.</span>
+
+<span class="sd">        The implementation should:</span>
+
+<span class="sd">        1. Export component data using system.export_components_to_csv() or</span>
+<span class="sd">           system.components_to_records()</span>
+<span class="sd">        2. Export time series data using export_time_series()</span>
+<span class="sd">        3. Apply any model-specific transformations</span>
+<span class="sd">        4. Write files to paths configured in data_store</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ExporterError</span>
+<span class="sd">            If export fails for any reason.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Simple export implementation:</span>
+
+<span class="sd">        &gt;&gt;&gt; def export(self) -&gt; None:</span>
+<span class="sd">        ...     logger.info(&quot;Starting export&quot;)</span>
+<span class="sd">        ...     # Export components</span>
+<span class="sd">        ...     self._export_components()</span>
+<span class="sd">        ...     # Export time series</span>
+<span class="sd">        ...     self.export_time_series()</span>
+<span class="sd">        ...     logger.info(&quot;Export complete&quot;)</span>
+
+<span class="sd">        Export with error handling:</span>
+
+<span class="sd">        &gt;&gt;&gt; def export(self) -&gt; None:</span>
+<span class="sd">        ...     try:</span>
+<span class="sd">        ...         self._export_components()</span>
+<span class="sd">        ...         self.export_time_series()</span>
+<span class="sd">        ...     except Exception as e:</span>
+<span class="sd">        ...         raise ExporterError(f&quot;Export failed: {e}&quot;) from e</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        export_time_series : Export time series data from system</span>
+<span class="sd">        r2x_core.system.System.export_components_to_csv : Export components</span>
+<span class="sd">        r2x_core.system.System.components_to_records : Get component records</span>
+<span class="sd">        r2x_core.exceptions.ExporterError : Export error exception</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+        <span class="c1"># pragma: no cover</span>
+
+<div class="viewcode-block" id="BaseExporter.export_time_series">
+<a class="viewcode-back" href="../../references/api.html#r2x_core.BaseExporter.export_time_series">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">export_time_series</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Export time series data from the system.</span>
+
+<span class="sd">        This method must be implemented by subclasses to export time series</span>
+<span class="sd">        data from components to files. The implementation should:</span>
+<span class="sd">        1. Identify which components have time series data</span>
+<span class="sd">        2. Retrieve time series using system.get_time_series()</span>
+<span class="sd">        3. Convert to appropriate format (DataFrame, arrays, etc.)</span>
+<span class="sd">        4. Write to files based on data_store configuration</span>
+
+<span class="sd">        Subclasses can filter time series files using:</span>
+<span class="sd">        &gt;&gt;&gt; ts_files = [</span>
+<span class="sd">        ...     df for df in self.data_store.data_files.values()</span>
+<span class="sd">        ...     if df.is_timeseries</span>
+<span class="sd">        ... ]</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ExporterError</span>
+<span class="sd">            If time series export fails.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Export time series to CSV:</span>
+
+<span class="sd">        &gt;&gt;&gt; def export_time_series(self) -&gt; None:</span>
+<span class="sd">        ...     import polars as pl</span>
+<span class="sd">        ...     for datafile in self.data_store.data_files.values():</span>
+<span class="sd">        ...         if datafile.is_timeseries:</span>
+<span class="sd">        ...             # Collect time series data</span>
+<span class="sd">        ...             ts_data = self._collect_time_series(datafile.name)</span>
+<span class="sd">        ...             # Write to file</span>
+<span class="sd">        ...             ts_data.write_csv(datafile.file_path)</span>
+
+<span class="sd">        Export to HDF5:</span>
+
+<span class="sd">        &gt;&gt;&gt; def export_time_series(self) -&gt; None:</span>
+<span class="sd">        ...     import h5py</span>
+<span class="sd">        ...     ts_file = self.data_store.data_files[&quot;timeseries&quot;]</span>
+<span class="sd">        ...     with h5py.File(ts_file.file_path, &quot;w&quot;) as f:</span>
+<span class="sd">        ...         for component in self.system.get_components():</span>
+<span class="sd">        ...             ts_data = self.system.get_time_series(component)</span>
+<span class="sd">        ...             if ts_data is not None:</span>
+<span class="sd">        ...                 f.create_dataset(component.name, data=ts_data)</span>
+
+<span class="sd">        Export with file type matching:</span>
+
+<span class="sd">        &gt;&gt;&gt; def export_time_series(self) -&gt; None:</span>
+<span class="sd">        ...     from r2x_core.file_types import TableFormat, H5Format, ParquetFormat</span>
+<span class="sd">        ...     for datafile in self.data_store.data_files.values():</span>
+<span class="sd">        ...         if not datafile.is_timeseries:</span>
+<span class="sd">        ...             continue</span>
+<span class="sd">        ...         ts_data = self._collect_time_series(datafile.name)</span>
+<span class="sd">        ...         match datafile.file_type:</span>
+<span class="sd">        ...             case TableFormat():</span>
+<span class="sd">        ...                 ts_data.write_csv(datafile.file_path)</span>
+<span class="sd">        ...             case H5Format():</span>
+<span class="sd">        ...                 self._write_h5(datafile, ts_data)</span>
+<span class="sd">        ...             case ParquetFormat():</span>
+<span class="sd">        ...                 ts_data.write_parquet(datafile.file_path)</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        infrasys.system.System.get_time_series : Retrieve time series from components</span>
+<span class="sd">        r2x_core.datafile.DataFile.is_timeseries : Check if file is for time series</span>
+<span class="sd">        r2x_core.file_types : File type classes for format handling</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+</div>
+
+        <span class="c1"># pragma: no cover</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2024, Alliance for Sustainable Energy LLC, All rights reserved.
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/NREL/r2x-core" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=f539c95a"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=3a0c56fd"></script>
+    </body>
+</html>
