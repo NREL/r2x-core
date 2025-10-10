@@ -50,7 +50,7 @@ classifiers = [
 ]
 dependencies = [
     "h5py>=3.13.0",
-    "infrasys>=v1.0.0rc1",
+    "infrasys>=v1.0.0rc2",
     "loguru>=0.7.3",
     "polars>=1.33.1",
     "pydantic>=2.11.9,<3",
