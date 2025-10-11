@@ -42,7 +42,7 @@ def _convert_to_internal(
     ValueError
         If base field is required but not provided or base unit cannot be determined
     """
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
 
     if not isinstance(value, dict):
@@ -83,7 +83,7 @@ def _convert_to_internal(
 def _format_for_display(
     value: float,
     spec: UnitSpec,
-    unit_system: Any,  # UnitSystem (avoid circular import)
+    unit_system: Any,
     base_value: float | None = None,
     base_unit: str | None = None,
     system_base: float | None = None,
@@ -110,7 +110,6 @@ def _format_for_display(
     str
         Formatted string representation with value and unit
     """
-    # Import here to avoid circular dependency
     from . import UnitSystem
 
     if spec.base is None:
@@ -129,7 +128,7 @@ def _format_for_display(
         if base_value is None:
             return f"{value} pu"
         natural_value = value * base_value
-        if system_base is not None and isinstance(system_base, (int, float)):
+        if system_base is not None and isinstance(system_base, int | float):
             system_pu = natural_value / system_base
             return f"{system_pu:.4g} pu (system)"
         return f"{value} pu"
@@ -198,7 +197,6 @@ def _get_base_unit_from_subclass(owner_name: str | None, base_field: str) -> str
     if not owner_name:
         return None
 
-    # Import here to avoid circular dependency
     from ._mixins import HasUnits
 
     def _search_subclasses(base_cls: type[HasUnits]) -> str | None:
