@@ -46,12 +46,20 @@ datastore-management
 file-operations
 ```
 
+## Working with Units
+
+```{toctree}
+:maxdepth: 1
+
+unit-operations
+```
+
 ## Building Systems with Parsers
 
 ```{toctree}
 :maxdepth: 1
 
-parser-basics
+file-operations
 ```
 
 ## Working with System Components
