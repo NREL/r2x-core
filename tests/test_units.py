@@ -83,7 +83,6 @@ def test_default_base_power():
     assert comp.active_power == 0.5
 
 
-# Display Tests
 def test_display_device_base():
     """Test display in device base (default)."""
     gen = Generator(
@@ -94,7 +93,6 @@ def test_display_device_base():
         voltage=1.05,
     )
 
-    # Default display should be device base
     repr_str = repr(gen)
     assert "0.8 pu" in repr_str
     assert "1.05 pu" in repr_str
@@ -112,14 +110,12 @@ def test_display_natural_units():
         voltage=1.05,
     )
 
-    # Set display mode to natural units
     set_unit_system(UnitSystem.NATURAL_UNITS)
 
     repr_str = repr(gen)
     assert "80" in repr_str and "MVA" in repr_str  # rating: 0.8 * 100 MVA = 80 MVA
     assert "14.49" in repr_str and "kV" in repr_str  # voltage: 1.05 * 13.8 kV = 14.49 kV
 
-    # Reset to default
     set_unit_system(UnitSystem.DEVICE_BASE)
 
 
@@ -127,9 +123,7 @@ def test_display_system_base():
     """Test display in system base."""
     from r2x_core.system import System
 
-    # Create a system with system_base_power=200 MVA
-    system = System(name="TestSystem", system_base_power=200.0)
-
+    system = System(name="TestSystem", base_power=200.0)
     gen = Generator(
         name="G1",
         base_power=100.0,
@@ -137,22 +131,17 @@ def test_display_system_base():
         rating=0.8,
         voltage=1.05,
     )
-
-    # Add generator to system (this sets _system_base on the component)
     system.add_component(gen)
 
-    # Set display mode to system base
     set_unit_system(UnitSystem.SYSTEM_BASE)
 
     repr_str = repr(gen)
     # rating: 0.8 pu * 100 MVA = 80 MVA / 200 MVA = 0.4 pu (system)
     assert "0.4" in repr_str and "pu (system)" in repr_str
 
-    # Reset to default for other tests
     set_unit_system(UnitSystem.DEVICE_BASE)
 
 
-# Field Access Tests
 def test_field_access_returns_float():
     """Test that field access returns plain float for calculations."""
     gen = Generator(
@@ -163,11 +152,9 @@ def test_field_access_returns_float():
         voltage=1.05,
     )
 
-    # Should return plain float
     assert isinstance(gen.rating, float)
     assert gen.rating == 0.8
 
-    # Math should work
     result = gen.rating * 2
     assert result == 1.6
 
@@ -186,7 +173,6 @@ def test_field_assignment():
     assert gen.rating == 0.9
 
 
-# Conversion Tests
 def test_convert_power_to_pu():
     """Test converting MW to pu."""
     gen = Generator(
@@ -213,7 +199,6 @@ def test_convert_voltage_to_pu():
     assert gen.voltage == pytest.approx(1.05, rel=0.01)  # 144.9 / 138 = 1.05 pu
 
 
-# Edge Cases
 def test_missing_natural_unit_in_spec():
     """Test display when natural_unit is not specified."""
 
@@ -229,7 +214,6 @@ def test_missing_natural_unit_in_spec():
     repr_str = repr(comp)
     assert "80" in repr_str  # 0.8 * 100 MVA = 80 MVA
 
-    # Reset to default
     set_unit_system(UnitSystem.DEVICE_BASE)
 
 
@@ -243,11 +227,8 @@ def test_component_without_system_base():
         voltage=1.05,
     )
 
-    # Try to display in system base mode without system_base set
     set_unit_system(UnitSystem.SYSTEM_BASE)
-    # Should fallback to pu display
     repr_str = repr(gen)
     assert "pu" in repr_str
 
-    # Reset to default
     set_unit_system(UnitSystem.DEVICE_BASE)
