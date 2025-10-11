@@ -145,8 +145,18 @@ class System(InfrasysSystem):
         # Call parent's add_component first
         super().add_component(component, **kwargs)
 
-        # If component is UnitAwareModel, set the _system_base
-        if isinstance(component, units.UnitAwareModel):
+        # If component has per-unit capabilities, set the _system_base
+        if isinstance(component, units.HasPerUnit):
+            existing_base = component._get_system_base()
+            if existing_base is not None and existing_base != self.system_base_power:
+                comp_name = component.name if hasattr(component, "name") else type(component).__name__
+                msg = (
+                    f"Component '{comp_name}' already has _system_base={existing_base} MVA "
+                    f"but is being added to system with base={self.system_base_power} MVA. "
+                    f"This may indicate the component was previously added to a different system."
+                )
+                raise ValueError(msg)
+
             component._system_base = self.system_base_power
             logger.trace(
                 "Set _system_base = {} MVA on component '{}'",

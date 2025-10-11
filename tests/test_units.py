@@ -3,12 +3,12 @@
 from typing import Annotated
 
 import pytest
+from infrasys import Component
 
-from r2x_core.units import Unit, UnitAwareModel, UnitSystem, set_unit_system
+from r2x_core.units import HasPerUnit, Unit, UnitSystem, set_unit_system
 
 
-# Test Models
-class Generator(UnitAwareModel):
+class Generator(HasPerUnit, Component):
     """Test generator model."""
 
     name: str
@@ -18,7 +18,7 @@ class Generator(UnitAwareModel):
     voltage: Annotated[float, Unit("pu", base="rated_voltage")]
 
 
-class SimpleComponent(UnitAwareModel):
+class SimpleComponent(HasPerUnit, Component):
     """Simple component with just base_power."""
 
     name: str
@@ -26,7 +26,6 @@ class SimpleComponent(UnitAwareModel):
     active_power: Annotated[float, Unit("pu", base="base_power")]
 
 
-# Basic Input Tests
 def test_create_with_pu_values():
     """Test creating component with plain pu values."""
     gen = Generator(
@@ -218,7 +217,7 @@ def test_convert_voltage_to_pu():
 def test_missing_natural_unit_in_spec():
     """Test display when natural_unit is not specified."""
 
-    class ComponentNoNaturalUnit(UnitAwareModel):
+    class ComponentNoNaturalUnit(HasPerUnit, Component):
         name: str
         base_power: Annotated[float, Unit("MVA")]
         rating: Annotated[float, Unit("pu", base="base_power")]
