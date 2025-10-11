@@ -14,6 +14,8 @@ from infrasys.system import System as InfrasysSystem
 from infrasys.utils.sqlite import backup
 from loguru import logger
 
+from r2x_core import units
+
 
 class System(InfrasysSystem):
     """R2X Core System class extending infrasys.System.
@@ -87,18 +89,70 @@ class System(InfrasysSystem):
     R2X-specific enhancements as needed.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, system_base_power: float = 100.0, **kwargs: Any) -> None:
         """Initialize R2X Core System.
 
         Parameters
         ----------
         *args
             Positional arguments passed to infrasys.System.
+        system_base_power : float, default 100.0
+            System base power in MVA for per-unit calculations.
         **kwargs
             Keyword arguments passed to infrasys.System.
+
+        Notes
+        -----
+        This method defines the 'system_base' unit in the global Pint registry.
+        If you create multiple System instances, the last one's system_base will
+        be used for all unit conversions. Existing components will detect the
+        change and issue a warning if they access system_base conversions.
         """
         super().__init__(*args, **kwargs)
-        logger.debug("Created R2X Core System: {}", self.name)
+
+        # System base power for per-unit calculations (MVA)
+        self.system_base_power = system_base_power
+
+        # Define or redefine system_base in the shared Pint registry
+        # This allows components to convert: device_pu.to('system_base')
+        if "system_base" in units.ureg:
+            units.ureg.define(f"system_base = {system_base_power} * MVA")  # overwrite
+        else:
+            units.ureg.define(f"system_base = {system_base_power} * MVA")
+
+        logger.debug(
+            "Created R2X Core System '{}' with system_base = {} MVA",
+            self.name,
+            system_base_power,
+        )
+
+    def add_component(self, component: Component, **kwargs: Any) -> None:
+        """Add a component to the system and set its _system_base.
+
+        Parameters
+        ----------
+        component : Component
+            Component to add to the system.
+        **kwargs
+            Additional keyword arguments passed to parent's add_component.
+
+        Notes
+        -----
+        If the component is a UnitAwareModel, this method automatically sets
+        the component's _system_base attribute for use in system-base per-unit
+        display mode.
+        """
+        # Call parent's add_component first
+        super().add_component(component, **kwargs)
+
+        # If component is UnitAwareModel, set the _system_base
+        if isinstance(component, units.UnitAwareModel):
+            component._system_base = self.system_base_power
+            logger.trace(
+                "Set _system_base = {} MVA on component '{}'",
+                self.system_base_power,
+                component.name if hasattr(component, "name") else type(component).__name__,
+            )
 
     def __str__(self) -> str:
         """Return string representation of the system.
