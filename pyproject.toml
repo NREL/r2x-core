@@ -105,7 +105,6 @@ extend-exclude = [
     "build",
     "dist",
     "*.egg-info",
-    "test"
 ]
 
 [tool.ruff.lint]
@@ -136,6 +135,7 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "S101",   # Use of assert
+    "D101",
 ]
 
 [tool.ruff.lint.isort]
