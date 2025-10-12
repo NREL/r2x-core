@@ -24,6 +24,10 @@ pip install r2x-core
 
 Power system analysis relies heavily on per-unit normalization to simplify calculations and comparisons across equipment with different ratings. In R2X Core, components can express electrical quantities in three different ways depending on the analysis context.
 
+```{important}
+All per-unit quantities in R2X Core are stored internally in device-base per-unit. Display modes only affect how values are shown to users, not how they're stored or used in calculations.
+```
+
 ## Step 1: Creating a Basic Component with Units
 
 Let's start by creating a simple generator component that tracks its power output using per-unit values.
@@ -61,6 +65,10 @@ print(f"Output: {gen.output} pu")
 
 The component stores `output` internally as 0.85 in per-unit based on the device's own rating.
 
+```{tip}
+Use `Unit()` as a shorthand for `UnitSpec()`. Both work identically: `Unit("MVA")` is equivalent to `UnitSpec("MVA")`.
+```
+
 ## Step 2: Using Natural Unit Inputs
 
 R2X Core automatically converts natural units to per-unit for storage. Instead of manually calculating per-unit values, you can provide actual megawatt values:
@@ -78,6 +86,10 @@ print(f"Output: {gen.output} pu")
 ```
 
 When you provide a dictionary with `value` and `unit` keys, R2X Core performs the conversion automatically. This feature simplifies data import from external sources that provide measurements in physical units rather than per-unit.
+
+```{note}
+Natural unit inputs are automatically converted during component construction. The internal storage is always per-unit, ensuring consistent calculations regardless of input format.
+```
 
 ## Step 3: Displaying Values in Different Unit Systems
 
@@ -137,6 +149,10 @@ print(gen)
 ```
 
 When components are added to a system, they automatically track the system base power for this conversion. System-base per-unit is crucial for network analysis where all impedances and powers must reference the same base.
+
+```{warning}
+Components can only be added to one system at a time. Attempting to add a component to multiple systems with different base values will raise an error.
+```
 
 ## Step 4: Working with Multiple Base Values
 

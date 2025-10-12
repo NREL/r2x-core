@@ -200,6 +200,7 @@ def _get_base_unit_from_subclass(owner_name: str | None, base_field: str) -> str
     from ._mixins import HasUnits
 
     def _search_subclasses(base_cls: type[HasUnits]) -> str | None:
+        """Recursive search of subclasses."""
         for subcls in base_cls.__subclasses__():
             if subcls.__name__ == owner_name:
                 specs = subcls._get_unit_specs_map()

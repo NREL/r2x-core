@@ -16,6 +16,10 @@ The unit system architecture follows several guiding principles that shape its i
 
 The system maintains a strict separation between how values are stored internally and how they are displayed to users. All per-unit quantities are stored internally as floating point numbers normalized to their designated base values. This internal representation never changes regardless of how the user chooses to view the data. Display modes are transient settings that affect only the string representation of values, not their underlying storage. This separation ensures that calculations always work with consistent values while allowing flexible reporting.
 
+```{important}
+Internal storage is always in device-base per-unit. Display modes (device-base, natural units, system-base) affect only the string representation when printing or generating reports. Calculations always operate on the consistent internal representation.
+```
+
 ### Type Safety Through Annotations
 
 Field annotations using Python's typing system provide compile-time safety and runtime validation. When a field is annotated as `Annotated[float, Unit("pu", base="base_power")]`, the type system declares both the storage type (float) and the semantic meaning (per-unit referenced to base_power). Pydantic's validator system hooks into these annotations to automatically convert input values to the correct internal representation. Invalid inputs are caught during construction rather than producing silent errors during calculation.
@@ -23,6 +27,10 @@ Field annotations using Python's typing system provide compile-time safety and r
 ### Composability and Inheritance
 
 Components can inherit from either `HasUnits` or `HasPerUnit` depending on whether they need system-base tracking. The `HasUnits` mixin provides unit field support without any dependency on system base values, making it suitable for components with fixed units or quantities that do not participate in system-wide normalization. The `HasPerUnit` class extends `HasUnits` to add system-base tracking through a private `_system_base` attribute. This hierarchical design allows components to opt into exactly the features they need.
+
+```{tip}
+Use `HasUnits` for standalone components that don't need system integration. Use `HasPerUnit` when components will be added to a `System` and need system-base display capabilities.
+```
 
 ## Architecture Overview
 
@@ -52,6 +60,10 @@ The unit system maintains a global display mode that affects all components simu
 
 This global state design enables consistent reporting across an entire system. When generating a report, a user can set the display mode once and all components will render in that mode. The alternative of passing display mode to every formatting call would be cumbersome and error-prone. The global state is thread-local to support concurrent use in multi-threaded applications.
 
+```{note}
+The `unit_system` context manager provides a convenient way to temporarily change display mode for a specific code block, automatically reverting to the previous mode when the context exits.
+```
+
 ## Integration with System Class
 
 The `System` class plays a crucial role in the unit system by managing the relationship between components and the system base power. When the system is initialized, it stores the system base power and defines a custom Pint unit called "system_base" with that magnitude. This allows components to perform conversions using the Pint library's dimension analysis.
@@ -73,6 +85,10 @@ This integration provides robustness and extensibility. New units can be added t
 The unit system is designed with performance in mind for large-scale power system models. Internal storage in per-unit form means that most calculations work with simple floating point operations without unit tracking overhead. Conversion happens only at component construction and during display formatting. The validation system caches unit specifications during class definition rather than computing them for each instance.
 
 Display formatting is lazy and occurs only when string representations are requested. Accessing field values programmatically returns raw floats without formatting overhead. This design ensures that computational loops operating on component data do not pay any unit conversion penalty. Only user-facing operations such as printing or report generation incur the formatting cost.
+
+```{hint}
+For performance-critical code, access component field values directly (e.g., `gen.output`) to get raw floats. Unit conversion overhead only occurs when converting string representations for display or logging.
+```
 
 ## Design Trade-offs and Alternatives
 

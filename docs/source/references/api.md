@@ -13,58 +13,11 @@ Complete API documentation for all r2x-core classes and functions.
    :show-inheritance:
 ```
 
-## Units
-
-The units module provides type-safe unit handling with automatic conversion and flexible display modes.
-
-### Unit Specifications
-
 ```{eval-rst}
-.. autoclass:: r2x_core.units.UnitSpec
+.. automodule:: r2x_core.units
    :members:
    :undoc-members:
    :show-inheritance:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.units.Unit
-```
-
-### Mixin Classes
-
-```{eval-rst}
-.. autoclass:: r2x_core.units.HasUnits
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
-
-```{eval-rst}
-.. autoclass:: r2x_core.units.HasPerUnit
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
-
-### Display Modes
-
-```{eval-rst}
-.. autoclass:: r2x_core.units.UnitSystem
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.units.get_unit_system
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.units.set_unit_system
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.units.unit_system
 ```
 
 ## Data Management

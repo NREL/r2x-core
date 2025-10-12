@@ -111,6 +111,7 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = [
+    "D",    # pyddoc
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
     "F",      # pyflakes
@@ -128,6 +129,10 @@ ignore = [
     "E501",   # Line too long (handled by formatter)
     "B027",   # Empty method in abstract class without @abstractmethod (intentional for hooks)
 ]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
