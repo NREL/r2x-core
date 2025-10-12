@@ -1,4 +1,4 @@
-"""R2X Core Library"""
+"""R2X Core Library."""
 
 from importlib.metadata import version
 
