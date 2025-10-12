@@ -22,7 +22,6 @@ def test_system_creation():
 
 def test_to_json_raises_on_existing_file_without_overwrite(tmp_path):
     """Test that to_json raises error when file exists and overwrite=False."""
-
     system = System(name="TestSystem")
     output_file = tmp_path / "system.json"
     system.to_json(output_file)
@@ -181,7 +180,6 @@ def test_to_json_stdout_with_time_series(capsys):
 
 def test_components_to_records_returns_data():
     """Test components_to_records returns list of dictionaries."""
-
     system = System(name="TestSystem")
     system.add_components(Component(name="comp1"), Component(name="comp2"))
 
@@ -192,7 +190,6 @@ def test_components_to_records_returns_data():
 
 def test_components_to_records_with_filter():
     """Test components_to_records with filter function."""
-
     system = System(name="FilterTest")
     system.add_components(
         Component(name="keep1"),
@@ -207,7 +204,6 @@ def test_components_to_records_with_filter():
 
 def test_components_to_records_with_fields():
     """Test components_to_records with specific fields."""
-
     system = System(name="FieldsTest")
     system.add_components(Component(name="test"))
 
@@ -221,7 +217,6 @@ def test_components_to_records_with_fields():
 
 def test_components_to_records_with_key_mapping():
     """Test components_to_records with key mapping."""
-
     system = System(name="MappingTest")
     system.add_components(Component(name="test"))
 
@@ -252,7 +247,6 @@ def test_export_components_to_csv_to_file(tmp_path):
 
 def test_export_components_to_csv_empty(tmp_path):
     """Test export_components_to_csv when no components match."""
-
     system = System(name="EmptyTest")
     system.add_components(Component(name="test"))
 

@@ -57,7 +57,6 @@ def test_unitspec_invalid_input_type():
 
 def test_unitspec_get_pydantic_json_schema():
     """Test that JSON schema generation works for UnitSpec."""
-
     spec = UnitSpec(unit="MVA", base=None)
 
     def mock_handler(schema: core_schema.CoreSchema) -> JsonSchemaValue:

@@ -251,7 +251,6 @@ def test_roundtrip_json():
 
 def test_system_serialization(tmp_path):
     """Test serializing a system with components."""
-
     system = System(name="TestSystem", base_power=200.0)
 
     gen1 = Generator(
