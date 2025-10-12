@@ -11,7 +11,7 @@ import numpy as np
 
 
 def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]:
-    """Generic H5 reader that adapts to any file structure via configuration.
+    """H5 reader that adapts to any file structure via configuration.
 
     Parameters
     ----------
