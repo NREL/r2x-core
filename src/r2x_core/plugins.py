@@ -389,7 +389,7 @@ class PluginManager:
         """
 
         def decorator(func: SystemModifier) -> SystemModifier:
-            """Decorate initernal registers the system modifier function."""
+            """Register system modifiers."""
             modifier_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._modifier_registry[modifier_name] = func
             logger.debug("Registered system modifier: {}", modifier_name)

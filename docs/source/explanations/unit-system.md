@@ -4,9 +4,16 @@ This document explains the design philosophy and implementation of the unit hand
 
 ## Purpose and Motivation
 
-Power system analysis fundamentally relies on per-unit normalization to enable meaningful comparisons across equipment with vastly different ratings. A 500 MVA generator and a 10 MVA generator cannot be directly compared using absolute power values, but expressing both as fractions of their respective rated capacities provides immediate insight into their operating states. The R2X Core unit system addresses the challenge of managing these normalizations while maintaining flexibility for different analysis contexts.
+Power system analysis fundamentally relies on per-unit normalization to enable meaningful comparisons across equipment with vastly different ratings.
+A 500 MVA generator and a 10 MVA generator cannot be directly compared using absolute power values, but expressing both as fractions of their respective rated capacities provides immediate insight into their operating states.
+The R2X Core unit system addresses the challenge of managing these normalizations while maintaining flexibility for different analysis contexts.
 
-Traditional power system software often hard-codes per-unit conversions or requires manual calculation by users. This approach introduces several problems. Data imported from external sources arrives in natural units that must be converted before use. Components moving between systems with different base values require recalculation. Display and reporting tools must handle multiple unit representations. The R2X Core unit system solves these challenges through automatic conversion, flexible display modes, and type-safe field annotations.
+Traditional power system software often hard-codes per-unit conversions or requires manual calculation by users.
+This approach introduces several problems.
+Data imported from external sources arrives in natural units that must be converted before use.
+Components moving between systems with different base values require recalculation.
+Display and reporting tools must handle multiple unit representations.
+The R2X Core unit system solves these challenges through automatic conversion, flexible display modes, and type-safe field annotations.
 
 ## Core Design Principles
 
@@ -14,7 +21,11 @@ The unit system architecture follows several guiding principles that shape its i
 
 ### Separation of Storage and Display
 
-The system maintains a strict separation between how values are stored internally and how they are displayed to users. All per-unit quantities are stored internally as floating point numbers normalized to their designated base values. This internal representation never changes regardless of how the user chooses to view the data. Display modes are transient settings that affect only the string representation of values, not their underlying storage. This separation ensures that calculations always work with consistent values while allowing flexible reporting.
+The system maintains a strict separation between how values are stored internally and how they are displayed to users.
+All per-unit quantities are stored internally as floating point numbers normalized to their designated base values.
+This internal representation never changes regardless of how the user chooses to view the data.
+Display modes are transient settings that affect only the string representation of values, not their underlying storage.
+This separation ensures that calculations always work with consistent values while allowing flexible reporting.
 
 ```{important}
 Internal storage is always in device-base per-unit. Display modes (device-base, natural units, system-base) affect only the string representation when printing or generating reports. Calculations always operate on the consistent internal representation.
@@ -48,7 +59,7 @@ The mixin classes provide the foundation for components to declare and manage un
 
 The `HasPerUnit` class extends this foundation with system-base tracking. It adds a private `_system_base` attribute that stores the system base power when a component is added to a system. The `_get_system_base` method provides access to this value for conversion calculations. When display mode is set to system-base, the formatting system uses this stored value to convert device-base per-unit to system-base per-unit.
 
-###Utility Functions and Conversions
+### Utility Functions and Conversions
 
 The utility module provides pure functions for unit conversion and formatting. The `_convert_to_internal` function takes an input value (either float or dict with value and unit), a unit specification, and base values, then returns the per-unit representation. This function handles the mathematical conversion including dimensional analysis through the Pint library when unit strings differ from base units.
 
