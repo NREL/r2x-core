@@ -3,7 +3,7 @@ name = "r2x-core"
 version = "0.0.8"
 authors = [
     { name = "pesap", email = "pesap@users.noreply.github.com" },
-    { name = "Obika Kodi", email = "kodi.obika@nrel.gov" },
+    { name = "kodiobika", email = "kodiobika@users.noreply.github.com" },
     { name = "Vivienne Liu", email = "vivienne.liu@nrel.gov"},
     { name = "Micah Webb", email = "micahpw@user.noreply.github.com"},
     { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
@@ -15,6 +15,7 @@ maintainers = [
     { name = "Kinshuk Panda", email = "7632244+k1nshuk@users.noreply.github.com"},
     { name = "mcllerena", email = "mcllerena@users.noreply.github.com"},
     { name = "jarry7", email = "27745389+jarry7@users.noreply.github.com"},
+    { name = "kodiobika", email = "kodiobika@users.noreply.github.com" },
 ]
 description = "Extensible framework for building power system model translators with plugin architecture"
 readme = "README.md"
