@@ -94,7 +94,7 @@ class DataReader:
             logger.debug("Loading {} from cache", data_file.name)
             return self._cache[cache_key]
 
-        file_path = folder / data_file.fpath
+        file_path = folder / data_file.fpath.resolve()
         if not file_path.exists():
             if data_file.is_optional:
                 logger.debug("Optional file {} not found, returning None", file_path)
