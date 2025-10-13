@@ -87,7 +87,7 @@ def pl_pivot_on(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     if not data_file.pivot_on:
         return df
 
-    all_columns = df.schema.names()
+    all_columns = df.collect_schema().names()
 
     return df.unpivot(on=all_columns, variable_name="tmp", value_name=data_file.pivot_on).select(
         data_file.pivot_on
