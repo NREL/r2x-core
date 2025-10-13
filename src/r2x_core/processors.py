@@ -73,7 +73,11 @@ def pl_pivot_on(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
     if not data_file.pivot_on:
         return df
 
-    return df.melt(variable_name="tmp", value_name=data_file.pivot_on).select(data_file.pivot_on)
+    all_columns = df.collect_schema().names()
+
+    return df.unpivot(on=all_columns, variable_name="tmp", value_name=data_file.pivot_on).select(
+        data_file.pivot_on
+    )
 
 
 def transform_json_data(data_file: DataFile, data: dict[str, Any]) -> dict[str, Any]:
