@@ -16,6 +16,7 @@ from r2x_core.processors import (
     pl_apply_filters,
     pl_cast_schema,
     pl_drop_columns,
+    pl_pivot_on,
     pl_rename_columns,
     pl_select_columns,
     register_transformation,
@@ -123,6 +124,14 @@ def sample_csv(tmp_path):
 
 
 @pytest.fixture
+def single_row_csv(tmp_path):
+    """Create a single row CSV file for pivot testing."""
+    csv_file = tmp_path / "modeledyears.csv"
+    csv_file.write_text("2020,2025,2030")
+    return csv_file
+
+
+@pytest.fixture
 def sample_json_file(tmp_path):
     """Create a sample JSON file."""
     json_file = tmp_path / "test.json"
@@ -180,6 +189,49 @@ def test_pl_rename_columns_non_existing(sample_csv):
     result = pl_rename_columns(data_file, df)
     # Should return df unchanged
     assert result.collect_schema().names() == df.collect_schema().names()
+
+
+def test_pl_pivot_on_unpivots_all_columns(single_row_csv):
+    """Test that pl_pivot_on correctly unpivots all columns into rows."""
+    df = pl.LazyFrame({"2020": [1], "2025": [2], "2030": [3]})
+
+    data_file = DataFile(name="modeledyears.csv", fpath=single_row_csv, pivot_on="year")
+
+    result = pl_pivot_on(data_file, df)
+    collected = result.collect()
+
+    assert collected.columns == ["year"]
+    assert collected.height == 3
+
+    expected_values = [1, 2, 3]
+    actual_values = collected["year"].to_list()
+    assert actual_values == expected_values
+
+
+def test_pl_pivot_on_returns_unchanged_when_no_pivot_config(single_row_csv):
+    """Test that function returns unchanged DataFrame when pivot_on is not configured."""
+    df = pl.LazyFrame({"col1": [1, 2], "col2": [3, 4]})
+
+    data_file = DataFile(name="modeledyears.csv", fpath=single_row_csv)
+    result = pl_pivot_on(data_file, df)
+
+    assert result.collect().equals(df.collect())
+
+
+def test_pl_pivot_on_with_mixed_column_types(single_row_csv):
+    """Test unpivot behavior with mixed column types."""
+    df = pl.LazyFrame({"year_2020": [100], "year_2025": [200], "count": [5]})
+
+    data_file = DataFile(name="modeledyears.csv", fpath=single_row_csv, pivot_on="value")
+
+    result = pl_pivot_on(data_file, df)
+    collected = result.collect()
+
+    assert collected.height == 3
+    assert collected.columns == ["value"]
+
+    values = collected["value"].to_list()
+    assert len(values) == 3
 
 
 def test_pl_cast_schema(sample_csv):

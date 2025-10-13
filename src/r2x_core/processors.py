@@ -17,7 +17,7 @@ def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFr
     """Transform tabular data to LazyFrame with applied transformations.
 
     Applies transformations in order:
-        lowercase -> drop -> rename -> schema -> filter -> select
+        lowercase -> drop -> rename -> pivot -> schema -> filter -> select
 
     Parameters
     ----------
@@ -42,6 +42,7 @@ def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFr
         partial(pl_lowercase, data_file),
         partial(pl_drop_columns, data_file),
         partial(pl_rename_columns, data_file),
+        partial(pl_pivot_on, data_file),
         partial(pl_cast_schema, data_file),
         partial(pl_apply_filters, data_file),
         partial(pl_select_columns, data_file),
@@ -52,6 +53,45 @@ def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFr
         transformed_data = transform_func(transformed_data)
 
     return transformed_data
+
+
+def pl_pivot_on(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
+    """Unpivot (melt) the DataFrame based on configuration.
+
+    Transforms wide-format data to long-format by converting all columns
+    into rows with a new value column. This prevents single-row data from
+    being misinterpreted as column headers.
+
+    Parameters
+    ----------
+    data_file : DataFile
+        Configuration with pivot instructions. Uses pivot_on attribute
+        to specify the name of the new value column.
+    df : pl.LazyFrame
+        Input lazy frame to be unpivoted.
+
+    Returns
+    -------
+    pl.LazyFrame
+        Unpivoted lazy frame with only the new value column.
+
+    Notes
+    -----
+    This function addresses a common data structure issue where files like
+    modeledyears.csv contain single rows with values spread across columns
+    (e.g., years: 2020, 2025, 2030). Without unpivoting, these values might
+    be incorrectly treated as column headers rather than data. The unpivot
+    operation converts each column value into a separate row, ensuring proper
+    data interpretation.
+    """
+    if not data_file.pivot_on:
+        return df
+
+    all_columns = df.collect_schema().names()
+
+    return df.unpivot(on=all_columns, variable_name="tmp", value_name=data_file.pivot_on).select(
+        data_file.pivot_on
+    )
 
 
 def transform_json_data(data_file: DataFile, data: dict[str, Any]) -> dict[str, Any]:
