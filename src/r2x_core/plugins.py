@@ -99,6 +99,7 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from r2x_core.parser import BaseParser
+    from r2x_core.upgrader import UpgradeStep
 
     from .plugin_config import PluginConfig
 
@@ -268,6 +269,7 @@ class PluginManager:
     _registry: ClassVar[dict[str, PluginComponent]] = {}
     _modifier_registry: ClassVar[dict[str, SystemModifier]] = {}
     _filter_registry: ClassVar[dict[str, FilterFunction]] = {}
+    _upgrade_registry: ClassVar[dict[str, list["UpgradeStep"]]] = {}
 
     def __new__(cls) -> "PluginManager":
         """Ensure singleton instance."""
@@ -624,3 +626,68 @@ class PluginManager:
             return None
 
         return config_class.get_file_mapping_path()
+
+    @classmethod
+    def register_upgrade_step(cls, plugin_name: str, step: "UpgradeStep") -> None:
+        """Register an upgrade step for a plugin.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the plugin this upgrade step belongs to
+        step : UpgradeStep
+            The upgrade step to register
+
+        Examples
+        --------
+        >>> from r2x_core.versioning import UpgradeStep, SemanticVersioningStrategy
+        >>> def upgrade_func(data):
+        ...     data["version"] = "2.0.0"
+        ...     return data
+        >>> step = UpgradeStep(
+        ...     name="upgrade_to_v2",
+        ...     func=upgrade_func,
+        ...     target_version="2.0.0",
+        ...     versioning_strategy=SemanticVersioningStrategy()
+        ... )
+        >>> PluginManager.register_upgrade_step("my_plugin", step)
+        """
+        if plugin_name not in cls._upgrade_registry:
+            cls._upgrade_registry[plugin_name] = []
+
+        cls._upgrade_registry[plugin_name].append(step)
+        logger.debug("Registered upgrade step '{}' for plugin '{}'", step.name, plugin_name)
+
+    @classmethod
+    def get_upgrade_steps(cls, plugin_name: str) -> list["UpgradeStep"]:
+        """Get all upgrade steps for a plugin, sorted by priority.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the plugin
+
+        Returns
+        -------
+        list[UpgradeStep]
+            List of upgrade steps sorted by priority (lower numbers first)
+
+        Examples
+        --------
+        >>> steps = PluginManager.get_upgrade_steps("my_plugin")
+        >>> for step in steps:
+        ...     print(f"Step: {step.name}, Priority: {step.priority}")
+        """
+        steps = cls._upgrade_registry.get(plugin_name, [])
+        return sorted(steps, key=lambda s: s.priority)
+
+    @property
+    def registered_upgrade_steps(self) -> dict[str, list["UpgradeStep"]]:
+        """All registered upgrade steps by plugin name.
+
+        Returns
+        -------
+        dict[str, list[UpgradeStep]]
+            Dictionary mapping plugin names to their upgrade steps
+        """
+        return self._upgrade_registry.copy()

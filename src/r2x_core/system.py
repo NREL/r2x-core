@@ -317,6 +317,7 @@ class System(InfrasysSystem):
         cls,
         filename: Path | str,
         upgrade_handler: Callable[..., Any] | None = None,
+        upgrader: str | None = None,
         **kwargs: Any,
     ) -> "System":
         """Deserialize system from JSON file.
@@ -327,6 +328,8 @@ class System(InfrasysSystem):
             Input JSON file path.
         upgrade_handler : Callable, optional
             Function to handle data model version upgrades.
+        upgrader : str, optional
+            Name of the plugin to use for system upgrades after deserialization.
         **kwargs
             Additional keyword arguments passed to infrasys deserialization.
 
@@ -353,12 +356,36 @@ class System(InfrasysSystem):
         ...     return data
         >>> system = System.from_json("old_system.json", upgrade_handler=upgrade_v1_to_v2)
 
+        With system upgrades:
+
+        >>> system = System.from_json("system.json", upgrader="my_plugin")
+
         See Also
         --------
         to_json : Serialize system to JSON file
         """
         logger.info("Deserializing system from {}", filename)
         system: System = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
+
+        # Apply system upgrades if upgrader is specified
+        if upgrader:
+            from .plugins import PluginManager
+            from .upgrader import apply_upgrades
+
+            upgrade_steps = PluginManager.get_upgrade_steps(upgrader)
+            # Filter for system upgrades that can run in system context
+            system_steps = [
+                step
+                for step in upgrade_steps
+                if step.upgrade_type == "system" and step.context in ("system", "both")
+            ]
+
+            if system_steps:
+                logger.info("Applying {} system upgrade steps for plugin '{}'", len(system_steps), upgrader)
+                upgraded_system, applied_steps = apply_upgrades(system, system_steps, context="system")
+                if applied_steps:
+                    logger.info("Applied system upgrades: {}", applied_steps)
+                    system = upgraded_system
 
         # After deserialization, update all HasPerUnit components with system_base
         for component in system.get_components(Component):

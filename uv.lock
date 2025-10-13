@@ -1310,6 +1310,7 @@ dependencies = [
     { name = "h5py" },
     { name = "infrasys" },
     { name = "loguru" },
+    { name = "packaging" },
     { name = "polars" },
     { name = "pydantic" },
 ]
@@ -1340,6 +1341,7 @@ requires-dist = [
     { name = "h5py", specifier = ">=3.13.0" },
     { name = "infrasys", specifier = ">=1.0.0rc2" },
     { name = "loguru", specifier = ">=0.7.3" },
+    { name = "packaging", specifier = ">=24.0" },
     { name = "polars", specifier = ">=1.33.1" },
     { name = "pydantic", specifier = ">=2.11.9,<3" },
 ]

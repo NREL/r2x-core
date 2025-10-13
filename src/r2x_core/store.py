@@ -189,7 +189,7 @@ class DataStore:
         return cls.from_json(mapping_path, folder)
 
     @classmethod
-    def from_json(cls, fpath: Path | str, folder: Path | str) -> "DataStore":
+    def from_json(cls, fpath: Path | str, folder: Path | str, upgrader: str | None = None) -> "DataStore":
         """Create a DataStore instance from a JSON configuration file.
 
         Parameters
@@ -198,6 +198,8 @@ class DataStore:
             Path to the JSON configuration file containing DataFile specifications.
         folder : Path or str
             Base directory containing the data files referenced in the configuration.
+        upgrader : str, optional
+            Plugin name to apply data upgrades to the configuration before loading.
 
         Returns
         -------
@@ -235,6 +237,10 @@ class DataStore:
         >>> store.list_data_files()
         ['generators', 'load']
 
+        Load with upgrades:
+
+        >>> store = DataStore.from_json("config.json", "/path/to/data", upgrader="my_plugin")
+
         See Also
         --------
         to_json : Save DataStore configuration to JSON
@@ -245,6 +251,9 @@ class DataStore:
         The JSON file must contain an array of objects, where each object
         represents a valid DataFile configuration with at minimum 'name'
         and 'fpath' fields.
+
+        When an upgrader is specified, the configuration data will be upgraded
+        using data upgrade steps registered for that plugin before creating DataFile instances.
         """
         fpath = Path(fpath)
         if not fpath.exists():
@@ -256,6 +265,21 @@ class DataStore:
         if not isinstance(data_files_json, list):
             msg = f"JSON file `{fpath}` is not a JSON array."
             raise TypeError(msg)
+
+        # Apply upgrades if upgrader is specified
+        if upgrader is not None:
+            from .plugins import PluginManager
+            from .upgrader import apply_upgrades
+
+            logger.info("Applying data upgrades for plugin: {}", upgrader)
+            steps = PluginManager.get_upgrade_steps(upgrader)
+            data_upgrades = [step for step in steps if step.upgrade_type == "data"]
+
+            if data_upgrades:
+                data_files_json, applied = apply_upgrades(
+                    data_files_json, data_upgrades, context="data", upgrade_type="data"
+                )
+                logger.info("Applied {} data upgrade steps: {}", len(applied), applied)
 
         store = cls(folder=folder)
 
