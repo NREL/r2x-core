@@ -42,6 +42,7 @@ def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFr
         partial(pl_lowercase, data_file),
         partial(pl_drop_columns, data_file),
         partial(pl_rename_columns, data_file),
+        partial(pl_pivot_on, data_file),
         partial(pl_cast_schema, data_file),
         partial(pl_apply_filters, data_file),
         partial(pl_select_columns, data_file),
@@ -52,6 +53,27 @@ def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFr
         transformed_data = transform_func(transformed_data)
 
     return transformed_data
+
+
+def pl_pivot_on(data_file: DataFile, df: pl.LazyFrame) -> pl.LazyFrame:
+    """Pivot the DataFrame based on configuration.
+
+    Parameters
+    ----------
+    data_file : DataFile
+        Configuration with pivot instructions.
+    df : pl.LazyFrame
+        Input lazy frame.
+
+    Returns
+    -------
+    pl.LazyFrame
+        Pivoted lazy frame.
+    """
+    if not data_file.pivot_on:
+        return df
+
+    return df.melt(variable_name="tmp", value_name=data_file.pivot_on).select(data_file.pivot_on)
 
 
 def transform_json_data(data_file: DataFile, data: dict[str, Any]) -> dict[str, Any]:
