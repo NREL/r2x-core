@@ -84,9 +84,9 @@ class UpgradeContext(str, Enum):
         For upgrades that can run in either context.
     """
 
-    DATA = "data"
-    SYSTEM = "system"
-    BOTH = "both"
+    DATA = "DATA"
+    SYSTEM = "SYSTEM"
+    BOTH = "BOTH"
 
 
 class UpgradeStep(NamedTuple):
@@ -167,10 +167,16 @@ class UpgradeResult:
     This class tracks the original data state and applied upgrades,
     allowing all-or-nothing rollback if validation fails.
 
+    Uses lazy initialization for the original data snapshot - the deep copy
+    is only created when the first upgrade is applied, avoiding expensive
+    copies when no upgrades are needed.
+
     Attributes
     ----------
-    original_data : Any
-        Deep copy of the original data before any upgrades.
+    _original_data : Any
+        Reference to the original data before any upgrades.
+    _original_snapshot : Any | None
+        Deep copy of the original data, created lazily on first upgrade.
     current_data : Any
         The current state of the data after upgrades.
     applied_steps : list[str]
@@ -191,14 +197,28 @@ class UpgradeResult:
     def __init__(self, original_data: Any):
         """Initialize with original data.
 
+        The deep copy is created lazily when the first upgrade is applied,
+        avoiding expensive copy operations when no upgrades are needed.
+
         Parameters
         ----------
         original_data : Any
             The original data before any upgrades.
         """
-        self.original_data = copy.deepcopy(original_data)
+        self._original_data = original_data
+        self._original_snapshot: Any | None = None
         self.current_data = original_data
         self.applied_steps: list[str] = []
+
+    def ensure_snapshot(self) -> None:
+        """Ensure snapshot is created before first upgrade.
+
+        Creates a deep copy of the original data on first call to enable
+        rollback capability. This should be called before applying any upgrades.
+        """
+        if self._original_snapshot is None:
+            self._original_snapshot = copy.deepcopy(self._original_data)
+            logger.debug("Created snapshot of original data for rollback capability")
 
     def add_step(self, step_name: str, data: Any) -> None:
         """Record an applied upgrade step.
@@ -213,6 +233,19 @@ class UpgradeResult:
         self.current_data = data
         self.applied_steps.append(step_name)
         logger.debug("Applied upgrade step '{}' (total: {})", step_name, len(self.applied_steps))
+
+    @property
+    def original_data(self) -> Any:
+        """Get the original data before any upgrades.
+
+        Returns the snapshot if available, otherwise the original reference.
+
+        Returns
+        -------
+        Any
+            The original data before any upgrades.
+        """
+        return self._original_snapshot if self._original_snapshot is not None else self._original_data
 
     def rollback(self) -> Any:
         """Rollback all upgrades to original state.
@@ -229,7 +262,14 @@ class UpgradeResult:
         ...     data = result.rollback()  # Back to original
         """
         logger.info("Rolling back all upgrades to original state")
-        self.current_data = copy.deepcopy(self.original_data)
+
+        # Use snapshot if available, otherwise use original reference
+        if self._original_snapshot is not None:
+            self.current_data = copy.deepcopy(self._original_snapshot)
+        else:
+            # No upgrades were applied, return original data
+            self.current_data = self._original_data
+
         rolled_back_steps = self.applied_steps.copy()
         self.applied_steps.clear()
         logger.info("Rolled back {} upgrade step(s): {}", len(rolled_back_steps), rolled_back_steps)
@@ -475,6 +515,10 @@ def apply_upgrades_with_rollback(
         context_str,
         len(sorted_steps),
     )
+
+    # Create snapshot before any upgrades (lazy initialization)
+    if sorted_steps:
+        result.ensure_snapshot()
 
     for step in sorted_steps:
         try:
