@@ -14,6 +14,8 @@ from infrasys.system import System as InfrasysSystem
 from infrasys.utils.sqlite import backup
 from loguru import logger
 
+from r2x_core import units
+
 
 class System(InfrasysSystem):
     """R2X Core System class extending infrasys.System.
@@ -87,18 +89,110 @@ class System(InfrasysSystem):
     R2X-specific enhancements as needed.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        base_power: float | None = None,
+        *,
+        name: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize R2X Core System.
 
         Parameters
         ----------
-        *args
-            Positional arguments passed to infrasys.System.
+        system_base_power : float, optional
+            System base power in MVA for per-unit calculations.
+            Can be provided as first positional argument or as keyword argument.
+            Default is 100.0 MVA if not provided.
+        name : str, optional
+            Name of the system. If not provided, a default name will be assigned.
         **kwargs
-            Keyword arguments passed to infrasys.System.
+            Additional keyword arguments passed to infrasys.System (e.g., description,
+            auto_add_composed_components).
+
+        Examples
+        --------
+        Various ways to create a system:
+
+        >>> System()  # Uses defaults: name=auto, system_base_power=100.0
+        >>> System(200.0)  # Positional: system_base_power=200.0
+        >>> System(200.0, name="MySystem")  # Both
+        >>> System(name="MySystem")  # Name only
+        >>> System(system_base_power=200.0, name="MySystem")  # Both as keywords
+        >>> System(name="MySystem", system_base_power=200.0)  # Order doesn't matter
+
+        Notes
+        -----
+        This method defines the 'system_base' unit in the global Pint registry.
+        If you create multiple System instances, the last one's system_base will
+        be used for all unit conversions. Existing components will detect the
+        change and issue a warning if they access system_base conversions.
         """
-        super().__init__(*args, **kwargs)
-        logger.debug("Created R2X Core System: {}", self.name)
+        # Pass name and other kwargs to parent
+        if name is not None:
+            kwargs["name"] = name
+
+        super().__init__(**kwargs)
+
+        # System base power for per-unit calculations (MVA)
+        self.base_power = base_power
+
+        # Define or redefine system_base in the shared Pint registry
+        # This allows components to convert: device_pu.to('system_base')
+        if "system_base" in units.ureg:
+            units.ureg.define(f"system_base = {base_power} * MVA")  # overwrite
+        else:
+            units.ureg.define(f"system_base = {base_power} * MVA")
+
+        logger.debug(
+            "Created R2X Core System '{}' with system_base = {} MVA",
+            self.name,
+            base_power,
+        )
+
+    def add_components(self, *components: Component, **kwargs: Any) -> None:
+        """Add one or more components to the system and set their _system_base.
+
+        Parameters
+        ----------
+        *components : Component
+            Component(s) to add to the system.
+        **kwargs
+            Additional keyword arguments passed to parent's add_components.
+
+        Notes
+        -----
+        If any component is a HasPerUnit model, this method automatically sets
+        the component's _system_base attribute for use in system-base per-unit
+        display mode.
+
+        Raises
+        ------
+        ValueError
+            If a component already has a different _system_base set.
+        """
+        # Call parent's add_components first
+        super().add_components(*components, **kwargs)
+
+        # Set _system_base on all HasPerUnit components
+        for component in components:
+            if isinstance(component, units.HasPerUnit):
+                existing_base = component._get_system_base()
+                if existing_base is not None and existing_base != self.base_power:
+                    comp_name = component.name if hasattr(component, "name") else type(component).__name__
+                    msg = (
+                        f"Component '{comp_name}' already has _system_base={existing_base} MVA "
+                        f"but is being added to system with base={self.base_power} MVA. "
+                        f"This may indicate the component was previously added to a different system."
+                    )
+                    raise ValueError(msg)
+
+                component._system_base = self.base_power
+                logger.trace(
+                    "Set _system_base = {} MVA on component '{}'",
+                    self.base_power,
+                    component.name if hasattr(component, "name") else type(component).__name__,
+                )
 
     def __str__(self) -> str:
         """Return string representation of the system.
@@ -108,8 +202,14 @@ class System(InfrasysSystem):
         str
             String showing system name and component count.
         """
+        system_str = f"System(name={self.name}"
         num_components = self._components.get_num_components()
-        return f"System(name={self.name}, components={num_components})"
+        if num_components:
+            system_str += f", components={num_components}"
+        system_base = self.base_power
+        if system_base:
+            system_str += f", system_base={system_base}"
+        return system_str + ")"
 
     def __repr__(self) -> str:
         """Return detailed string representation.
@@ -258,7 +358,35 @@ class System(InfrasysSystem):
         to_json : Serialize system to JSON file
         """
         logger.info("Deserializing system from {}", filename)
-        return super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore
+        system: System = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
+
+        # After deserialization, update all HasPerUnit components with system_base
+        for component in system.get_components(Component):
+            if isinstance(component, units.HasPerUnit):
+                component._system_base = system.base_power
+
+        return system
+
+    def serialize_system_attributes(self) -> dict[str, Any]:
+        """Serialize R2X-specific system attributes.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing system_base_power.
+        """
+        return {"system_base_power": self.base_power}
+
+    def deserialize_system_attributes(self, data: dict[str, Any]) -> None:
+        """Deserialize R2X-specific system attributes.
+
+        Parameters
+        ----------
+        data : dict[str, Any]
+            Dictionary containing serialized system attributes.
+        """
+        if "system_base_power" in data:
+            self.base_power = data["system_base_power"]
 
     def components_to_records(
         self,

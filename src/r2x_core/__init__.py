@@ -1,4 +1,4 @@
-"""R2X Core Library"""
+"""R2X Core Library."""
 
 from importlib.metadata import version
 
@@ -27,6 +27,7 @@ from .plugins import (
 from .reader import DataReader
 from .store import DataStore
 from .system import System
+from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
 
 __version__ = version("r2x_core")
 
@@ -45,12 +46,18 @@ __all__ = [
     "FileFormat",
     "FilterFunction",
     "H5Format",
+    "HasPerUnit",
+    "HasUnits",
     "ParserError",
     "PluginComponent",
     "PluginConfig",
     "PluginManager",
     "System",
     "SystemModifier",
+    "Unit",
+    "UnitSystem",
     "ValidationError",
+    "get_unit_system",
     "h5_readers",
+    "set_unit_system",
 ]

@@ -13,6 +13,13 @@ Complete API documentation for all r2x-core classes and functions.
    :show-inheritance:
 ```
 
+```{eval-rst}
+.. automodule:: r2x_core.units
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
 ## Data Management
 
 ```{eval-rst}

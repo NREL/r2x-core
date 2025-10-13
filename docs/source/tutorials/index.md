@@ -4,6 +4,7 @@
 :maxdepth: 1
 
 getting-started
+working-with-units
 ```
 
 ## Learning Path
@@ -15,6 +16,12 @@ These tutorials are designed to help you learn R2X Core from the ground up. They
 Start here if you're new to R2X Core:
 
 - **[Getting Started with R2X Core](getting-started.md)** - Build your first power system model translator from scratch. Learn the core concepts by creating a complete working example.
+
+### Working with Units
+
+Once you understand the basics, learn how to handle physical units and per-unit normalization:
+
+- **[Working with Units](working-with-units.md)** - Master the unit handling system by building components with automatic unit conversion, multiple display modes, and system-wide per-unit normalization.
 
 ## What's the Difference?
 

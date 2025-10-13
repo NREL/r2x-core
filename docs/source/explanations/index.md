@@ -8,6 +8,7 @@ Explanations provide background and context about r2x-core's design and architec
 :maxdepth: 2
 
 plugin-system
+unit-system
 h5-readers
 ```
 

@@ -1,10 +1,16 @@
 """Tests for r2x_core.System class."""
 
+import csv
+import json
+from datetime import datetime, timedelta
+
+import numpy as np
 import pytest
+from infrasys import Component
+from infrasys.exceptions import ISFileExists
+from infrasys.time_series_models import SingleTimeSeries
 
 from r2x_core import System
-
-# Basic System tests
 
 
 def test_system_creation():
@@ -16,15 +22,10 @@ def test_system_creation():
 
 def test_to_json_raises_on_existing_file_without_overwrite(tmp_path):
     """Test that to_json raises error when file exists and overwrite=False."""
-    from infrasys.exceptions import ISFileExists
-
     system = System(name="TestSystem")
     output_file = tmp_path / "system.json"
-
-    # First save
     system.to_json(output_file)
 
-    # Try to save again without overwrite should raise
     with pytest.raises(ISFileExists):
         system.to_json(output_file, overwrite=False)
 
@@ -56,9 +57,6 @@ def test_system_repr():
     assert repr(system) == str(system)
 
 
-# System serialization tests
-
-
 def test_to_json(tmp_path):
     """Test serializing system to JSON."""
     system = System(name="TestSystem", description="Test")
@@ -70,18 +68,13 @@ def test_to_json(tmp_path):
 
 def test_from_json(tmp_path):
     """Test deserializing system from JSON."""
-    # Create and save system
     system = System(name="TestSystem", description="Test")
-
-    # Add a dummy component to work around infrasys empty list bug
-    from infrasys import Component
 
     system.add_components(Component(name="dummy"))
 
     output_file = tmp_path / "system.json"
     system.to_json(output_file)
 
-    # Load system
     loaded_system = System.from_json(output_file)
     assert loaded_system.name == "TestSystem"
     assert loaded_system.description == "Test"
@@ -91,14 +84,8 @@ def test_roundtrip_serialization(tmp_path):
     """Test complete save/load roundtrip."""
     original = System(name="RoundtripTest", description="Testing roundtrip")
 
-    # Add a dummy component to work around infrasys empty list bug
-    from infrasys import Component
-
     original.add_components(Component(name="dummy"))
-
     file_path = tmp_path / "roundtrip.json"
-
-    # Save and load
     original.to_json(file_path)
     loaded = System.from_json(file_path)
 
@@ -110,38 +97,26 @@ def test_to_json_with_overwrite(tmp_path):
     """Test overwriting existing JSON file."""
     system1 = System(name="System1")
     system2 = System(name="System2")
-
-    # Add dummy components to work around infrasys empty list bug
-    from infrasys import Component
-
     system1.add_components(Component(name="dummy1"))
     system2.add_components(Component(name="dummy2"))
-
     output_file = tmp_path / "system.json"
 
-    # First save
     system1.to_json(output_file)
     assert output_file.exists()
 
-    # Overwrite
     system2.to_json(output_file, overwrite=True)
 
-    # Verify it's system2
     loaded = System.from_json(output_file)
     assert loaded.name == "System2"
 
 
 def test_to_json_no_overwrite_raises(tmp_path):
     """Test that to_json raises error when file exists and overwrite=False."""
-    from infrasys.exceptions import ISFileExists
-
     system = System(name="TestSystem")
     output_file = tmp_path / "system.json"
 
-    # First save
     system.to_json(output_file)
 
-    # Try to save again without overwrite should raise
     with pytest.raises(ISFileExists):
         system.to_json(output_file, overwrite=False)
 
@@ -151,15 +126,11 @@ def test_to_json_stdout(capsys):
     import json
 
     system = System(name="TestSystem", description="Test stdout")
-
-    # Serialize to stdout
     system.to_json()
 
-    # Capture the output
     captured = capsys.readouterr()
     output_data = json.loads(captured.out)
 
-    # Verify the JSON structure
     assert output_data["name"] == "TestSystem"
     assert output_data["description"] == "Test stdout"
     assert "uuid" in output_data
@@ -172,37 +143,23 @@ def test_to_json_stdout_with_indent(capsys):
 
     system = System(name="TestSystem", description="Test stdout with indent")
 
-    # Serialize to stdout with indentation
     system.to_json(indent=2)
 
-    # Capture the output
     captured = capsys.readouterr()
     output_data = json.loads(captured.out)
 
-    # Verify the JSON structure
     assert output_data["name"] == "TestSystem"
     assert output_data["description"] == "Test stdout with indent"
 
-    # Verify it's formatted (has newlines indicating indentation)
     assert "\n" in captured.out
 
 
 def test_to_json_stdout_with_time_series(capsys):
     """Test serializing system with time series to stdout."""
-    import json
-    from datetime import datetime, timedelta
-
-    import numpy as np
-    from infrasys import Component
-    from infrasys.time_series_models import SingleTimeSeries
-
     system = System(name="TestSystem", description="Test stdout with time series")
 
-    # Add a component
     component = Component(name="TestComponent")
     system.add_components(component)
-
-    # Add time series data
     ts_data = SingleTimeSeries.from_array(
         data=np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
         name="test_variable",
@@ -211,30 +168,21 @@ def test_to_json_stdout_with_time_series(capsys):
     )
     system.add_time_series(ts_data, component)
 
-    # Serialize to stdout
     system.to_json()
 
-    # Capture the output
     captured = capsys.readouterr()
     output_data = json.loads(captured.out)
 
-    # Verify the JSON structure includes time series metadata
     assert output_data["name"] == "TestSystem"
     assert "time_series" in output_data
     assert "directory" in output_data["time_series"]
 
 
-# System export tests
-
-
 def test_components_to_records_returns_data():
     """Test components_to_records returns list of dictionaries."""
-    from infrasys import Component
-
     system = System(name="TestSystem")
     system.add_components(Component(name="comp1"), Component(name="comp2"))
 
-    # Test that it returns data
     result = system.components_to_records()
     assert isinstance(result, list)
     assert len(result) == 2
@@ -242,8 +190,6 @@ def test_components_to_records_returns_data():
 
 def test_components_to_records_with_filter():
     """Test components_to_records with filter function."""
-    from infrasys import Component
-
     system = System(name="FilterTest")
     system.add_components(
         Component(name="keep1"),
@@ -251,7 +197,6 @@ def test_components_to_records_with_filter():
         Component(name="keep2"),
     )
 
-    # Filter to only components with "keep" in name
     result = system.components_to_records(filter_func=lambda c: "keep" in c.name)
     assert len(result) == 2
     assert all("keep" in r["name"] for r in result)
@@ -259,8 +204,6 @@ def test_components_to_records_with_filter():
 
 def test_components_to_records_with_fields():
     """Test components_to_records with specific fields."""
-    from infrasys import Component
-
     system = System(name="FieldsTest")
     system.add_components(Component(name="test"))
 
@@ -274,12 +217,9 @@ def test_components_to_records_with_fields():
 
 def test_components_to_records_with_key_mapping():
     """Test components_to_records with key mapping."""
-    from infrasys import Component
-
     system = System(name="MappingTest")
     system.add_components(Component(name="test"))
 
-    # Map 'name' to 'component_name'
     result = system.components_to_records(key_mapping={"name": "component_name"})
     assert len(result) == 1
     assert "component_name" in result[0]
@@ -288,10 +228,6 @@ def test_components_to_records_with_key_mapping():
 
 def test_export_components_to_csv_to_file(tmp_path):
     """Test export_components_to_csv to file."""
-    import csv
-
-    from infrasys import Component
-
     system = System(name="FileTest")
     system.add_components(Component(name="comp1"), Component(name="comp2"))
 
@@ -311,15 +247,10 @@ def test_export_components_to_csv_to_file(tmp_path):
 
 def test_export_components_to_csv_empty(tmp_path):
     """Test export_components_to_csv when no components match."""
-    from infrasys import Component
-
     system = System(name="EmptyTest")
-    # Add components but filter them all out
     system.add_components(Component(name="test"))
 
     output_file = tmp_path / "empty.csv"
     system.export_components_to_csv(output_file, filter_func=lambda c: False)
 
-    # File should not exist when no components match
-    # (method warns and doesn't create file)
     assert not output_file.exists()

@@ -357,7 +357,7 @@ class PluginManager:
     def register_system_modifier(
         cls, name: str | SystemModifier | None = None
     ) -> Callable[[SystemModifier], SystemModifier] | SystemModifier:
-        """Decorator to register a system modifier function.
+        """Register a system modifier function.
 
         System modifiers transform a System object and return the modified system.
         They can accept additional context via ``**kwargs``.
@@ -389,7 +389,7 @@ class PluginManager:
         """
 
         def decorator(func: SystemModifier) -> SystemModifier:
-            """Internal decorator that registers the system modifier function."""
+            """Register system modifiers."""
             modifier_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._modifier_registry[modifier_name] = func
             logger.debug("Registered system modifier: {}", modifier_name)
@@ -406,7 +406,7 @@ class PluginManager:
     def register_filter(
         cls, name: str | FilterFunction | None = None
     ) -> Callable[[FilterFunction], FilterFunction] | FilterFunction:
-        """Decorator to register a filter function.
+        """Register a filter function.
 
         Filter functions process data (typically polars DataFrames) and return
         processed data.
@@ -437,7 +437,7 @@ class PluginManager:
         """
 
         def decorator(func: FilterFunction) -> FilterFunction:
-            """Internal decorator that registers the filter function."""
+            """Register a filter function."""
             filter_name = name if isinstance(name, str) else func.__name__  # type: ignore[attr-defined]
             cls._filter_registry[filter_name] = func
             logger.debug("Registered filter: {}", filter_name)
