@@ -189,12 +189,17 @@ class DataStore:
         return cls.from_json(mapping_path, folder)
 
     @classmethod
-    def from_json(cls, fpath: Path | str, folder: Path | str) -> "DataStore":
+    def from_json(
+        cls,
+        fpath: Path | str,
+        folder: Path | str,
+        upgrader: str | None = None,
+    ) -> "DataStore":
         """Create a DataStore instance from a JSON configuration file.
 
-        DataStore is responsible ONLY for reading data files. If you need to upgrade
-        data or configuration, use upgrade_data() first, then pass the
-        upgraded configuration and folder to this method.
+        If upgrader is specified, automatically detects the data version and applies
+        file upgrades (renaming, restructuring, etc.) before loading data files.
+        This provides a seamless upgrade experience without manual intervention.
 
         Parameters
         ----------
@@ -202,6 +207,13 @@ class DataStore:
             Path to the JSON configuration file containing DataFile specifications.
         folder : Path or str
             Base directory containing the data files referenced in the configuration.
+        upgrader : str, optional
+            Plugin name to use for automatic data upgrades. If provided:
+            1. Detects current version from data folder
+            2. Creates backup of original data
+            3. Applies file upgrades (rename, move, restructure files)
+            4. Loads upgraded data into DataStore
+            If None, loads data without upgrades.
 
         Returns
         -------
@@ -230,23 +242,31 @@ class DataStore:
         >>> store.list_data_files()
         ['generators', 'load']
 
-        Load with upgrades (recommended workflow):
+        Load with automatic upgrades (recommended for evolving data formats):
 
-        >>> from r2x_core import upgrade_data
-        >>> # First upgrade data and configuration
-        >>> config_dict, upgraded_folder = upgrade_data(
-        ...     config_file="config.json",
-        ...     data_folder="/path/to/data",
-        ...     upgrader="my_plugin"
+        >>> store = DataStore.from_json(
+        ...     "config.json",
+        ...     "/path/to/data",
+        ...     upgrader="reeds"  # Automatically upgrades ReEDS data
         ... )
-        >>> # Then create DataStore with upgraded data
-        >>> store = DataStore.from_config_dict(config_dict, upgraded_folder)
+        >>> # Data is automatically upgraded from v1.0 -> v2.0 -> v2.1
+        >>> # Original data backed up to "/path/to/data_backup"
+        >>> store.list_data_files()
+        ['nodes', 'generators']  # Note: 'buses' renamed to 'nodes' in v2.0
+
+        Load from plugin config (common pattern):
+
+        >>> from r2x_core import PluginManager
+        >>> manager = PluginManager()
+        >>> config_path = manager.get_file_mapping_path("reeds")
+        >>> store = DataStore.from_json(config_path, "/data/reeds", upgrader="reeds")
 
         See Also
         --------
         to_json : Save DataStore configuration to JSON
         from_config_dict : Create DataStore from configuration dictionary
         DataFile : Individual data file configuration structure
+        UpgradeType : Enum defining upgrade operation types
 
         Notes
         -----
@@ -254,9 +274,67 @@ class DataStore:
         represents a valid DataFile configuration with at minimum 'name'
         and 'fpath' fields.
 
-        This method does NOT handle upgrades. Upgrade logic has been moved to
-        upgrade_data() for clear separation of concerns.
+        When upgrader is specified, the upgrade process:
+        1. Detects version from data folder before any file operations
+        2. Moves original folder to {folder_name}_backup for safety
+        3. Copies backup to original location and applies upgrades there
+        4. Loads DataStore from upgraded folder at original location
+        5. Original data remains safe in backup location
         """
+        import shutil
+
+        from .plugins import PluginManager
+        from .upgrader import UpgradeType, apply_upgrades
+
+        folder_path = Path(folder)
+
+        # Apply file upgrades if upgrader is specified
+        if upgrader is not None:
+            if not folder_path.exists():
+                raise FileNotFoundError(f"Data folder not found: {folder_path}")
+
+            # Detect version from data folder
+            version = PluginManager.detect_version(upgrader, folder_path)
+            logger.info(
+                "Detected version '{}' for plugin '{}' in folder: {}",
+                version if version else "unknown",
+                upgrader,
+                folder_path,
+            )
+
+            # Get file operation upgrade steps
+            steps = PluginManager.get_upgrade_steps(upgrader)
+            file_ops = [s for s in steps if s.upgrade_type == UpgradeType.FILE]
+
+            if file_ops:
+                logger.info(
+                    "Applying {} file upgrade steps for plugin '{}'",
+                    len(file_ops),
+                    upgrader,
+                )
+
+                # Create backup of original data
+                backup_folder = folder_path.parent / f"{folder_path.name}_backup"
+                if backup_folder.exists():
+                    logger.warning("Backup folder already exists, removing: {}", backup_folder)
+                    shutil.rmtree(backup_folder)
+
+                shutil.move(str(folder_path), str(backup_folder))
+                logger.info("Created backup at: {}", backup_folder)
+
+                # Copy backup to original location for upgrades
+                shutil.copytree(backup_folder, folder_path)
+
+                # Apply file upgrades to the copy
+                _, applied = apply_upgrades(folder_path, file_ops, upgrade_type=UpgradeType.FILE)
+                if applied:
+                    logger.info("Applied file upgrades: {}", applied)
+                else:
+                    logger.debug("No file upgrades needed")
+            else:
+                logger.debug("No file upgrade steps found for plugin '{}'", upgrader)
+
+        # Load configuration and create DataStore
         fpath = Path(fpath)
         if not fpath.exists():
             raise FileNotFoundError(f"Configuration file not found: {fpath}")
@@ -268,7 +346,7 @@ class DataStore:
             msg = f"JSON file `{fpath}` is not a JSON array."
             raise TypeError(msg)
 
-        return cls.from_config_dict(data_files_json, folder)
+        return cls.from_config_dict(data_files_json, folder_path)
 
     @classmethod
     def from_config_dict(cls, config: list[dict[str, Any]], folder: Path | str) -> "DataStore":

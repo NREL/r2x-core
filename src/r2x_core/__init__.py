@@ -29,9 +29,9 @@ from .store import DataStore
 from .system import System
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
 from .upgrader import (
+    DataUpgrader,
     UpgradeStep,
     UpgradeType,
-    apply_upgrade,
     apply_upgrades,
     upgrade_data,
 )
@@ -56,6 +56,7 @@ __all__ = [
     "DataFile",
     "DataReader",
     "DataStore",
+    "DataUpgrader",
     "ExporterError",
     "FileFormat",
     "FileModTimeStrategy",
@@ -78,7 +79,6 @@ __all__ = [
     "ValidationError",
     "VersionDetector",
     "VersioningStrategy",
-    "apply_upgrade",
     "apply_upgrades",
     "get_unit_system",
     "h5_readers",

@@ -1,6 +1,6 @@
 """Tests for the versioning system."""
 
-from r2x_core.upgrader import UpgradeStep, UpgradeType, apply_upgrade, apply_upgrades
+from r2x_core.upgrader import UpgradeStep, UpgradeType, _apply_upgrade, apply_upgrades
 from r2x_core.versioning import (
     FileModTimeStrategy,
     GitVersioningStrategy,
@@ -168,7 +168,7 @@ def test_apply_upgrade_needed():
     )
 
     data = {"version": "1.0.0", "content": "test"}
-    result, applied = apply_upgrade(data, step)
+    result, applied = _apply_upgrade(data, step)
 
     assert applied is True
     assert result["upgraded"] is True
@@ -193,7 +193,7 @@ def test_apply_upgrade_not_needed():
     )
 
     data = {"version": "2.0.0", "content": "test"}
-    result, applied = apply_upgrade(data, step)
+    result, applied = _apply_upgrade(data, step)
 
     assert applied is False
     assert "upgraded" not in result
@@ -217,7 +217,7 @@ def test_apply_upgrade_version_too_new():
     )
 
     data = {"version": "3.0.0", "content": "test"}
-    result, applied = apply_upgrade(data, step)
+    result, applied = _apply_upgrade(data, step)
 
     assert applied is False
     assert "upgraded" not in result
@@ -321,17 +321,17 @@ def test_upgrade_step_version_constraints():
 
     # Test with version too low
     data = {"version": "1.0.0"}
-    _result, applied = apply_upgrade(data, step)
+    _result, applied = _apply_upgrade(data, step)
     assert applied is False
 
     # Test with version in range
     data = {"version": "1.7.0"}
-    _result, applied = apply_upgrade(data, step)
+    _result, applied = _apply_upgrade(data, step)
     assert applied is True
 
     # Test with version too high
     data = {"version": "2.5.0"}
-    _result, applied = apply_upgrade(data, step)
+    _result, applied = _apply_upgrade(data, step)
     assert applied is False
 
 

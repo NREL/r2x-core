@@ -80,6 +80,7 @@ Register upgrade steps:
 from __future__ import annotations
 
 import shutil
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -177,11 +178,158 @@ class UpgradeStep(NamedTuple):
     max_version: str | None = None
 
 
-def apply_upgrade(data: Any, step: UpgradeStep) -> tuple[Any, bool]:
-    """Apply an upgrade step to data if needed.
+class DataUpgrader(ABC):
+    """Base class for plugin data upgraders.
 
-    This function determines if an upgrade is necessary by comparing versions,
-    executes the upgrade if needed, and updates the version in the data.
+    Plugins must inherit from this class and implement:
+    1. strategy: VersioningStrategy class variable
+    2. detect_version(): Static method to detect version from folder
+
+    The base class provides:
+    - steps: Class variable to hold registered upgrade steps
+    - upgrade(): Method to run all upgrades
+    - upgrade_step(): Decorator to register upgrade steps
+
+    Examples
+    --------
+    Create a plugin upgrader:
+
+    >>> from r2x_core.upgrader import DataUpgrader
+    >>> from r2x_core.versioning import SemanticVersioningStrategy
+    >>> from pathlib import Path
+    >>>
+    >>> class MyPluginUpgrader(DataUpgrader):
+    ...     strategy = SemanticVersioningStrategy()
+    ...
+    ...     @staticmethod
+    ...     def detect_version(folder: Path) -> str | None:
+    ...         version_file = folder / "version.txt"
+    ...         if version_file.exists():
+    ...             return version_file.read_text().strip()
+    ...         return None
+
+    Register upgrade steps with decorator:
+
+    >>> @MyPluginUpgrader.upgrade_step(
+    ...     target_version="2.0.0",
+    ...     upgrade_type=UpgradeType.FILE
+    ... )
+    ... def my_upgrade(folder: Path) -> Path:
+    ...     # Upgrade logic
+    ...     return folder
+
+    Run upgrades:
+
+    >>> folder = Path("/data")
+    >>> upgraded = MyPluginUpgrader.upgrade(folder)
+    """
+
+    steps: list[UpgradeStep] = []  # noqa: RUF012
+
+    @property
+    @abstractmethod
+    def strategy(self) -> VersioningStrategy:
+        """Return versioning strategy for this upgrader (required)."""
+
+    @staticmethod
+    @abstractmethod
+    def detect_version(folder: Path) -> str | None:
+        """Detect version from data folder (required).
+
+        Parameters
+        ----------
+        folder : Path
+            Data folder to detect version from.
+
+        Returns
+        -------
+        str | None
+            Version string or None if not found.
+        """
+
+    @classmethod
+    def upgrade(cls, folder: Path) -> Path:
+        """Upgrade data folder to latest version.
+
+        This is the main entry point for upgrading data.
+
+        Parameters
+        ----------
+        folder : Path
+            Data folder to upgrade.
+
+        Returns
+        -------
+        Path
+            Path to upgraded folder.
+
+        Examples
+        --------
+        >>> from reeds_plugin import ReedsDataUpgrader
+        >>> upgraded = ReedsDataUpgrader.upgrade(Path("/data"))
+        """
+        upgraded_folder, _ = apply_upgrades(folder, cls.steps, upgrade_type=UpgradeType.FILE)
+        return Path(upgraded_folder)
+
+    @classmethod
+    def upgrade_step(
+        cls,
+        target_version: str,
+        upgrade_type: UpgradeType,
+        priority: int = 100,
+    ) -> Callable[[Callable[[Path], Path]], Callable[[Path], Path]]:
+        """Register an upgrade step via decorator.
+
+        Can be used from any module to register steps to this upgrader.
+
+        Parameters
+        ----------
+        target_version : str
+            Target version for this upgrade.
+        upgrade_type : UpgradeType
+            Type of upgrade (FILE or SYSTEM).
+        priority : int, default=100
+            Execution priority (lower runs first).
+
+        Examples
+        --------
+        >>> @MyPluginUpgrader.upgrade_step(
+        ...     target_version="2.0.0",
+        ...     upgrade_type=UpgradeType.FILE
+        ... )
+        ... def my_upgrade(folder: Path) -> Path:
+        ...     # Upgrade logic
+        ...     return folder
+        """
+
+        def decorator(func: Callable[[Path], Path]) -> Callable[[Path], Path]:
+            # Get strategy - access via __dict__ to check if it's a class variable
+            # If not in __dict__, it's a property and we need to instantiate to get it
+            strategy_value = cls.__dict__["strategy"] if "strategy" in cls.__dict__ else cls().strategy
+
+            step = UpgradeStep(
+                name=func.__name__,
+                func=func,
+                target_version=target_version,
+                versioning_strategy=strategy_value,
+                upgrade_type=upgrade_type,
+                priority=priority,
+            )
+            cls.steps.append(step)
+            return func
+
+        return decorator
+
+
+def _apply_upgrade(data: Any, step: UpgradeStep) -> tuple[Any, bool]:
+    """Apply a single upgrade step to data if needed (internal function).
+
+    This is an internal function that determines if an upgrade is necessary
+    by comparing versions, executes the upgrade if needed, and updates the
+    version in the data.
+
+    Users should typically use apply_upgrades() instead, which orchestrates
+    multiple upgrade steps. This function is exposed for testing purposes.
 
     Parameters
     ----------
@@ -198,7 +346,7 @@ def apply_upgrade(data: Any, step: UpgradeStep) -> tuple[Any, bool]:
     Examples
     --------
     >>> data = {"buses": [...], "version": "1.0.0"}
-    >>> upgraded_data, applied = apply_upgrade(data, upgrade_step)
+    >>> upgraded_data, applied = _apply_upgrade(data, upgrade_step)
     >>> if applied:
     ...     print(f"Upgraded to {step.target_version}")
     """
@@ -303,12 +451,18 @@ def apply_upgrades(
     current_data = data
     applied_steps: list[str] = []
 
-    type_str = upgrade_type.value if upgrade_type else "all types"
-    logger.info("Applying upgrades - Type: {}, {} steps to consider", type_str, len(sorted_steps))
+    if upgrade_type is not None:
+        logger.info(
+            "Applying {} upgrade steps (type: {})",
+            len(sorted_steps),
+            upgrade_type.value,
+        )
+    else:
+        logger.info("Applying {} upgrade steps (all types)", len(sorted_steps))
 
     for step in sorted_steps:
         try:
-            current_data, was_applied = apply_upgrade(current_data, step)
+            current_data, was_applied = _apply_upgrade(current_data, step)
             if was_applied:
                 applied_steps.append(step.name)
         except Exception as e:
@@ -316,7 +470,11 @@ def apply_upgrades(
             # Continue with other steps rather than failing completely
             continue
 
-    logger.info("Completed upgrades. Applied: {}", applied_steps)
+    if applied_steps:
+        logger.info("Completed upgrades. Applied: {}", applied_steps)
+    else:
+        logger.debug("No upgrades were applied")
+
     return current_data, applied_steps
 
 
