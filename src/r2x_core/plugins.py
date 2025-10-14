@@ -99,7 +99,8 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from r2x_core.parser import BaseParser
-    from r2x_core.upgrader import UpgradeStep
+    from r2x_core.upgrader import UpgradeStep, UpgradeType
+    from r2x_core.versioning import VersioningStrategy
 
     from .plugin_config import PluginConfig
 
@@ -839,6 +840,119 @@ class PluginManager:
                     return self.func(folder)
 
             cls.register_version_detector(plugin_name, FunctionDetector(func))
+            return func
+
+        return decorator
+
+    @classmethod
+    def upgrade_step(
+        cls,
+        plugin_name: str,
+        target_version: str,
+        versioning_strategy: "VersioningStrategy",
+        upgrade_type: "UpgradeType",
+        priority: int = 100,
+        min_version: str | None = None,
+        max_version: str | None = None,
+    ) -> "Callable[[Callable], Callable]":  # type: ignore[type-arg]
+        """Register an upgrade step using a decorator.
+
+        This provides a convenient decorator-based API for registering upgrade
+        functions. The decorated function should accept data and return upgraded data.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the plugin this upgrade belongs to.
+        target_version : str
+            The version this upgrade targets.
+        versioning_strategy : VersioningStrategy
+            Strategy for version management.
+        upgrade_type : UpgradeType
+            Type of upgrade (FILE or SYSTEM).
+        priority : int, default=100
+            Priority for upgrade execution (lower numbers run first).
+        min_version : str | None, default=None
+            Minimum version required for this upgrade.
+        max_version : str | None, default=None
+            Maximum version this upgrade is compatible with.
+
+        Returns
+        -------
+        Callable
+            Decorator function that registers the upgrade step.
+
+        Examples
+        --------
+        Register a file upgrade with decorator:
+
+        >>> from pathlib import Path
+        >>> from r2x_core import UpgradeType
+        >>> from r2x_core.versioning import SemanticVersioningStrategy
+        >>> strategy = SemanticVersioningStrategy()
+        >>>
+        >>> @PluginManager.upgrade_step(
+        ...     plugin_name="reeds",
+        ...     target_version="2.0.0",
+        ...     versioning_strategy=strategy,
+        ...     upgrade_type=UpgradeType.FILE
+        ... )
+        ... def rename_buses_to_nodes(folder: Path) -> Path:
+        ...     '''Rename buses.csv to nodes.csv.'''
+        ...     old_file = folder / "buses.csv"
+        ...     if old_file.exists():
+        ...         old_file.rename(folder / "nodes.csv")
+        ...     return folder
+
+        Register with version constraints:
+
+        >>> @PluginManager.upgrade_step(
+        ...     plugin_name="reeds",
+        ...     target_version="3.0.0",
+        ...     versioning_strategy=strategy,
+        ...     upgrade_type=UpgradeType.FILE,
+        ...     min_version="2.0.0",
+        ...     max_version="2.9.9",
+        ...     priority=50
+        ... )
+        ... def restructure_files(folder: Path) -> Path:
+        ...     '''Reorganize file structure for v3.'''
+        ...     # Your upgrade logic here
+        ...     return folder
+
+        Register a system upgrade:
+
+        >>> @PluginManager.upgrade_step(
+        ...     plugin_name="reeds",
+        ...     target_version="2.0.0",
+        ...     versioning_strategy=strategy,
+        ...     upgrade_type=UpgradeType.SYSTEM
+        ... )
+        ... def update_system_metadata(system):
+        ...     '''Update system metadata after loading.'''
+        ...     system.metadata["upgraded_to"] = "2.0.0"
+        ...     return system
+
+        See Also
+        --------
+        register_upgrade_step : Register an UpgradeStep instance
+        UpgradeStep : Upgrade step definition
+        UpgradeType : Upgrade type enumeration
+        """
+        from r2x_core.upgrader import UpgradeStep
+
+        def decorator(func: Callable) -> Callable:  # type: ignore[type-arg]
+            step = UpgradeStep(
+                name=func.__name__,
+                func=func,
+                target_version=target_version,
+                versioning_strategy=versioning_strategy,
+                upgrade_type=upgrade_type,
+                priority=priority,
+                min_version=min_version,
+                max_version=max_version,
+            )
+            cls.register_upgrade_step(plugin_name, step)
             return func
 
         return decorator
