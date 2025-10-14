@@ -30,15 +30,26 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
     if not reader_kwargs or not reader_kwargs.get("data_key"):
         return _read_first_dataset(h5_file)
 
+    file_data = {}
+    for key in h5_file:
+        if key == "index_names":
+            # If index names are stored in a dataset in the H5 file, use them to
+            # rename relevant index data when attaching to the file_data dictionary
+            index_names = [f"index_{name.decode()}" for name in h5_file['index_names']]
+            for index_num, index_name in enumerate(index_names):
+                file_data[index_name] = h5_file[f"index_{index_num}"]
+        else:
+            file_data[key] = h5_file[key]
+
     data_key = reader_kwargs["data_key"]
     columns_key = reader_kwargs.get("columns_key")
     decode_bytes = reader_kwargs.get("decode_bytes", True)
 
-    data = h5_file[data_key][:]
+    data = file_data[data_key][:]
     result: dict[str, Any] = {}
 
-    if columns_key and columns_key in h5_file:
-        columns = h5_file[columns_key][:]
+    if columns_key and columns_key in file_data:
+        columns = file_data[columns_key][:]
         if decode_bytes and columns.dtype.kind == "S":
             columns = columns.astype(str)
         if data.ndim == 2:
@@ -52,8 +63,8 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
             result = {f"{data_key}_col_{i}": data[:, i] for i in range(data.shape[1])}
 
     datetime_key = reader_kwargs.get("datetime_key")
-    if datetime_key and datetime_key in h5_file:
-        dt_data = h5_file[datetime_key][:]
+    if datetime_key and datetime_key in file_data:
+        dt_data = file_data[datetime_key][:]
         if decode_bytes and dt_data.dtype.kind == "S":
             dt_data = dt_data.astype(str)
 
@@ -64,12 +75,12 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
             result[reader_kwargs.get("datetime_column_name", "datetime")] = dt_data
 
     index_key = reader_kwargs.get("index_key")
-    if index_key and index_key in h5_file and index_key != datetime_key:
-        result[index_key] = h5_file[index_key][:]
+    if index_key and index_key in file_data and index_key != datetime_key:
+        result[index_key] = file_data[index_key][:]
 
     for key in reader_kwargs.get("additional_keys", []):
-        if key in h5_file:
-            result[_format_column_name(key)] = h5_file[key][:]
+        if key in file_data:
+            result[_format_column_name(key)] = file_data[key][:]
 
     return result
 
