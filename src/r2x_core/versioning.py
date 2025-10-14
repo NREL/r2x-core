@@ -462,3 +462,68 @@ class FileModTimeStrategy(VersioningStrategy):
         except ValueError:
             logger.warning("Invalid timestamp: {} or {}", current, target)
             return -1
+
+
+class VersionDetector(Protocol):
+    """Protocol for detecting version from data folder without DataStore.
+
+    Plugins implement this protocol to specify how to read version information
+    from their data files before DataStore initialization. This enables version
+    detection before file operations during upgrades.
+
+    Methods
+    -------
+    detect_version(folder: Path) -> str | None
+        Detect version from the data folder.
+
+    Examples
+    --------
+    Implement a custom version detector:
+
+    >>> class CustomDetector:
+    ...     def detect_version(self, folder: Path) -> str | None:
+    ...         version_file = folder / "VERSION"
+    ...         if version_file.exists():
+    ...             return version_file.read_text().strip()
+    ...         return None
+    >>> version = CustomDetector().detect_version(Path("/data/folder"))
+
+    Implement a CSV-based detector:
+
+    >>> class CSVDetector:
+    ...     def detect_version(self, folder: Path) -> str | None:
+    ...         import polars as pl
+    ...         csv_path = folder / "metadata.csv"
+    ...         if csv_path.exists():
+    ...             df = pl.read_csv(csv_path)
+    ...             return str(df.filter(pl.col("field") == "version")["value"][0])
+    ...         return None
+
+    See Also
+    --------
+    PluginManager.register_version_detector : Register detector for a plugin
+    """
+
+    @abstractmethod
+    def detect_version(self, folder: Path) -> str | None:
+        """Detect version from data folder.
+
+        This method is called before DataStore initialization and should
+        read version information using minimal file I/O operations.
+
+        Parameters
+        ----------
+        folder : Path
+            Path to the data folder.
+
+        Returns
+        -------
+        str | None
+            Version string if detected, None otherwise.
+
+        Notes
+        -----
+        Implementations should handle missing files gracefully and
+        return None rather than raising exceptions.
+        """
+        ...

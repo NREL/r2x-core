@@ -1,7 +1,7 @@
 """Tests for plugin manager upgrade step functionality."""
 
 from r2x_core.plugins import PluginManager
-from r2x_core.upgrader import UpgradeStep
+from r2x_core.upgrader import UpgradeStep, UpgradeType
 from r2x_core.versioning import SemanticVersioningStrategy
 
 
@@ -14,7 +14,11 @@ def test_register_upgrade_step():
 
     strategy = SemanticVersioningStrategy()
     step = UpgradeStep(
-        name="test_upgrade", func=upgrade_func, target_version="2.0.0", versioning_strategy=strategy
+        name="test_upgrade",
+        func=upgrade_func,
+        target_version="2.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     PluginManager.register_upgrade_step("test_plugin", step)
@@ -43,6 +47,7 @@ def test_get_upgrade_steps_sorted_by_priority():
         func=upgrade_func,
         target_version="2.0.0",
         versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
         priority=50,
     )
 
@@ -51,6 +56,7 @@ def test_get_upgrade_steps_sorted_by_priority():
         func=upgrade_func,
         target_version="3.0.0",
         versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
         priority=200,
     )
 
@@ -71,7 +77,11 @@ def test_registered_upgrade_steps_property():
 
     strategy = SemanticVersioningStrategy()
     step = UpgradeStep(
-        name="property_test", func=upgrade_func, target_version="1.0.0", versioning_strategy=strategy
+        name="property_test",
+        func=upgrade_func,
+        target_version="1.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     PluginManager.register_upgrade_step("property_plugin", step)
@@ -93,11 +103,19 @@ def test_multiple_plugins_upgrade_steps():
     strategy = SemanticVersioningStrategy()
 
     step1 = UpgradeStep(
-        name="plugin1_upgrade", func=upgrade_func, target_version="1.0.0", versioning_strategy=strategy
+        name="plugin1_upgrade",
+        func=upgrade_func,
+        target_version="1.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     step2 = UpgradeStep(
-        name="plugin2_upgrade", func=upgrade_func, target_version="2.0.0", versioning_strategy=strategy
+        name="plugin2_upgrade",
+        func=upgrade_func,
+        target_version="2.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     PluginManager.register_upgrade_step("plugin1", step1)

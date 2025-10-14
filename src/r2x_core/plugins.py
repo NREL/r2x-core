@@ -270,6 +270,7 @@ class PluginManager:
     _modifier_registry: ClassVar[dict[str, SystemModifier]] = {}
     _filter_registry: ClassVar[dict[str, FilterFunction]] = {}
     _upgrade_registry: ClassVar[dict[str, list["UpgradeStep"]]] = {}
+    _version_detector_registry: ClassVar[dict[str, Any]] = {}
 
     def __new__(cls) -> "PluginManager":
         """Ensure singleton instance."""
@@ -567,6 +568,45 @@ class PluginManager:
         plugin = self._registry.get(name)
         return plugin.config if plugin else None
 
+    def load_upgrader(self, name: str) -> list["UpgradeStep"]:
+        """Load upgrade steps for a plugin.
+
+        This is an instance method wrapper around get_upgrade_steps() for
+        consistency with other load_* methods. Use this in CLI workflows
+        to check if upgrades exist and get the steps.
+
+        Parameters
+        ----------
+        name : str
+            Plugin name
+
+        Returns
+        -------
+        list[UpgradeStep]
+            List of upgrade steps sorted by priority, or empty list if none
+
+        Examples
+        --------
+        In Rust CLI (via PyO3):
+
+        >>> # Python equivalent of Rust call:
+        >>> manager = PluginManager()
+        >>> steps = manager.load_upgrader("reeds")
+        >>> if steps:
+        ...     # Has upgrades - call upgrade_data before loading data_store
+        ...     from r2x_core import upgrade_data
+        ...     upgraded_path = upgrade_data(input_path, "reeds")
+        ...     data_store = DataStore.from_json(file_mapping, upgraded_path)
+        ... else:
+        ...     # No upgrades - use original input path
+        ...     data_store = DataStore.from_json(file_mapping, input_path)
+
+        See Also
+        --------
+        get_upgrade_steps : Class method version of this function
+        """
+        return self.get_upgrade_steps(name)
+
     def get_file_mapping_path(self, plugin_name: str) -> Path | None:
         """Get the file mapping path for a registered plugin.
 
@@ -691,3 +731,186 @@ class PluginManager:
             Dictionary mapping plugin names to their upgrade steps
         """
         return self._upgrade_registry.copy()
+
+    @classmethod
+    def register_version_detector(cls, plugin_name: str, detector: Any) -> None:
+        """Register a version detector for a plugin.
+
+        Version detectors allow plugins to specify how to read version information
+        from data files before DataStore initialization. This enables version
+        detection before file operations during upgrades.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the plugin this detector belongs to.
+        detector : VersionDetector
+            Version detector instance implementing the detect_version method.
+
+        Examples
+        --------
+        Register a custom version detector:
+
+        >>> class CustomDetector:
+        ...     def detect_version(self, folder):
+        ...         version_file = folder / "VERSION"
+        ...         return version_file.read_text().strip() if version_file.exists() else None
+        >>> PluginManager.register_version_detector("my_plugin", CustomDetector())
+
+        Register a detector that reads from a specific CSV file:
+
+        >>> class CSVDetector:
+        ...     def detect_version(self, folder):
+        ...         import polars as pl
+        ...         csv_path = folder / "metadata.csv"
+        ...         if csv_path.exists():
+        ...             df = pl.read_csv(csv_path)
+        ...             return str(df.filter(pl.col("field") == "version")["value"][0])
+        ...         return None
+        >>> PluginManager.register_version_detector("my_plugin", CSVDetector())
+
+        See Also
+        --------
+        r2x_core.versioning.VersionDetector : Protocol for version detectors
+        detect_version : Detect version for a plugin
+        """
+        cls._version_detector_registry[plugin_name] = detector
+        logger.info("Registered version detector for plugin: {}", plugin_name)
+
+    @classmethod
+    def version_detector(
+        cls, plugin_name: str
+    ) -> "Callable[[Callable[[Path], str | None]], Callable[[Path], str | None]]":
+        """Register a version detector function for a plugin.
+
+        This provides a convenient decorator-based API for registering version
+        detection functions. The decorated function should accept a Path and
+        return an optional version string.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the plugin this detector belongs to.
+
+        Returns
+        -------
+        Callable
+            Decorator function that registers the version detector.
+
+        Examples
+        --------
+        Register a version detector with decorator:
+
+        >>> from pathlib import Path
+        >>> @PluginManager.version_detector("my_plugin")
+        ... def detect_my_version(folder: Path) -> str | None:
+        ...     version_file = folder / "VERSION.txt"
+        ...     if version_file.exists():
+        ...         return version_file.read_text().strip()
+        ...     return None
+
+        Register a detector that reads from CSV:
+
+        >>> import polars as pl
+        >>> @PluginManager.version_detector("my_plugin")
+        ... def detect_from_csv(folder: Path) -> str | None:
+        ...     csv_path = folder / "metadata.csv"
+        ...     if csv_path.exists():
+        ...         df = pl.read_csv(csv_path)
+        ...         version_row = df.filter(pl.col("field") == "version")
+        ...         if len(version_row) > 0:
+        ...             return str(version_row["value"][0])
+        ...     return None
+
+        See Also
+        --------
+        register_version_detector : Register a detector instance
+        detect_version : Detect version for a plugin
+        r2x_core.versioning.VersionDetector : Protocol for version detectors
+        """
+
+        def decorator(func: Callable[[Path], str | None]) -> Callable[[Path], str | None]:
+            # Create a simple detector wrapper that implements the protocol
+            class FunctionDetector:
+                def __init__(self, func: Callable[[Path], str | None]):
+                    self.func = func
+
+                def detect_version(self, folder: Path) -> str | None:
+                    return self.func(folder)
+
+            cls.register_version_detector(plugin_name, FunctionDetector(func))
+            return func
+
+        return decorator
+
+    @classmethod
+    def detect_version(cls, plugin_name: str, folder: Path) -> str | None:
+        """Detect version for a plugin without DataStore.
+
+        This method uses the registered version detector for the specified plugin
+        to read version information from data files before DataStore initialization.
+        This enables upgrades that need to rename or move files before loading.
+
+        Parameters
+        ----------
+        plugin_name : str
+            Name of the plugin.
+        folder : Path
+            Path to the data folder.
+
+        Returns
+        -------
+        str | None
+            Detected version string, or None if no detector is registered
+            or version cannot be detected.
+
+        Examples
+        --------
+        Detect version before creating DataStore:
+
+        >>> from pathlib import Path
+        >>> version = PluginManager.detect_version("my_plugin", Path("/data"))
+        >>> print(f"Detected version: {version}")
+
+        Use in DataStore initialization:
+
+        >>> version = PluginManager.detect_version("my_plugin", folder)
+        >>> if version:
+        ...     # Apply version-specific logic before loading files
+        ...     pass
+
+        See Also
+        --------
+        register_version_detector : Register a detector for a plugin
+        r2x_core.versioning.VersionDetector : Protocol for version detectors
+
+        Notes
+        -----
+        This method is called automatically by DataStore.from_json when an
+        upgrader is specified. Plugins do not need to call this directly
+        unless they need version information before DataStore creation.
+        """
+        detector = cls._version_detector_registry.get(plugin_name)
+        if detector is None:
+            logger.debug("No version detector registered for plugin: {}", plugin_name)
+            return None
+
+        try:
+            version = detector.detect_version(folder)
+            if version:
+                logger.info("Detected version for plugin {}: {}", plugin_name, version)
+            return version  # type: ignore[no-any-return]
+        except Exception as e:
+            logger.warning("Version detection failed for plugin {}: {}", plugin_name, e)
+            return None
+
+    @property
+    def registered_version_detectors(self) -> dict[str, Any]:
+        """All registered version detectors by plugin name.
+
+        Returns
+        -------
+        dict[str, VersionDetector]
+            Dictionary mapping plugin names to their version detectors.
+        """
+        return self._version_detector_registry.copy()

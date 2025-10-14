@@ -29,17 +29,17 @@ from .store import DataStore
 from .system import System
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
 from .upgrader import (
-    UpgradeContext,
-    UpgradeResult,
     UpgradeStep,
+    UpgradeType,
     apply_upgrade,
     apply_upgrades,
-    apply_upgrades_with_rollback,
+    upgrade_data,
 )
 from .versioning import (
     FileModTimeStrategy,
     GitVersioningStrategy,
     SemanticVersioningStrategy,
+    VersionDetector,
     VersioningStrategy,
 )
 
@@ -73,15 +73,15 @@ __all__ = [
     "SystemModifier",
     "Unit",
     "UnitSystem",
-    "UpgradeContext",
-    "UpgradeResult",
     "UpgradeStep",
+    "UpgradeType",
     "ValidationError",
+    "VersionDetector",
     "VersioningStrategy",
     "apply_upgrade",
     "apply_upgrades",
-    "apply_upgrades_with_rollback",
     "get_unit_system",
     "h5_readers",
     "set_unit_system",
+    "upgrade_data",
 ]

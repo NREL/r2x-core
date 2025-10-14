@@ -1,68 +1,88 @@
 """Upgrade system for R2X Core.
 
-This module provides the upgrade mechanism for both data context (raw files,
-dictionaries) and system context (model instances).
+This module provides a two-tier upgrade mechanism for R2X Core plugins:
+
+**FILE**: File operations on raw data before parser initialization (default workflow)
+**SYSTEM**: System object modifications for cached systems only
 
 Classes
 -------
-UpgradeContext
-    Enum defining valid upgrade execution contexts.
+UpgradeType
+    Enum defining upgrade types (FILE or SYSTEM).
 UpgradeStep
-    Named tuple defining an upgrade step with versioning information.
-UpgradeResult
-    Result of an upgrade operation with rollback capability.
+    Named tuple defining an upgrade step with versioning and type information.
 
 Functions
 ---------
+upgrade_data
+    Main entry point for file upgrades (file operations on raw data).
 apply_upgrade
     Apply a single upgrade step to data if needed.
 apply_upgrades
     Apply multiple upgrade steps in priority order.
-apply_upgrades_with_rollback
-    Apply multiple upgrade steps with rollback capability.
 
 Examples
 --------
-Register an upgrade step:
+Upgrade raw data files before parser (default workflow):
 
->>> from r2x_core.upgrader import UpgradeStep, UpgradeContext, apply_upgrades
+>>> from r2x_core import upgrade_data
+>>> upgraded_folder = upgrade_data(
+...     data_folder="/data/v1",
+...     upgrader="my_plugin"
+... )
+>>> # Use upgraded folder for parser
+>>> config = MyPluginConfig.from_json("config.json")
+>>> data_store = DataStore.from_json("config.json", upgraded_folder)
+
+Upgrade cached system (only when loading saved systems):
+
+>>> from r2x_core import System
+>>> system = System.from_json("system.json", upgrader="my_plugin")
+
+Register upgrade steps:
+
+>>> from r2x_core import UpgradeStep, UpgradeType
 >>> from r2x_core.versioning import SemanticVersioningStrategy
 >>> from r2x_core.plugins import PluginManager
 >>>
->>> def upgrade_to_v2(data):
-...     data["version"] = "2.0.0"
-...     data["new_field"] = "default"
-...     return data
+>>> # File upgrade (rename data files)
+>>> def rename_files(folder):
+...     old_file = folder / "buses.csv"
+...     if old_file.exists():
+...         old_file.rename(folder / "nodes.csv")
+...     return folder
 >>>
->>> step = UpgradeStep(
-...     name="upgrade_to_v2",
-...     func=upgrade_to_v2,
+>>> step1 = UpgradeStep(
+...     name="rename_bus_files",
+...     func=rename_files,
 ...     target_version="2.0.0",
 ...     versioning_strategy=SemanticVersioningStrategy(),
-...     context=UpgradeContext.DATA
+...     upgrade_type=UpgradeType.FILE
 ... )
->>> PluginManager.register_upgrade_step("my_model", step)
-
-Apply data upgrades:
-
->>> data = {"version": "1.0.0"}
->>> upgraded_data, applied = apply_upgrades(
-...     data, steps, context=UpgradeContext.DATA, upgrade_type="data"
+>>>
+>>> # System upgrade (update cached system)
+>>> def upgrade_system(system):
+...     system.metadata["upgraded_to"] = "2.0.0"
+...     return system
+>>>
+>>> step2 = UpgradeStep(
+...     name="upgrade_system_to_v2",
+...     func=upgrade_system,
+...     target_version="2.0.0",
+...     versioning_strategy=SemanticVersioningStrategy(),
+...     upgrade_type=UpgradeType.SYSTEM
 ... )
-
-Apply system upgrades:
-
->>> system = System.from_json("system.json")
->>> upgraded_system, applied = apply_upgrades(
-...     system, steps, context=UpgradeContext.SYSTEM, upgrade_type="system"
-... )
+>>>
+>>> PluginManager.register_upgrade_step("my_plugin", step1)
+>>> PluginManager.register_upgrade_step("my_plugin", step2)
 """
 
 from __future__ import annotations
 
-import copy
+import shutil
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from loguru import logger
@@ -71,22 +91,23 @@ if TYPE_CHECKING:
     from r2x_core.versioning import VersioningStrategy
 
 
-class UpgradeContext(str, Enum):
-    """Valid upgrade execution contexts.
+class UpgradeType(str, Enum):
+    """Type of upgrade operation.
 
     Attributes
     ----------
-    DATA : str
-        For raw data and configuration upgrades (before System creation).
+    FILE : str
+        File system operations on raw data files (rename, move, modify).
+        Applied before parser and DataStore initialization via upgrade_data().
+        This is the default upgrade type used in the normal parser workflow.
     SYSTEM : str
-        For System instance upgrades (after System creation).
-    BOTH : str
-        For upgrades that can run in either context.
+        System object modifications for cached systems.
+        Applied when loading saved systems via System.from_json(upgrader=...).
+        Only used when loading cached systems, not in the default parser workflow.
     """
 
-    DATA = "DATA"
+    FILE = "FILE"
     SYSTEM = "SYSTEM"
-    BOTH = "BOTH"
 
 
 class UpgradeStep(NamedTuple):
@@ -102,12 +123,10 @@ class UpgradeStep(NamedTuple):
         The version this upgrade targets.
     versioning_strategy : VersioningStrategy
         Strategy for version management.
+    upgrade_type : UpgradeType
+        Type of upgrade: FILE or SYSTEM.
     priority : int, default=100
         Priority for upgrade execution (lower numbers run first).
-    context : str | UpgradeContext, default=UpgradeContext.BOTH
-        Context where upgrade applies: DATA, SYSTEM, or BOTH.
-    upgrade_type : str, default="data"
-        Type of upgrade: "data" for raw data/configurations, "system" for System instances.
     min_version : str | None, default=None
         Minimum version required for this upgrade.
     max_version : str | None, default=None
@@ -115,29 +134,28 @@ class UpgradeStep(NamedTuple):
 
     Examples
     --------
-    Data upgrade step for raw configuration data:
+    File upgrade:
 
     >>> from r2x_core.versioning import SemanticVersioningStrategy
-    >>> def upgrade_data(data):
-    ...     data["version"] = "2.0.0"
-    ...     data["new_field"] = "default"
-    ...     return data
+    >>> from pathlib import Path
+    >>> def rename_files(folder: Path) -> Path:
+    ...     old_file = folder / "buses.csv"
+    ...     if old_file.exists():
+    ...         old_file.rename(folder / "nodes.csv")
+    ...     return folder
     >>>
     >>> step = UpgradeStep(
-    ...     name="upgrade_config_to_v2",
-    ...     func=upgrade_data,
+    ...     name="rename_bus_files",
+    ...     func=rename_files,
     ...     target_version="2.0.0",
     ...     versioning_strategy=SemanticVersioningStrategy(),
-    ...     upgrade_type="data",
-    ...     context=UpgradeContext.DATA
+    ...     upgrade_type=UpgradeType.FILE
     ... )
 
-    System upgrade step for System instances:
+    System upgrade (for cached systems only):
 
     >>> def upgrade_system(system):
-    ...     # Modify system components or metadata
-    ...     for component in system.get_components():
-    ...         component.upgraded = True
+    ...     system.metadata["upgraded_to"] = "2.0.0"
     ...     return system
     >>>
     >>> step = UpgradeStep(
@@ -145,8 +163,7 @@ class UpgradeStep(NamedTuple):
     ...     func=upgrade_system,
     ...     target_version="2.0.0",
     ...     versioning_strategy=SemanticVersioningStrategy(),
-    ...     upgrade_type="system",
-    ...     context=UpgradeContext.SYSTEM
+    ...     upgrade_type=UpgradeType.SYSTEM
     ... )
     """
 
@@ -154,126 +171,10 @@ class UpgradeStep(NamedTuple):
     func: Callable[[Any], Any]
     target_version: str
     versioning_strategy: VersioningStrategy
+    upgrade_type: UpgradeType
     priority: int = 100
-    context: str | UpgradeContext = UpgradeContext.BOTH
-    upgrade_type: str = "data"  # "data" or "system"
     min_version: str | None = None
     max_version: str | None = None
-
-
-class UpgradeResult:
-    """Result of an upgrade operation with rollback capability.
-
-    This class tracks the original data state and applied upgrades,
-    allowing all-or-nothing rollback if validation fails.
-
-    Uses lazy initialization for the original data snapshot - the deep copy
-    is only created when the first upgrade is applied, avoiding expensive
-    copies when no upgrades are needed.
-
-    Attributes
-    ----------
-    _original_data : Any
-        Reference to the original data before any upgrades.
-    _original_snapshot : Any | None
-        Deep copy of the original data, created lazily on first upgrade.
-    current_data : Any
-        The current state of the data after upgrades.
-    applied_steps : list[str]
-        List of applied upgrade step names in order.
-
-    Examples
-    --------
-    Apply upgrades with validation and rollback:
-
-    >>> result = apply_upgrades_with_rollback(data, steps)
-    >>> if validate(result.current_data):
-    ...     final_data = result.current_data
-    ... else:
-    ...     logger.warning("Validation failed, rolling back")
-    ...     final_data = result.rollback()
-    """
-
-    def __init__(self, original_data: Any):
-        """Initialize with original data.
-
-        The deep copy is created lazily when the first upgrade is applied,
-        avoiding expensive copy operations when no upgrades are needed.
-
-        Parameters
-        ----------
-        original_data : Any
-            The original data before any upgrades.
-        """
-        self._original_data = original_data
-        self._original_snapshot: Any | None = None
-        self.current_data = original_data
-        self.applied_steps: list[str] = []
-
-    def ensure_snapshot(self) -> None:
-        """Ensure snapshot is created before first upgrade.
-
-        Creates a deep copy of the original data on first call to enable
-        rollback capability. This should be called before applying any upgrades.
-        """
-        if self._original_snapshot is None:
-            self._original_snapshot = copy.deepcopy(self._original_data)
-            logger.debug("Created snapshot of original data for rollback capability")
-
-    def add_step(self, step_name: str, data: Any) -> None:
-        """Record an applied upgrade step.
-
-        Parameters
-        ----------
-        step_name : str
-            Name of the applied upgrade step.
-        data : Any
-            Data state after applying this step.
-        """
-        self.current_data = data
-        self.applied_steps.append(step_name)
-        logger.debug("Applied upgrade step '{}' (total: {})", step_name, len(self.applied_steps))
-
-    @property
-    def original_data(self) -> Any:
-        """Get the original data before any upgrades.
-
-        Returns the snapshot if available, otherwise the original reference.
-
-        Returns
-        -------
-        Any
-            The original data before any upgrades.
-        """
-        return self._original_snapshot if self._original_snapshot is not None else self._original_data
-
-    def rollback(self) -> Any:
-        """Rollback all upgrades to original state.
-
-        Returns
-        -------
-        Any
-            The original data before any upgrades.
-
-        Examples
-        --------
-        >>> result = apply_upgrades_with_rollback(data, steps)
-        >>> if not validate(result.current_data):
-        ...     data = result.rollback()  # Back to original
-        """
-        logger.info("Rolling back all upgrades to original state")
-
-        # Use snapshot if available, otherwise use original reference
-        if self._original_snapshot is not None:
-            self.current_data = copy.deepcopy(self._original_snapshot)
-        else:
-            # No upgrades were applied, return original data
-            self.current_data = self._original_data
-
-        rolled_back_steps = self.applied_steps.copy()
-        self.applied_steps.clear()
-        logger.info("Rolled back {} upgrade step(s): {}", len(rolled_back_steps), rolled_back_steps)
-        return self.current_data
 
 
 def apply_upgrade(data: Any, step: UpgradeStep) -> tuple[Any, bool]:
@@ -352,29 +253,10 @@ def apply_upgrade(data: Any, step: UpgradeStep) -> tuple[Any, bool]:
         raise
 
 
-def _get_context_str(context: str | UpgradeContext) -> str:
-    """Convert context to string value.
-
-    Helper function to normalize UpgradeContext enum values to strings.
-
-    Parameters
-    ----------
-    context : str | UpgradeContext
-        Context value to normalize (enum or string).
-
-    Returns
-    -------
-    str
-        String representation of the context.
-    """
-    return context.value if isinstance(context, UpgradeContext) else context
-
-
 def apply_upgrades(
     data: Any,
     steps: list[UpgradeStep],
-    context: str | UpgradeContext = UpgradeContext.BOTH,
-    upgrade_type: str = "data",
+    upgrade_type: UpgradeType | None = None,
 ) -> tuple[Any, list[str]]:
     """Apply multiple upgrade steps in priority order.
 
@@ -384,11 +266,9 @@ def apply_upgrades(
         The data to upgrade.
     steps : list[UpgradeStep]
         List of upgrade steps to consider.
-    context : str | UpgradeContext, default=UpgradeContext.BOTH
-        Execution context: UpgradeContext.DATA, UpgradeContext.SYSTEM, or UpgradeContext.BOTH.
-        String values ("data", "system", "both") also accepted for backward compatibility.
-    upgrade_type : str, default="data"
-        Type of upgrade to apply: "data" for raw data, "system" for System instances.
+    upgrade_type : UpgradeType, optional
+        Filter by upgrade type: FILE or SYSTEM.
+        If None, all types are considered.
 
     Returns
     -------
@@ -397,31 +277,25 @@ def apply_upgrades(
 
     Examples
     --------
-    Apply data upgrades in data context:
+    Apply file upgrades:
 
-    >>> data = {"version": "1.0.0"}
-    >>> final_data, applied = apply_upgrades(
-    ...     data, all_steps, context=UpgradeContext.DATA, upgrade_type="data"
+    >>> from pathlib import Path
+    >>> folder = Path("/data")
+    >>> folder, applied = apply_upgrades(
+    ...     folder, all_steps, upgrade_type=UpgradeType.FILE
     ... )
-    >>> print(f"Applied {len(applied)} upgrades: {applied}")
 
-    Apply system upgrades in system context:
+    Apply system upgrades:
 
     >>> system = System.from_json("system.json")
-    >>> final_system, applied = apply_upgrades(
-    ...     system, all_steps, context=UpgradeContext.SYSTEM, upgrade_type="system"
+    >>> system, applied = apply_upgrades(
+    ...     system, all_steps, upgrade_type=UpgradeType.SYSTEM
     ... )
     """
-    # Normalize context to string for comparison
-    context_str = _get_context_str(context)
-
-    # Filter steps by context and upgrade type
-    applicable_steps = [
-        step
-        for step in steps
-        if (_get_context_str(step.context) in (context_str, UpgradeContext.BOTH.value))
-        and step.upgrade_type == upgrade_type
-    ]
+    # Filter steps by upgrade type
+    applicable_steps = steps
+    if upgrade_type is not None:
+        applicable_steps = [s for s in applicable_steps if s.upgrade_type == upgrade_type]
 
     # Sort by priority (lower numbers first)
     sorted_steps = sorted(applicable_steps, key=lambda s: s.priority)
@@ -429,7 +303,8 @@ def apply_upgrades(
     current_data = data
     applied_steps: list[str] = []
 
-    logger.info("Applying upgrades in {} context: {} steps to consider", context, len(sorted_steps))
+    type_str = upgrade_type.value if upgrade_type else "all types"
+    logger.info("Applying upgrades - Type: {}, {} steps to consider", type_str, len(sorted_steps))
 
     for step in sorted_steps:
         try:
@@ -445,95 +320,99 @@ def apply_upgrades(
     return current_data, applied_steps
 
 
-def apply_upgrades_with_rollback(
-    data: Any,
-    steps: list[UpgradeStep],
-    context: str | UpgradeContext = UpgradeContext.BOTH,
-    upgrade_type: str = "data",
-    stop_on_error: bool = False,
-) -> UpgradeResult:
-    """Apply multiple upgrade steps with rollback capability.
+def upgrade_data(
+    data_folder: Path | str,
+    upgrader: str,
+) -> Path:
+    """Upgrade raw data files before parser initialization.
 
-    This function is similar to `apply_upgrades` but returns an `UpgradeResult`
-    object that allows all-or-nothing rollback if validation fails.
+    This is the standard upgrade workflow for file operations on raw data
+    before the parser and DataStore are initialized.
+
+    Moves the original folder to a backup location with ".backup" suffix,
+    then creates a copy at the original location where upgrades are applied.
+    This approach is faster than copying for large datasets while maintaining
+    a backup for safety.
+
+    This function:
+    1. Detects the current version from the data folder
+    2. Moves the original folder to "{folder_name}.backup"
+    3. Creates a copy from backup to original location
+    4. Applies file operations to the original location (rename, move, restructure files)
+    5. Returns the path to the upgraded folder (original location)
 
     Parameters
     ----------
-    data : Any
-        The data to upgrade.
-    steps : list[UpgradeStep]
-        List of upgrade steps to consider.
-    context : str | UpgradeContext, default=UpgradeContext.BOTH
-        Execution context: UpgradeContext.DATA, UpgradeContext.SYSTEM, or UpgradeContext.BOTH.
-        String values ("data", "system", "both") also accepted for backward compatibility.
-    upgrade_type : str, default="data"
-        Type of upgrade to apply: "data" for raw data, "system" for System instances.
-    stop_on_error : bool, default=False
-        If True, stop and rollback on first error. If False, continue with remaining steps.
+    data_folder : Path or str
+        Path to data folder to upgrade.
+    upgrader : str
+        Plugin name for upgrades.
 
     Returns
     -------
-    UpgradeResult
-        Object containing current state, applied steps, and rollback capability.
+    Path
+        Path to upgraded folder (same as input path).
+
+    Raises
+    ------
+    FileNotFoundError
+        If data folder doesn't exist.
 
     Examples
     --------
-    Apply upgrades with automatic rollback on validation failure:
+    Basic upgrade workflow:
 
-    >>> result = apply_upgrades_with_rollback(data, steps, context=UpgradeContext.DATA)
-    >>> if not validate_data(result.current_data):
-    ...     logger.warning("Validation failed, rolling back")
-    ...     data = result.rollback()
-    ... else:
-    ...     data = result.current_data
+    >>> upgraded_folder = upgrade_data(
+    ...     data_folder="/data/old_format",
+    ...     upgrader="my_plugin"
+    ... )
+    >>> # upgraded_folder will be "/data/old_format" (original location)
+    >>> # backup created at "/data/old_format.backup"
+    >>> # Use upgraded_folder for parser initialization
+    >>> config = MyPluginConfig.from_json("config.json")
+    >>> data_store = DataStore.from_json("config.json", upgraded_folder)
 
-    Apply upgrades and rollback if needed:
-
-    >>> result = apply_upgrades_with_rollback(system, steps, context=UpgradeContext.SYSTEM)
-    >>> if has_issues(result.current_data):
-    ...     system = result.rollback()
-    ... else:
-    ...     system = result.current_data
+    See Also
+    --------
+    UpgradeType : Enum defining upgrade operation types
+    apply_upgrades : Lower-level function for applying upgrades
     """
-    # Normalize context to string for comparison
-    context_str = _get_context_str(context)
+    from .plugins import PluginManager
 
-    # Filter steps by context and upgrade type
-    applicable_steps = [
-        step
-        for step in steps
-        if (_get_context_str(step.context) in (context_str, UpgradeContext.BOTH.value))
-        and step.upgrade_type == upgrade_type
-    ]
+    folder = Path(data_folder)
 
-    # Sort by priority (lower numbers first)
-    sorted_steps = sorted(applicable_steps, key=lambda s: s.priority)
+    if not folder.exists():
+        raise FileNotFoundError(f"Data folder not found: {folder}")
 
-    result = UpgradeResult(data)
+    # Detect version from data folder
+    version = PluginManager.detect_version(upgrader, folder)
     logger.info(
-        "Applying upgrades with rollback in {} context: {} steps to consider",
-        context_str,
-        len(sorted_steps),
+        "Detected version: {} for plugin '{}'",
+        version if version else "unknown (will apply all upgrades)",
+        upgrader,
     )
 
-    # Create snapshot before any upgrades (lazy initialization)
-    if sorted_steps:
-        result.ensure_snapshot()
+    # Get only file operation upgrade steps
+    steps = PluginManager.get_upgrade_steps(upgrader)
+    file_ops = [s for s in steps if s.upgrade_type == UpgradeType.FILE]
 
-    for step in sorted_steps:
-        try:
-            upgraded_data, was_applied = apply_upgrade(result.current_data, step)
-            if was_applied:
-                result.add_step(step.name, upgraded_data)
-                logger.info("Applied upgrade step '{}'", step.name)
-        except Exception as e:
-            logger.error("Upgrade step {} failed: {}", step.name, e)
-            if stop_on_error:
-                logger.warning("Stopping upgrade process and rolling back due to error in '{}'", step.name)
-                result.rollback()
-                break
-            # Continue with other steps if not stopping on error
-            continue
+    if not file_ops:
+        logger.info("No file operation upgrades found for plugin {}", upgrader)
+        return folder
 
-    logger.info("Completed upgrades. Applied: {}", result.applied_steps)
-    return result
+    logger.info("Found {} file operations for plugin {}", len(file_ops), upgrader)
+
+    # Move original to backup
+    backup_folder = folder.parent / f"{folder.name}_backup"
+    if backup_folder.exists():
+        logger.warning("Backup folder already exists, removing: {}", backup_folder)
+        shutil.rmtree(backup_folder)
+    shutil.move(str(folder), str(backup_folder))
+    logger.info("Moved original folder to backup: {}", backup_folder)
+
+    # Copy backup to original location for upgrades
+    shutil.copytree(backup_folder, folder)
+
+    _, applied = apply_upgrades(folder, file_ops, upgrade_type=UpgradeType.FILE)
+    logger.info("Applied {} file operations: {}", len(applied), applied)
+    return folder

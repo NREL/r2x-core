@@ -327,3 +327,52 @@ class PluginConfig(BaseModel):
             cli_schema["properties"][field_name] = cli_field
 
         return cli_schema
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], **kwargs: Any) -> "PluginConfig":
+        """Create configuration instance from dictionary.
+
+        This method is particularly useful when using upgrade_data(),
+        which returns an upgraded configuration dictionary. It provides a simple
+        way to instantiate the config from that dictionary.
+
+        Parameters
+        ----------
+        data : dict[str, Any]
+            Configuration dictionary.
+        **kwargs : Any
+            Additional keyword arguments to override or add to the config.
+
+        Returns
+        -------
+        PluginConfig
+            Configuration instance.
+
+        Examples
+        --------
+        Use with upgrade_data:
+
+        >>> from r2x_core import upgrade_data
+        >>> config_dict, upgraded_folder = upgrade_data(
+        ...     config_file="config.json",
+        ...     data_folder="/data/old",
+        ...     upgrader="my_plugin"
+        ... )
+        >>> config = MyPluginConfig.from_dict(config_dict)
+        >>> # Now use config with parser
+
+        Override values from dict:
+
+        >>> config = MyPluginConfig.from_dict(
+        ...     config_dict,
+        ...     model_year=2025  # Override the year from dict
+        ... )
+
+        See Also
+        --------
+        upgrade_data : Phase 1 upgrades returning config dict
+        load_defaults : Load default constants
+        """
+        # Merge data with kwargs (kwargs take precedence)
+        merged_data = {**data, **kwargs}
+        return cls(**merged_data)

@@ -363,26 +363,43 @@ class System(InfrasysSystem):
         See Also
         --------
         to_json : Serialize system to JSON file
+        upgrade_data : Phase 1 upgrades (for parser workflow)
+
+        Notes
+        -----
+        This method applies Phase 2 (SYSTEM) upgrades only. Phase 2 is ONLY for
+        cached systems loaded from JSON, NOT for the normal parser workflow.
+
+        If you're building a system from raw data:
+        1. Use upgrade_data() first (Phase 1)
+        2. Build system with parser
+        3. Save with system.to_json()
+
+        If you're loading a cached system:
+        1. Use System.from_json(upgrader=...) (Phase 2 applies here)
         """
         logger.info("Deserializing system from {}", filename)
         system: System = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
 
-        # Apply system upgrades if upgrader is specified
+        # Apply Phase 2 (SYSTEM) upgrades if upgrader is specified
+        # This is ONLY for cached systems, not the normal parser workflow
         if upgrader:
             from .plugins import PluginManager
-            from .upgrader import apply_upgrades
+            from .upgrader import UpgradeType, apply_upgrades
 
             upgrade_steps = PluginManager.get_upgrade_steps(upgrader)
-            # Filter for system upgrades that can run in system context
-            system_steps = [
-                step
-                for step in upgrade_steps
-                if step.upgrade_type == "system" and step.context in ("system", "both")
-            ]
+            # Filter for system upgrades
+            system_steps = [step for step in upgrade_steps if step.upgrade_type == UpgradeType.SYSTEM]
 
             if system_steps:
-                logger.info("Applying {} system upgrade steps for plugin '{}'", len(system_steps), upgrader)
-                upgraded_system, applied_steps = apply_upgrades(system, system_steps, context="system")
+                logger.info(
+                    "Applying {} system upgrade steps for cached system from plugin '{}'",
+                    len(system_steps),
+                    upgrader,
+                )
+                upgraded_system, applied_steps = apply_upgrades(
+                    system, system_steps, upgrade_type=UpgradeType.SYSTEM
+                )
                 if applied_steps:
                     logger.info("Applied system upgrades: {}", applied_steps)
                     system = upgraded_system

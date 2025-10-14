@@ -1,6 +1,6 @@
 """Tests for the versioning system."""
 
-from r2x_core.upgrader import UpgradeStep, apply_upgrade, apply_upgrades
+from r2x_core.upgrader import UpgradeStep, UpgradeType, apply_upgrade, apply_upgrades
 from r2x_core.versioning import (
     FileModTimeStrategy,
     GitVersioningStrategy,
@@ -141,6 +141,7 @@ def test_upgrade_step_creation():
         func=upgrade_func,
         target_version="2.0.0",
         versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
         priority=100,
     )
 
@@ -159,7 +160,11 @@ def test_apply_upgrade_needed():
 
     strategy = SemanticVersioningStrategy()
     step = UpgradeStep(
-        name="test_upgrade", func=upgrade_func, target_version="2.0.0", versioning_strategy=strategy
+        name="test_upgrade",
+        func=upgrade_func,
+        target_version="2.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     data = {"version": "1.0.0", "content": "test"}
@@ -180,7 +185,11 @@ def test_apply_upgrade_not_needed():
 
     strategy = SemanticVersioningStrategy()
     step = UpgradeStep(
-        name="test_upgrade", func=upgrade_func, target_version="2.0.0", versioning_strategy=strategy
+        name="test_upgrade",
+        func=upgrade_func,
+        target_version="2.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     data = {"version": "2.0.0", "content": "test"}
@@ -200,7 +209,11 @@ def test_apply_upgrade_version_too_new():
 
     strategy = SemanticVersioningStrategy()
     step = UpgradeStep(
-        name="test_upgrade", func=upgrade_func, target_version="2.0.0", versioning_strategy=strategy
+        name="test_upgrade",
+        func=upgrade_func,
+        target_version="2.0.0",
+        versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
     )
 
     data = {"version": "3.0.0", "content": "test"}
@@ -230,6 +243,7 @@ def test_apply_upgrades_multiple():
             func=upgrade_v3,
             target_version="3.0.0",
             versioning_strategy=strategy,
+            upgrade_type=UpgradeType.FILE,
             priority=200,  # Higher priority (runs second)
         ),
         UpgradeStep(
@@ -237,6 +251,7 @@ def test_apply_upgrades_multiple():
             func=upgrade_v2,
             target_version="2.0.0",
             versioning_strategy=strategy,
+            upgrade_type=UpgradeType.FILE,
             priority=100,  # Lower priority (runs first)
         ),
     ]
@@ -252,8 +267,8 @@ def test_apply_upgrades_multiple():
     assert result["version"] == "3.0.0"  # Final version
 
 
-def test_apply_upgrades_context_filter():
-    """Test filtering upgrades by context."""
+def test_apply_upgrades_upgrade_type_filter():
+    """Test filtering upgrades by upgrade_type."""
 
     def upgrade_func(data):
         data["upgraded"] = True
@@ -263,26 +278,26 @@ def test_apply_upgrades_context_filter():
 
     steps = [
         UpgradeStep(
-            name="data_upgrade",
+            name="file_upgrade",
             func=upgrade_func,
             target_version="2.0.0",
             versioning_strategy=strategy,
-            context="data",
+            upgrade_type=UpgradeType.FILE,
         ),
         UpgradeStep(
             name="system_upgrade",
             func=upgrade_func,
             target_version="3.0.0",
             versioning_strategy=strategy,
-            context="system",
+            upgrade_type=UpgradeType.SYSTEM,
         ),
     ]
 
     data = {"version": "1.0.0"}
-    _result, applied = apply_upgrades(data, steps, context="data")
+    _result, applied = apply_upgrades(data, steps, upgrade_type=UpgradeType.FILE)
 
     assert len(applied) == 1
-    assert "data_upgrade" in applied
+    assert "file_upgrade" in applied
     assert "system_upgrade" not in applied
 
 
@@ -299,6 +314,7 @@ def test_upgrade_step_version_constraints():
         func=upgrade_func,
         target_version="2.0.0",
         versioning_strategy=strategy,
+        upgrade_type=UpgradeType.FILE,
         min_version="1.5.0",
         max_version="1.9.0",
     )
