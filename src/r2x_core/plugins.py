@@ -271,7 +271,7 @@ class PluginManager:
     _modifier_registry: ClassVar[dict[str, SystemModifier]] = {}
     _filter_registry: ClassVar[dict[str, FilterFunction]] = {}
     _upgrade_registry: ClassVar[dict[str, list["UpgradeStep"]]] = {}
-    _version_detector_registry: ClassVar[dict[str, Any]] = {}
+    _version_detector_registry: ClassVar[dict[str, Callable[[Path], str | None]]] = {}
 
     def __new__(cls) -> "PluginManager":
         """Ensure singleton instance."""
@@ -734,46 +734,33 @@ class PluginManager:
         return self._upgrade_registry.copy()
 
     @classmethod
-    def register_version_detector(cls, plugin_name: str, detector: Any) -> None:
+    def register_version_detector(cls, plugin_name: str, detector: Callable[[Path], str | None]) -> None:
         """Register a version detector for a plugin.
 
-        Version detectors allow plugins to specify how to read version information
-        from data files before DataStore initialization. This enables version
-        detection before file operations during upgrades.
+            Version detectors allow plugins to specify how to read version information
+            from data files before DataStore initialization. This enables version
+            detection before file operations during upgrades.
 
         Parameters
         ----------
-        plugin_name : str
-            Name of the plugin this detector belongs to.
-        detector : VersionDetector
-            Version detector instance implementing the detect_version method.
+            plugin_name : str
+                Name of the plugin this detector belongs to.
+            detector : Callable[[Path], str | None]
+                Plain callable with signature (folder: Path) -> str | None.
 
         Examples
         --------
-        Register a custom version detector:
+        Register a custom version detector function:
 
-        >>> class CustomDetector:
-        ...     def detect_version(self, folder):
-        ...         version_file = folder / "VERSION"
-        ...         return version_file.read_text().strip() if version_file.exists() else None
-        >>> PluginManager.register_version_detector("my_plugin", CustomDetector())
-
-        Register a detector that reads from a specific CSV file:
-
-        >>> class CSVDetector:
-        ...     def detect_version(self, folder):
-        ...         import polars as pl
-        ...         csv_path = folder / "metadata.csv"
-        ...         if csv_path.exists():
-        ...             df = pl.read_csv(csv_path)
-        ...             return str(df.filter(pl.col("field") == "version")["value"][0])
-        ...         return None
-        >>> PluginManager.register_version_detector("my_plugin", CSVDetector())
+        >>> def detect_version(folder: Path) -> str | None:  # doctest: +SKIP
+        ...     version_file = folder / "VERSION"  # doctest: +SKIP
+        ...     return version_file.read_text().strip() if version_file.exists() else None  # doctest: +SKIP
+        >>> PluginManager.register_version_detector("my_plugin", detect_version)  # doctest: +SKIP
 
         See Also
         --------
-        r2x_core.versioning.VersionDetector : Protocol for version detectors
-        detect_version : Detect version for a plugin
+            r2x_core.versioning.VersionDetector : Protocol for version detectors
+            detect_version : Detect version for a plugin
         """
         cls._version_detector_registry[plugin_name] = detector
         logger.info("Registered version detector for plugin: {}", plugin_name)
@@ -831,15 +818,8 @@ class PluginManager:
         """
 
         def decorator(func: Callable[[Path], str | None]) -> Callable[[Path], str | None]:
-            # Create a simple detector wrapper that implements the protocol
-            class FunctionDetector:
-                def __init__(self, func: Callable[[Path], str | None]):
-                    self.func = func
-
-                def detect_version(self, folder: Path) -> str | None:
-                    return self.func(folder)
-
-            cls.register_version_detector(plugin_name, FunctionDetector(func))
+            # Register the raw function directly (no wrapper) for simplicity
+            cls.register_version_detector(plugin_name, func)
             return func
 
         return decorator
@@ -1010,10 +990,12 @@ class PluginManager:
             return None
 
         try:
-            version = detector.detect_version(folder)
+            version: str | None
+            version = detector(folder)
+
             if version:
                 logger.info("Detected version for plugin {}: {}", plugin_name, version)
-            return version  # type: ignore[no-any-return]
+            return version
         except Exception as e:
             logger.warning("Version detection failed for plugin {}: {}", plugin_name, e)
             return None
