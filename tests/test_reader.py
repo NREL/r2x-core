@@ -155,7 +155,7 @@ def test_get_supported_file_types(data_reader):
 
 
 def test_register_custom_transformation(data_reader):
-    def custom_transform(data, data_file):
+    def custom_transform(data_file, data):
         return data
 
     data_reader.register_custom_transformation(str, custom_transform)

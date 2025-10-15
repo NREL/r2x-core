@@ -300,11 +300,11 @@ def register_transformation(data_types: type | tuple[type, ...], func: Transform
     data_types : type or tuple of types
         Data type(s) this function can handle.
     func : TransformFunction
-        Function that takes (data, data_file) and returns transformed data.
+        Function that takes (data_file, data) and returns transformed data.
 
     Examples
     --------
-    >>> def transform_my_data(data: MyType, data_file: DataFile) -> MyType:
+    >>> def transform_my_data(data_file: DataFile, data: MyType) -> MyType:
     ...     # Custom transformation logic
     ...     return data
     >>> register_transformation(MyType, transform_my_data)
