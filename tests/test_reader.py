@@ -44,7 +44,7 @@ def test_reader_init_custom_cache_size():
 def test_read_data_file_basic(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv)
 
-    result = data_reader.read_data_file(tmp_path, data_file)
+    result = data_reader.read_data_file(data_file, tmp_path)
 
     assert result is not None
     collected = result.collect()
@@ -54,8 +54,8 @@ def test_read_data_file_basic(data_reader, sample_csv, tmp_path):
 def test_read_data_file_with_cache(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv)
 
-    data_reader.read_data_file(tmp_path, data_file, use_cache=True)
-    data_reader.read_data_file(tmp_path, data_file, use_cache=True)
+    data_reader.read_data_file(data_file, tmp_path, use_cache=True)
+    data_reader.read_data_file(data_file, tmp_path, use_cache=True)
 
     assert len(data_reader._cache) == 1
 
@@ -63,8 +63,8 @@ def test_read_data_file_with_cache(data_reader, sample_csv, tmp_path):
 def test_read_data_file_without_cache(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv)
 
-    data_reader.read_data_file(tmp_path, data_file, use_cache=False)
-    data_reader.read_data_file(tmp_path, data_file, use_cache=False)
+    data_reader.read_data_file(data_file, tmp_path, use_cache=False)
+    data_reader.read_data_file(data_file, tmp_path, use_cache=False)
 
     assert len(data_reader._cache) == 0
 
@@ -79,7 +79,7 @@ def test_read_optional_missing_file(data_reader, tmp_path):
     # Delete the file after DataFile creation
     dummy_file.unlink()
 
-    result = data_reader.read_data_file(tmp_path, data_file)
+    result = data_reader.read_data_file(data_file, tmp_path)
 
     # Optional file should return None when missing
     assert result is None
@@ -96,7 +96,7 @@ def test_read_required_missing_file(data_reader, tmp_path):
     dummy_file.unlink()
 
     with pytest.raises(FileNotFoundError, match="Missing required file"):
-        data_reader.read_data_file(tmp_path, data_file)
+        data_reader.read_data_file(data_file, tmp_path)
 
 
 def test_custom_reader_function(data_reader, tmp_path):
@@ -108,7 +108,7 @@ def test_custom_reader_function(data_reader, tmp_path):
         return path.read_text().upper()
 
     data_file = DataFile(name="custom", fpath=test_file, reader_function=custom_reader)
-    result = data_reader.read_data_file(tmp_path, data_file)
+    result = data_reader.read_data_file(data_file, tmp_path)
 
     assert result == "CUSTOM CONTENT"
 
@@ -120,14 +120,14 @@ def test_cache_size_limit(tmp_path):
         csv_file = tmp_path / f"data{i}.csv"
         csv_file.write_text("a,b\n1,2\n")
         data_file = DataFile(name=f"test{i}", fpath=csv_file)
-        reader.read_data_file(tmp_path, data_file, use_cache=True)
+        reader.read_data_file(data_file, tmp_path, use_cache=True)
 
     assert len(reader._cache) == 2
 
 
 def test_clear_cache(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv)
-    data_reader.read_data_file(tmp_path, data_file, use_cache=True)
+    data_reader.read_data_file(data_file, tmp_path, use_cache=True)
 
     assert len(data_reader._cache) == 1
     data_reader.clear_cache()
@@ -136,7 +136,7 @@ def test_clear_cache(data_reader, sample_csv, tmp_path):
 
 def test_get_cache_info(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv)
-    data_reader.read_data_file(tmp_path, data_file, use_cache=True)
+    data_reader.read_data_file(data_file, tmp_path, use_cache=True)
 
     cache_info = data_reader.get_cache_info()
 
@@ -164,7 +164,7 @@ def test_register_custom_transformation(data_reader):
 def test_read_with_reader_kwargs(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv, reader_kwargs={"skip_rows": 1})
 
-    result = data_reader.read_data_file(tmp_path, data_file)
+    result = data_reader.read_data_file(data_file, tmp_path)
     collected = result.collect()
 
     assert collected.shape == (1, 3)
@@ -173,8 +173,8 @@ def test_read_with_reader_kwargs(data_reader, sample_csv, tmp_path):
 def test_cache_key_generation(data_reader, sample_csv, tmp_path):
     data_file = DataFile(name="test", fpath=sample_csv)
 
-    key1 = data_reader._generate_cache_key(tmp_path, data_file)
-    key2 = data_reader._generate_cache_key(tmp_path, data_file)
+    key1 = data_reader._generate_cache_key(data_file, tmp_path)
+    key2 = data_reader._generate_cache_key(data_file, tmp_path)
 
     assert key1 == key2
     assert isinstance(key1, str)
@@ -184,7 +184,7 @@ def test_cache_key_generation(data_reader, sample_csv, tmp_path):
 def test_read_json_file(data_reader, sample_json, tmp_path):
     data_file = DataFile(name="json_test", fpath=sample_json)
 
-    result = data_reader.read_data_file(tmp_path, data_file)
+    result = data_reader.read_data_file(data_file, tmp_path)
 
     assert isinstance(result, dict)
     assert result["key"] == "value"

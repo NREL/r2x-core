@@ -44,7 +44,7 @@ class DataReader:
         self._cache: dict[str, Any] = {}
         self.max_cache_size = max_cache_size
 
-    def _resolve_glob_pattern(self, folder: Path, data_file: DataFile) -> Path:
+    def _resolve_glob_pattern(self, data_file: DataFile, folder: Path) -> Path | None:
         """Resolve a glob pattern to a single file path.
 
         Parameters
@@ -56,20 +56,21 @@ class DataReader:
 
         Returns
         -------
-        Path
-            Resolved file path.
+        Path | None
+            Resolved file path, or None if optional and no matches found.
 
         Raises
         ------
         ValueError
-            If glob pattern matches zero or multiple files.
+            If glob pattern matches zero or multiple files (for required files).
         """
         pattern = data_file.glob
         assert pattern is not None, "DataFile must have a glob pattern"
+        if data_file.is_optional:
+            logger.debug("Optional glob pattern '{}' matched no files, returning None", pattern)
+            return None
 
-        # Search only in the specified folder (no recursion unless pattern has **)
         matches = [p for p in folder.glob(pattern) if p.is_file()]
-
         if len(matches) == 0:
             msg = (
                 f"No files found matching pattern '{pattern}' in {folder}\n"
@@ -95,36 +96,39 @@ class DataReader:
         logger.debug("Glob pattern '{}' resolved to: {}", pattern, matches[0].name)
         return matches[0]
 
-    def _get_file_path(self, folder: Path, data_file: DataFile) -> Path:
+    def _get_file_path(self, data_file: DataFile, folder: Path) -> Path | None:
         """Get the resolved file path from either fpath or glob pattern.
 
         Parameters
         ----------
-        folder : Path
-            Base directory containing the data files.
         data_file : DataFile
             Data file configuration.
+        folder : Path
+            Base directory containing the data files.
 
         Returns
         -------
-        Path
-            Resolved file path.
+        Path | None
+            Resolved file path, or None if optional and not found.
         """
+        assert data_file.fpath is not None or data_file.glob is not None, (
+            "DataFile must have either fpath or glob"
+        )
         if data_file.glob is not None:
-            return self._resolve_glob_pattern(folder, data_file)
+            return self._resolve_glob_pattern(data_file, folder)
 
-        assert data_file.fpath is not None, "DataFile must have either fpath or glob"
+        assert data_file.fpath is not None
         return folder / data_file.fpath
 
-    def _generate_cache_key(self, file_path: Path, data_file: DataFile) -> str:
+    def _generate_cache_key(self, data_file: DataFile, file_path: Path) -> str:
         """Generate a unique cache key for a file.
 
         Parameters
         ----------
-        file_path : Path
-            Resolved file path.
         data_file : DataFile
             Data file configuration.
+        file_path : Path
+            Resolved file path.
 
         Returns
         -------
@@ -135,7 +139,7 @@ class DataReader:
         key_data = f"{file_path}:{mtime}:{data_file.name}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def read_data_file(self, folder: Path, data_file: DataFile, use_cache: bool = True) -> Any:
+    def read_data_file(self, data_file: DataFile, folder: Path, use_cache: bool = True) -> Any:
         """Read a data file using cache if available.
 
         Parameters
@@ -157,22 +161,26 @@ class DataReader:
         FileNotFoundError
             If the file does not exist and is not optional.
         ValueError
-            If glob pattern matches zero or multiple files.
+            If glob pattern matches zero or multiple files (for required files).
         """
-        file_path = self._get_file_path(folder, data_file)
-        cache_key = self._generate_cache_key(file_path, data_file)
+        file_path = self._get_file_path(data_file, folder)
 
+        if file_path is None:
+            logger.debug("Optional file {} not found, returning None", data_file.name)
+            return None
+
+        cache_key = self._generate_cache_key(data_file, file_path)
         if use_cache and cache_key in self._cache:
             logger.debug("Loading {} from cache", data_file.name)
             return self._cache[cache_key]
 
-        if not file_path.exists():
-            if data_file.is_optional:
-                logger.debug("Optional file {} not found, returning None", file_path)
-                return None
-            else:
-                msg = f"Missing required file: {file_path}"
-                raise FileNotFoundError(msg)
+        if not file_path.exists() and data_file.is_optional:
+            logger.debug("Optional file {} not found, returning None", file_path)
+            return None
+
+        if not file_path.exists() and not data_file.is_optional:
+            msg = f"Missing required file: {file_path}"
+            raise FileNotFoundError(msg)
 
         # Check for custom reader function first
         reader_kwargs = data_file.reader_kwargs or {}

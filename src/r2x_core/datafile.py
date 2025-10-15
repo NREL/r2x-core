@@ -15,46 +15,7 @@ from pydantic import (
 )
 
 from .file_types import EXTENSION_MAPPING, FileFormat
-from .utils import (
-    validate_file_extension,
-)
-
-
-def validate_glob_pattern(pattern: str | None) -> str | None:
-    """Validate that a string is a valid glob pattern.
-
-    Parameters
-    ----------
-    pattern : str | None
-        The glob pattern to validate
-
-    Returns
-    -------
-    str | None
-        The validated pattern
-
-    Raises
-    ------
-    ValueError
-        If the pattern is invalid (empty, only whitespace, or contains invalid characters)
-    """
-    if pattern is None:
-        return None
-
-    if not pattern or not pattern.strip():
-        msg = "Glob pattern cannot be empty"
-        raise ValueError(msg)
-
-    invalid_chars = set("\x00")
-    if any(char in pattern for char in invalid_chars):
-        msg = f"Glob pattern contains invalid characters: {pattern}"
-        raise ValueError(msg)
-
-    if not any(wildcard in pattern for wildcard in ["*", "?", "[", "]"]):
-        msg = f"Pattern '{pattern}' does not contain glob wildcards (*, ?, [, ]). Use 'fpath' for exact filenames."
-        raise ValueError(msg)
-
-    return pattern
+from .utils import validate_file_extension, validate_glob_pattern
 
 
 class DataFile(BaseModel):

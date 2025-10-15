@@ -650,7 +650,7 @@ class DataStore:
             raise KeyError(f"'{name}' not present in store.")
 
         data_file = self._cache[name]
-        return self.reader.read_data_file(self.folder, data_file, use_cache=use_cache)
+        return self.reader.read_data_file(data_file, self.folder, use_cache=use_cache)
 
     def clear_cache(self) -> None:
         """Clear both the data reader's cache and the data store's file configurations.
