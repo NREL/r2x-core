@@ -42,7 +42,7 @@ def validate_glob_pattern(pattern: str | None) -> str | None:
         return None
 
     if not pattern or not pattern.strip():
-        msg = "Glob pattern cannot be empty or only whitespace"
+        msg = "Glob pattern cannot be empty"
         raise ValueError(msg)
 
     invalid_chars = set("\x00")
