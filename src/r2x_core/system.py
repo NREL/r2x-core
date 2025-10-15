@@ -6,7 +6,7 @@ import tempfile
 from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import orjson
 from infrasys.component import Component
@@ -15,6 +15,9 @@ from infrasys.utils.sqlite import backup
 from loguru import logger
 
 from r2x_core import units
+
+if TYPE_CHECKING:
+    from r2x_core.upgrader import DataUpgrader
 
 
 class System(InfrasysSystem):
@@ -317,7 +320,7 @@ class System(InfrasysSystem):
         cls,
         filename: Path | str,
         upgrade_handler: Callable[..., Any] | None = None,
-        upgrader: str | None = None,
+        upgrader: type["DataUpgrader"] | None = None,
         **kwargs: Any,
     ) -> "System":
         """Deserialize system from JSON file.
@@ -328,8 +331,8 @@ class System(InfrasysSystem):
             Input JSON file path.
         upgrade_handler : Callable, optional
             Function to handle data model version upgrades.
-        upgrader : str, optional
-            Name of the plugin to use for system upgrades after deserialization.
+        upgrader : type[DataUpgrader], optional
+            DataUpgrader subclass to use for system upgrades after deserialization.
         **kwargs
             Additional keyword arguments passed to infrasys deserialization.
 
@@ -358,7 +361,8 @@ class System(InfrasysSystem):
 
         With system upgrades:
 
-        >>> system = System.from_json("system.json", upgrader="my_plugin")
+        >>> from my_plugin.upgrader import MyPluginUpgrader
+        >>> system = System.from_json("system.json", upgrader=MyPluginUpgrader)
 
         See Also
         --------
@@ -384,18 +388,16 @@ class System(InfrasysSystem):
         # Apply Phase 2 (SYSTEM) upgrades if upgrader is specified
         # This is ONLY for cached systems, not the normal parser workflow
         if upgrader:
-            from .plugins import PluginManager
             from .upgrader import UpgradeType, apply_upgrades
 
-            upgrade_steps = PluginManager.get_upgrade_steps(upgrader)
-            # Filter for system upgrades
-            system_steps = [step for step in upgrade_steps if step.upgrade_type == UpgradeType.SYSTEM]
+            # Filter for system upgrades from the upgrader class
+            system_steps = [step for step in upgrader.steps if step.upgrade_type == UpgradeType.SYSTEM]
 
             if system_steps:
                 logger.info(
-                    "Applying {} system upgrade steps for cached system from plugin '{}'",
+                    "Applying {} system upgrade steps for cached system from upgrader '{}'",
                     len(system_steps),
-                    upgrader,
+                    upgrader.__name__,
                 )
                 upgraded_system, applied_steps = apply_upgrades(
                     system, system_steps, upgrade_type=UpgradeType.SYSTEM

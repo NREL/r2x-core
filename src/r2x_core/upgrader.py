@@ -72,14 +72,10 @@ Register upgrade steps:
 ...     versioning_strategy=SemanticVersioningStrategy(),
 ...     upgrade_type=UpgradeType.SYSTEM
 ... )
->>>
->>> PluginManager.register_upgrade_step("my_plugin", step1)
->>> PluginManager.register_upgrade_step("my_plugin", step2)
 """
 
 from __future__ import annotations
 
-import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from enum import Enum
@@ -303,6 +299,18 @@ class DataUpgrader(ABC):
         """
 
         def decorator(func: Callable[[Path], Path]) -> Callable[[Path], Path]:
+            """Inner decorator function that registers the upgrade step.
+
+            Parameters
+            ----------
+            func : Callable
+                The upgrade function to register.
+
+            Returns
+            -------
+            Callable
+                The original function unchanged.
+            """
             # Get strategy - access via __dict__ to check if it's a class variable
             # If not in __dict__, it's a property and we need to instantiate to get it
             strategy_value = cls.__dict__["strategy"] if "strategy" in cls.__dict__ else cls().strategy
@@ -476,101 +484,3 @@ def apply_upgrades(
         logger.debug("No upgrades were applied")
 
     return current_data, applied_steps
-
-
-def upgrade_data(
-    data_folder: Path | str,
-    upgrader: str,
-) -> Path:
-    """Upgrade raw data files before parser initialization.
-
-    This is the standard upgrade workflow for file operations on raw data
-    before the parser and DataStore are initialized.
-
-    Moves the original folder to a backup location with ".backup" suffix,
-    then creates a copy at the original location where upgrades are applied.
-    This approach is faster than copying for large datasets while maintaining
-    a backup for safety.
-
-    This function:
-    1. Detects the current version from the data folder
-    2. Moves the original folder to "{folder_name}.backup"
-    3. Creates a copy from backup to original location
-    4. Applies file operations to the original location (rename, move, restructure files)
-    5. Returns the path to the upgraded folder (original location)
-
-    Parameters
-    ----------
-    data_folder : Path or str
-        Path to data folder to upgrade.
-    upgrader : str
-        Plugin name for upgrades.
-
-    Returns
-    -------
-    Path
-        Path to upgraded folder (same as input path).
-
-    Raises
-    ------
-    FileNotFoundError
-        If data folder doesn't exist.
-
-    Examples
-    --------
-    Basic upgrade workflow:
-
-    >>> upgraded_folder = upgrade_data(
-    ...     data_folder="/data/old_format",
-    ...     upgrader="my_plugin"
-    ... )
-    >>> # upgraded_folder will be "/data/old_format" (original location)
-    >>> # backup created at "/data/old_format.backup"
-    >>> # Use upgraded_folder for parser initialization
-    >>> config = MyPluginConfig.from_json("config.json")
-    >>> data_store = DataStore.from_json("config.json", upgraded_folder)
-
-    See Also
-    --------
-    UpgradeType : Enum defining upgrade operation types
-    apply_upgrades : Lower-level function for applying upgrades
-    """
-    from .plugins import PluginManager
-
-    folder = Path(data_folder)
-
-    if not folder.exists():
-        raise FileNotFoundError(f"Data folder not found: {folder}")
-
-    # Detect version from data folder
-    version = PluginManager.detect_version(upgrader, folder)
-    logger.info(
-        "Detected version: {} for plugin '{}'",
-        version if version else "unknown (will apply all upgrades)",
-        upgrader,
-    )
-
-    # Get only file operation upgrade steps
-    steps = PluginManager.get_upgrade_steps(upgrader)
-    file_ops = [s for s in steps if s.upgrade_type == UpgradeType.FILE]
-
-    if not file_ops:
-        logger.info("No file operation upgrades found for plugin {}", upgrader)
-        return folder
-
-    logger.info("Found {} file operations for plugin {}", len(file_ops), upgrader)
-
-    # Move original to backup
-    backup_folder = folder.parent / f"{folder.name}_backup"
-    if backup_folder.exists():
-        logger.warning("Backup folder already exists, removing: {}", backup_folder)
-        shutil.rmtree(backup_folder)
-    shutil.move(str(folder), str(backup_folder))
-    logger.info("Moved original folder to backup: {}", backup_folder)
-
-    # Copy backup to original location for upgrades
-    shutil.copytree(backup_folder, folder)
-
-    _, applied = apply_upgrades(folder, file_ops, upgrade_type=UpgradeType.FILE)
-    logger.info("Applied {} file operations: {}", len(applied), applied)
-    return folder

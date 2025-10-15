@@ -13,6 +13,7 @@ from .utils import filter_valid_kwargs
 
 if TYPE_CHECKING:
     from .plugin_config import PluginConfig
+    from .upgrader import DataUpgrader
 
 
 class DataStore:
@@ -193,7 +194,7 @@ class DataStore:
         cls,
         fpath: Path | str,
         folder: Path | str,
-        upgrader: str | None = None,
+        upgrader: type["DataUpgrader"] | None = None,
     ) -> "DataStore":
         """Create a DataStore instance from a JSON configuration file.
 
@@ -207,8 +208,8 @@ class DataStore:
             Path to the JSON configuration file containing DataFile specifications.
         folder : Path or str
             Base directory containing the data files referenced in the configuration.
-        upgrader : str, optional
-            Plugin name to use for automatic data upgrades. If provided:
+        upgrader : type[DataUpgrader], optional
+            DataUpgrader subclass to use for automatic data upgrades. If provided:
             1. Detects current version from data folder
             2. Creates backup of original data
             3. Applies file upgrades (rename, move, restructure files)
@@ -244,10 +245,11 @@ class DataStore:
 
         Load with automatic upgrades (recommended for evolving data formats):
 
+        >>> from my_plugin.upgrader import MyPluginUpgrader
         >>> store = DataStore.from_json(
         ...     "config.json",
         ...     "/path/to/data",
-        ...     upgrader="reeds"  # Automatically upgrades ReEDS data
+        ...     upgrader=MyPluginUpgrader  # Automatically upgrades data
         ... )
         >>> # Data is automatically upgraded from v1.0 -> v2.0 -> v2.1
         >>> # Original data backed up to "/path/to/data_backup"
@@ -259,7 +261,7 @@ class DataStore:
         >>> from r2x_core import PluginManager
         >>> manager = PluginManager()
         >>> config_path = manager.get_file_mapping_path("reeds")
-        >>> store = DataStore.from_json(config_path, "/data/reeds", upgrader="reeds")
+        >>> store = DataStore.from_json(config_path, "/data/reeds")
 
         See Also
         --------
@@ -283,7 +285,6 @@ class DataStore:
         """
         import shutil
 
-        from .plugins import PluginManager
         from .upgrader import UpgradeType, apply_upgrades
 
         folder_path = Path(folder)
@@ -293,24 +294,23 @@ class DataStore:
             if not folder_path.exists():
                 raise FileNotFoundError(f"Data folder not found: {folder_path}")
 
-            # Detect version from data folder
-            version = PluginManager.detect_version(upgrader, folder_path)
+            # Detect version from data folder using the upgrader class
+            version = upgrader.detect_version(folder_path)
             logger.info(
-                "Detected version '{}' for plugin '{}' in folder: {}",
+                "Detected version '{}' for upgrader '{}' in folder: {}",
                 version if version else "unknown",
-                upgrader,
+                upgrader.__name__,
                 folder_path,
             )
 
-            # Get file operation upgrade steps
-            steps = PluginManager.get_upgrade_steps(upgrader)
-            file_ops = [s for s in steps if s.upgrade_type == UpgradeType.FILE]
+            # Get file operation upgrade steps from the upgrader class
+            file_ops = [s for s in upgrader.steps if s.upgrade_type == UpgradeType.FILE]
 
             if file_ops:
                 logger.info(
-                    "Applying {} file upgrade steps for plugin '{}'",
+                    "Applying {} file upgrade steps for upgrader '{}'",
                     len(file_ops),
-                    upgrader,
+                    upgrader.__name__,
                 )
 
                 # Create backup of original data

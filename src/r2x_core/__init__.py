@@ -33,7 +33,6 @@ from .upgrader import (
     UpgradeStep,
     UpgradeType,
     apply_upgrades,
-    upgrade_data,
 )
 from .versioning import (
     FileModTimeStrategy,
@@ -83,5 +82,4 @@ __all__ = [
     "get_unit_system",
     "h5_readers",
     "set_unit_system",
-    "upgrade_data",
 ]
