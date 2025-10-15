@@ -71,7 +71,7 @@ def test_datastore_from_json_with_reader_kwargs():
         from r2x_core.reader import DataReader
 
         reader = DataReader()
-        df = reader.read_data_file(tmpdir_path, data_file).collect()
+        df = reader.read_data_file(data_file, tmpdir_path).collect()
 
         # Verify the data
         assert "region_ca" in df.columns
@@ -163,20 +163,20 @@ def test_datastore_from_json_with_multiple_h5_files():
 
         # Load file (ReEDS schema)
         load_file_obj = store.get_data_file_by_name("load")
-        load_df = reader.read_data_file(tmpdir_path, load_file_obj).collect()
+        load_df = reader.read_data_file(load_file_obj, tmpdir_path).collect()
         assert "region1" in load_df.columns
         assert "datetime" in load_df.columns
 
         # Custom file (tabular schema)
         cf_file_obj = store.get_data_file_by_name("cf")
-        cf_df = reader.read_data_file(tmpdir_path, cf_file_obj).collect()
+        cf_df = reader.read_data_file(cf_file_obj, tmpdir_path).collect()
         assert "tech_a" in cf_df.columns
         assert "tech_b" in cf_df.columns
         assert "year" in cf_df.columns
 
         # Simple file (default schema)
         simple_file_obj = store.get_data_file_by_name("simple")
-        simple_df = reader.read_data_file(tmpdir_path, simple_file_obj).collect()
+        simple_df = reader.read_data_file(simple_file_obj, tmpdir_path).collect()
         assert "simple_data" in simple_df.columns
 
 

@@ -44,28 +44,102 @@ class DataReader:
         self._cache: dict[str, Any] = {}
         self.max_cache_size = max_cache_size
 
-    def _generate_cache_key(self, folder: Path, data_file: DataFile) -> str:
-        """Generate a unique cache key for a file.
+    def _resolve_glob_pattern(self, data_file: DataFile, folder: Path) -> Path | None:
+        """Resolve a glob pattern to a single file path.
 
         Parameters
         ----------
         folder : Path
-            Base directory containing the data files.
+            Base directory to search in.
+        data_file : DataFile
+            Data file configuration with glob pattern.
+
+        Returns
+        -------
+        Path | None
+            Resolved file path, or None if optional and no matches found.
+
+        Raises
+        ------
+        ValueError
+            If glob pattern matches zero or multiple files (for required files).
+        """
+        pattern = data_file.glob
+        assert pattern is not None, "DataFile must have a glob pattern"
+        if data_file.is_optional:
+            logger.debug("Optional glob pattern '{}' matched no files, returning None", pattern)
+            return None
+
+        matches = [p for p in folder.glob(pattern) if p.is_file()]
+        if len(matches) == 0:
+            msg = (
+                f"No files found matching pattern '{pattern}' in {folder}\n"
+                f"Suggestions:\n"
+                f"  - Verify the pattern syntax (e.g., '*.xml' for any XML file)\n"
+                f"  - Check that the directory contains files with the expected extension\n"
+                f"  - Verify the base directory is correct"
+            )
+            raise ValueError(msg)
+
+        if len(matches) > 1:
+            file_list = "\n".join(f"  - {m.name}" for m in sorted(matches))
+            msg = (
+                f"Multiple files matched pattern '{pattern}' in {folder}:\n"
+                f"{file_list}\n"
+                f"Suggestions:\n"
+                f"  - Use a more specific pattern (e.g., 'model_*.xml' instead of '*.xml')\n"
+                f"  - Use the exact filename in 'fpath' instead of a glob pattern\n"
+                f"  - Remove extra files from the directory"
+            )
+            raise ValueError(msg)
+
+        logger.debug("Glob pattern '{}' resolved to: {}", pattern, matches[0].name)
+        return matches[0]
+
+    def _get_file_path(self, data_file: DataFile, folder: Path) -> Path | None:
+        """Get the resolved file path from either fpath or glob pattern.
+
+        Parameters
+        ----------
         data_file : DataFile
             Data file configuration.
+        folder : Path
+            Base directory containing the data files.
+
+        Returns
+        -------
+        Path | None
+            Resolved file path, or None if optional and not found.
+        """
+        assert data_file.fpath is not None or data_file.glob is not None, (
+            "DataFile must have either fpath or glob"
+        )
+        if data_file.glob is not None:
+            return self._resolve_glob_pattern(data_file, folder)
+
+        assert data_file.fpath is not None
+        return folder / data_file.fpath
+
+    def _generate_cache_key(self, data_file: DataFile, file_path: Path) -> str:
+        """Generate a unique cache key for a file.
+
+        Parameters
+        ----------
+        data_file : DataFile
+            Data file configuration.
+        file_path : Path
+            Resolved file path.
 
         Returns
         -------
         str
             Unique cache key for the file.
         """
-        file_path = folder / data_file.fpath
-        # Include file path, modification time, and DataFile hash
         mtime = file_path.stat().st_mtime if file_path.exists() else 0
         key_data = f"{file_path}:{mtime}:{data_file.name}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def read_data_file(self, folder: Path, data_file: DataFile, use_cache: bool = True) -> Any:
+    def read_data_file(self, data_file: DataFile, folder: Path, use_cache: bool = True) -> Any:
         """Read a data file using cache if available.
 
         Parameters
@@ -86,22 +160,27 @@ class DataReader:
         ------
         FileNotFoundError
             If the file does not exist and is not optional.
+        ValueError
+            If glob pattern matches zero or multiple files (for required files).
         """
-        cache_key = self._generate_cache_key(folder, data_file)
+        file_path = self._get_file_path(data_file, folder)
 
-        # Return cached data if available and requested
+        if file_path is None:
+            logger.debug("Optional file {} not found, returning None", data_file.name)
+            return None
+
+        cache_key = self._generate_cache_key(data_file, file_path)
         if use_cache and cache_key in self._cache:
             logger.debug("Loading {} from cache", data_file.name)
             return self._cache[cache_key]
 
-        file_path = folder / data_file.fpath.resolve()
-        if not file_path.exists():
-            if data_file.is_optional:
-                logger.debug("Optional file {} not found, returning None", file_path)
-                return None
-            else:
-                msg = f"Missing required file: {file_path}"
-                raise FileNotFoundError(msg)
+        if not file_path.exists() and data_file.is_optional:
+            logger.debug("Optional file {} not found, returning None", file_path)
+            return None
+
+        if not file_path.exists() and not data_file.is_optional:
+            msg = f"Missing required file: {file_path}"
+            raise FileNotFoundError(msg)
 
         # Check for custom reader function first
         reader_kwargs = data_file.reader_kwargs or {}
@@ -181,7 +260,7 @@ class DataReader:
     def register_custom_transformation(
         self,
         data_types: type | tuple[type, ...],
-        transform_func: Callable[[Any, DataFile], Any],
+        transform_func: Callable[[DataFile, Any], Any],
     ) -> None:
         """Register a custom transformation function.
 
@@ -191,10 +270,11 @@ class DataReader:
             Data type(s) the function can handle.
         transform_func : callable
             Function that transforms data given a DataFile configuration.
+            Signature: (data_file: DataFile, data: Any) -> Any
 
         Examples
         --------
-        >>> def my_transform(data: MyClass, data_file: DataFile) -> MyClass:
+        >>> def my_transform(data_file: DataFile, data: MyClass) -> MyClass:
         ...     # Custom logic here
         ...     return data
         >>> reader.register_custom_transformation(MyClass, my_transform)

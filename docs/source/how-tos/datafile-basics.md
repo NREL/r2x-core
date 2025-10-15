@@ -50,6 +50,30 @@ json_file = DataFile(name="config", fpath="config.json")
 xml_file = DataFile(name="model", fpath="model.xml")
 ```
 
+# ... use glob patterns to match files
+
+```python
+# Match a single XML file with unknown name
+# Useful when the file name varies (e.g., user-renamed model files)
+model_file = DataFile(
+    name="plexos_model",
+    glob="*.xml",
+    description="Plexos model XML file"
+)
+
+# Match files with specific prefix
+output_file = DataFile(
+    name="results",
+    glob="output_*.csv"
+)
+
+# Match files with wildcard in the middle
+data_file = DataFile(
+    name="scenario_data",
+    glob="scenario_?_data.csv"  # Matches scenario_1_data.csv, scenario_2_data.csv, etc.
+)
+```
+
 # ... use custom reader functions
 
 ```python

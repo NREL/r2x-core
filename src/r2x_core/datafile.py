@@ -11,12 +11,11 @@ from pydantic import (
     Field,
     FilePath,
     computed_field,
+    model_validator,
 )
 
 from .file_types import EXTENSION_MAPPING, FileFormat
-from .utils import (
-    validate_file_extension,
-)
+from .utils import validate_file_extension, validate_glob_pattern
 
 
 class DataFile(BaseModel):
@@ -29,9 +28,15 @@ class DataFile(BaseModel):
     ----------
     name : str
         Unique identifier for this file mapping configuration.
-    fpath : pathlib.Path
+    fpath : pathlib.Path, optional
         Path to the data file relative to the ReEDS case directory. Must have a
         supported extension (.csv, .tsv, .h5, .hdf5, .json, .xml).
+        Either fpath or glob must be specified, but not both.
+    glob : str, optional
+        Glob pattern to locate a file by extension (e.g., '*.xml', 'data_?.csv').
+        Must contain at least one wildcard character (*, ?, [, ]).
+        Pattern must match exactly one file.
+        Either fpath or glob must be specified, but not both.
     description : str, optional
         Human-readable description of the data file contents.
     is_input : bool, default True
@@ -104,6 +109,14 @@ class DataFile(BaseModel):
     ...     reader_function=PlexosDB.from_xml,  # Callable function
     ... )
 
+    File mapping with glob pattern (when filename is unknown):
+
+    >>> mapping = DataFile(
+    ...     name="model_file",
+    ...     glob="*.xml",  # Finds any XML file in directory
+    ...     description="User-renamed model file",
+    ... )
+
     Optional file with lambda reader:
 
     >>> mapping = DataFile(
@@ -116,7 +129,10 @@ class DataFile(BaseModel):
 
     Notes
     -----
+    - Exactly one of `fpath` or `glob` must be specified
     - File paths are validated to ensure they have supported extensions
+    - Glob patterns must contain at least one wildcard (*, ?, [, ]) and must match exactly one file
+    - File type is inferred from the file extension (or from glob pattern ending)
     - The `file_type` property is computed automatically and excluded from serialization
     - Column operations are applied in order: mapping → dropping → schema → filtering
 
@@ -129,10 +145,15 @@ class DataFile(BaseModel):
 
     name: Annotated[str, Field(description="Name of the mapping.")]
     fpath: Annotated[
-        FilePath,
+        FilePath | None,
         AfterValidator(validate_file_extension),
         Field(description="File path (must exist)"),
-    ]
+    ] = None
+    glob: Annotated[
+        str | None,
+        AfterValidator(validate_glob_pattern),
+        Field(description="Glob pattern to locate file (e.g., '*.xml'). Must match exactly one file."),
+    ] = None
     description: Annotated[str | None, Field(description="Description of the data file")] = None
     is_input: Annotated[bool, Field(description="Whether this is an input file")] = True
     is_optional: Annotated[bool, Field(description="Whether this file is optional")] = False
@@ -173,6 +194,33 @@ class DataFile(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    @model_validator(mode="after")
+    def validate_fpath_or_glob(self) -> "DataFile":
+        """Validate that exactly one of fpath or glob is specified.
+
+        Returns
+        -------
+        DataFile
+            The validated instance
+
+        Raises
+        ------
+        ValueError
+            If neither fpath nor glob is specified, or both are specified
+        """
+        if self.fpath is None and self.glob is None:
+            msg = "Either 'fpath' or 'glob' must be specified"
+            raise ValueError(msg)
+
+        if self.fpath is not None and self.glob is not None:
+            msg = (
+                "Both 'fpath' and 'glob' specified. "
+                "Use 'fpath' for direct paths or 'glob' for pattern matching, not both."
+            )
+            raise ValueError(msg)
+
+        return self
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def file_type(self) -> FileFormat:
@@ -189,7 +237,20 @@ class DataFile(BaseModel):
             If the file extension is not supported or if marked as time series
             but the file type doesn't support time series data.
         """
-        extension = self.fpath.suffix.lower()
+        if self.fpath is not None:
+            extension = self.fpath.suffix.lower()
+        elif self.glob is not None:
+            # Extract extension from glob pattern (e.g., '*.xml' -> '.xml')
+            # Takes the final extension after the last dot
+            if "." in self.glob:
+                extension = "." + self.glob.rsplit(".", 1)[-1].rstrip("*?[]")
+            else:
+                msg = "Cannot determine file type from glob pattern without extension"
+                raise ValueError(msg)
+        else:
+            msg = "Either fpath or glob must be set to determine file type"
+            raise ValueError(msg)
+
         file_type_class = EXTENSION_MAPPING.get(extension)
 
         if file_type_class is None:  # pragma: no cover
@@ -199,9 +260,7 @@ class DataFile(BaseModel):
 
         # If marked as time series, verify the file type supports it
         if self.is_timeseries and not file_type_class.supports_timeseries:
-            msg = (
-                f"File type {file_type_class.__name__} does not support time series data. File: {self.fpath}"
-            )
+            msg = f"File type {file_type_class.__name__} does not support time series data."
             raise ValueError(msg)
 
         return file_type_class()
