@@ -1,384 +1,347 @@
-# ... create a simple upgrade
+# ... create a basic upgrader class
 
 ```python
-from r2x_core import UpgradeStep, UpgradeContext, apply_upgrade
-from r2x_core import SemanticVersioningStrategy
+from pathlib import Path
+from r2x_core.upgrader import DataUpgrader, UpgradeType
+from r2x_core.versioning import SemanticVersioningStrategy
 
-# Define upgrade function
-def upgrade_to_v2(data: dict) -> dict:
+class MyModelUpgrader(DataUpgrader):
+    """Upgrader for my_model plugin data."""
+
+    strategy = SemanticVersioningStrategy(version_field="schema_version")
+
+    @staticmethod
+    def detect_version(folder: Path) -> str | None:
+        """Detect version from version file."""
+        version_file = folder / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
+        return None
+```
+
+# ... register FILE upgrade steps
+
+```python
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE,
+    priority=100
+)
+def upgrade_to_v2(folder: Path) -> Path:
     """Upgrade configuration from v1 to v2."""
-    data["version"] = "2.0.0"
-    data["new_field"] = "default"
-    return data
-
-# Create upgrade step
-step = UpgradeStep(
-    name="upgrade_v1_to_v2",
-    func=upgrade_to_v2,
-    target_version="2.0.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    context=UpgradeContext.DATA
-)
-
-# Apply upgrade
-old_data = {"version": "1.0.0", "name": "test"}
-new_data, applied = apply_upgrade(old_data, step)
-
-if applied:
-    print(f"Upgraded to {new_data['version']}")
+    old_config = folder / "config.json"
+    new_config = folder / "settings.json"
+    if old_config.exists():
+        old_config.rename(new_config)
+    return folder
 ```
 
-# ... migrate data structure
+# ... use upgrader with DataStore
 
 ```python
-from r2x_core import UpgradeStep, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
+from r2x_core import DataStore, PluginManager
 
-def restructure_config(data: dict) -> dict:
-    """Restructure configuration for v2."""
-    data["version"] = "2.0.0"
-
-    # Rename fields
-    if "old_name" in data:
-        data["new_name"] = data.pop("old_name")
-
-    # Nest related fields
-    if "host" in data and "port" in data:
-        data["connection"] = {
-            "host": data.pop("host"),
-            "port": data.pop("port")
-        }
-
-    # Add defaults for new fields
-    data.setdefault("timeout", 30)
-    data.setdefault("retry_count", 3)
-
-    return data
-
-step = UpgradeStep(
-    name="restructure_v2",
-    func=restructure_config,
-    target_version="2.0.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    context=UpgradeContext.DATA
-)
-```
-
-# ... apply multiple upgrades
-
-```python
-from r2x_core import apply_upgrades, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
-
-strategy = SemanticVersioningStrategy()
-
-# Define upgrade chain
-steps = [
-    UpgradeStep(
-        name="v1_to_v2",
-        func=upgrade_to_v2,
-        target_version="2.0.0",
-        versioning_strategy=strategy,
-        priority=100,
-        context=UpgradeContext.DATA
-    ),
-    UpgradeStep(
-        name="v2_to_v3",
-        func=upgrade_to_v3,
-        target_version="3.0.0",
-        versioning_strategy=strategy,
-        priority=200,
-        context=UpgradeContext.DATA
-    ),
-]
-
-# Apply all upgrades
-data = {"version": "1.0.0"}
-final, applied = apply_upgrades(
-    data,
-    steps,
-    context=UpgradeContext.DATA,
-    upgrade_type="data"
+# Register plugin with upgrader
+PluginManager.register_model_plugin(
+    name="my_model",
+    config=MyModelConfig,
+    parser=MyModelParser,
+    upgrader=MyModelUpgrader
 )
 
-print(f"Applied {len(applied)} upgrades: {applied}")
-```
-
-# ... upgrade with rollback
-
-```python
-from r2x_core import apply_upgrades_with_rollback, UpgradeContext
-
-# Apply with rollback capability
-result = apply_upgrades_with_rollback(
-    data,
-    steps,
-    context=UpgradeContext.DATA,
-    stop_on_error=True
-)
-
-# Validate upgraded data
-try:
-    validate_data(result.current_data)
-    final_data = result.current_data
-except ValidationError:
-    # Rollback on validation failure
-    print("Validation failed, rolling back")
-    final_data = result.rollback()
-```
-
-# ... register upgrades with plugin
-
-```python
-from r2x_core import PluginManager, UpgradeStep, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
-
-# Define upgrade
-def upgrade_my_model_v2(data: dict) -> dict:
-    data["version"] = "2.0.0"
-    data["model_settings"] = {
-        "solver": "default",
-        "tolerance": 1e-6
-    }
-    return data
-
-# Create step
-step = UpgradeStep(
-    name="my_model_v2",
-    func=upgrade_my_model_v2,
-    target_version="2.0.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    context=UpgradeContext.DATA,
-    upgrade_type="data"
-)
-
-# Register with plugin manager
-PluginManager.register_upgrade_step("my_model", step)
-
-# Automatically applied during data loading
-from r2x_core import DataStore
-
+# Upgrader applied automatically during data loading
 store = DataStore.from_json(
     "config.json",
     folder="/data",
-    upgrader="my_model"  # Triggers upgrade
+    upgrader=MyModelUpgrader
 )
 ```
 
-# ... use version constraints
+# ... rename files during upgrade
 
 ```python
-from r2x_core import UpgradeStep, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE
+)
+def rename_input_files(folder: Path) -> Path:
+    """Rename buses.csv to nodes.csv."""
+    old_file = folder / "buses.csv"
+    new_file = folder / "nodes.csv"
 
-# Only upgrade if between min and max versions
-step = UpgradeStep(
-    name="patch_v2_1",
-    func=apply_patch,
+    if old_file.exists():
+        old_file.rename(new_file)
+
+    return folder
+```
+
+# ... restructure configuration files
+
+```python
+@MyModelUpgrader.upgrade_step(
     target_version="2.1.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    min_version="2.0.0",  # Only if >= 2.0.0
-    max_version="2.0.9",  # Only if <= 2.0.9
-    context=UpgradeContext.DATA
+    upgrade_type=UpgradeType.FILE
 )
+def restructure_config(folder: Path) -> Path:
+    """Restructure configuration file."""
+    import json
 
-# Upgrade skipped if version < 2.0.0 or > 2.0.9
+    config_file = folder / "config.json"
+    if config_file.exists():
+        data = json.loads(config_file.read_text())
+
+        # Nest related fields
+        if "host" in data and "port" in data:
+            data["connection"] = {
+                "host": data.pop("host"),
+                "port": data.pop("port")
+            }
+
+        data["schema_version"] = "2.1.0"
+        config_file.write_text(json.dumps(data, indent=2))
+
+    return folder
 ```
 
-# ... handle complex transformations
+# ... order multiple upgrade steps with priority
 
 ```python
-from r2x_core import UpgradeStep, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
+# Priority 50 runs first
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE,
+    priority=50
+)
+def rename_files_v2(folder: Path) -> Path:
+    """Rename files first."""
+    (folder / "old.csv").rename(folder / "new.csv")
+    return folder
 
-def complex_upgrade(data: dict) -> dict:
-    """Complex upgrade with conditional logic."""
-    data["version"] = "3.0.0"
+# Priority 100 runs second
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE,
+    priority=100
+)
+def update_structure_v2(folder: Path) -> Path:
+    """Update structure after rename."""
+    import json
+    config_file = folder / "new.csv"
+    # Process the renamed file
+    return folder
 
-    # Conditional field migration
-    if "legacy_format" in data:
-        legacy = data.pop("legacy_format")
-        data["modern_format"] = convert_legacy(legacy)
+# Priority 150 runs third
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE,
+    priority=150
+)
+def finalize_v2(folder: Path) -> Path:
+    """Finalize upgrade."""
+    (folder / "VERSION").write_text("2.0.0")
+    return folder
+```
 
-    # Transform nested structures
-    if "buses" in data:
-        data["buses"] = [
-            {**bus, "upgraded": True}
-            for bus in data["buses"]
-        ]
+# ... move files to new locations
 
-    # Add feature flags
-    data["features"] = {
-        "new_solver": True,
-        "experimental": False
-    }
+```python
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE
+)
+def reorganize_structure(folder: Path) -> Path:
+    """Move files to new directory structure."""
+    import shutil
 
-    # Validate transformation
-    validate_upgraded_structure(data)
+    # Create new directories
+    data_dir = folder / "data"
+    config_dir = folder / "config"
+    data_dir.mkdir(exist_ok=True)
+    config_dir.mkdir(exist_ok=True)
 
-    return data
+    # Move data files
+    for csv_file in folder.glob("*.csv"):
+        shutil.move(str(csv_file), str(data_dir / csv_file.name))
 
-step = UpgradeStep(
-    name="complex_v3_upgrade",
-    func=complex_upgrade,
+    # Move config files
+    for json_file in folder.glob("*.json"):
+        shutil.move(str(json_file), str(config_dir / json_file.name))
+
+    return folder
+```
+
+# ... transform CSV data during upgrade
+
+```python
+@MyModelUpgrader.upgrade_step(
+    target_version="2.0.0",
+    upgrade_type=UpgradeType.FILE
+)
+def update_csv_format(folder: Path) -> Path:
+    """Update CSV column names and values."""
+    import polars as pl
+
+    generators_file = folder / "generators.csv"
+    if generators_file.exists():
+        # Read old format
+        df = pl.read_csv(generators_file)
+
+        # Rename columns
+        df = df.rename({"gen_name": "name", "cap_mw": "capacity"})
+
+        # Transform values
+        df = df.with_columns(
+            (pl.col("capacity") * 1000).alias("capacity_kw")
+        )
+
+        # Write new format
+        df.write_csv(generators_file)
+
+    return folder
+```
+
+# ... update JSON schema during upgrade
+
+```python
+@MyModelUpgrader.upgrade_step(
     target_version="3.0.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    context=UpgradeContext.DATA
+    upgrade_type=UpgradeType.FILE
 )
+def migrate_json_schema(folder: Path) -> Path:
+    """Migrate JSON to new schema."""
+    import json
+
+    config_file = folder / "config.json"
+    if config_file.exists():
+        data = json.loads(config_file.read_text())
+
+        # Remove deprecated fields
+        data.pop("legacy_option", None)
+
+        # Add new required fields with defaults
+        data.setdefault("solver", "gurobi")
+        data.setdefault("threads", 4)
+
+        # Restructure nested data
+        if "database" in data:
+            db_config = data.pop("database")
+            data["connections"] = {
+                "primary": db_config
+            }
+
+        # Update schema version
+        data["schema_version"] = "3.0.0"
+
+        config_file.write_text(json.dumps(data, indent=2))
+
+    return folder
 ```
 
-# ... control upgrade priority
+# ... detect version from multiple sources
 
 ```python
-from r2x_core import UpgradeStep, UpgradeContext, apply_upgrades
-from r2x_core import SemanticVersioningStrategy
+class MyModelUpgrader(DataUpgrader):
+    strategy = SemanticVersioningStrategy()
 
-strategy = SemanticVersioningStrategy()
+    @staticmethod
+    def detect_version(folder: Path) -> str | None:
+        """Detect version from multiple sources."""
+        # Try VERSION file first
+        version_file = folder / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
 
-steps = [
-    # Runs first (lower priority number)
-    UpgradeStep(
-        name="prepare_upgrade",
-        func=prepare_data,
-        target_version="2.0.0",
-        versioning_strategy=strategy,
-        priority=50,  # Run early
-        context=UpgradeContext.DATA
-    ),
-    # Runs second
-    UpgradeStep(
-        name="main_upgrade",
-        func=main_transformation,
-        target_version="2.0.0",
-        versioning_strategy=strategy,
-        priority=100,  # Normal priority
-        context=UpgradeContext.DATA
-    ),
-    # Runs last (higher priority number)
-    UpgradeStep(
-        name="finalize_upgrade",
-        func=finalize_data,
-        target_version="2.0.0",
-        versioning_strategy=strategy,
-        priority=200,  # Run late
-        context=UpgradeContext.DATA
-    ),
-]
+        # Try config.json
+        config_file = folder / "config.json"
+        if config_file.exists():
+            import json
+            data = json.loads(config_file.read_text())
+            if "schema_version" in data:
+                return data["schema_version"]
 
-# Applies in priority order: 50 -> 100 -> 200
-final, applied = apply_upgrades(data, steps, context=UpgradeContext.DATA)
+        # Try metadata.yaml
+        metadata_file = folder / "metadata.yaml"
+        if metadata_file.exists():
+            import yaml
+            data = yaml.safe_load(metadata_file.read_text())
+            if "version" in data:
+                return data["version"]
+
+        # No version found
+        return None
 ```
 
-# ... skip already upgraded data
+# ... use Git-based versioning
 
 ```python
-from r2x_core import apply_upgrade, UpgradeStep, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
+from r2x_core.versioning import GitVersioningStrategy
 
-step = UpgradeStep(
-    name="upgrade_to_v2",
-    func=upgrade_to_v2,
+class MyModelUpgrader(DataUpgrader):
+    """Use Git tags for versioning."""
+
+    strategy = GitVersioningStrategy()
+
+    @staticmethod
+    def detect_version(folder: Path) -> str | None:
+        """Detect version from git describe."""
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "describe", "--tags"],
+                cwd=folder,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return result.stdout.strip()
+        except subprocess.CalledProcessError:
+            return None
+```
+
+# ... handle missing version gracefully
+
+```python
+class MyModelUpgrader(DataUpgrader):
+    strategy = SemanticVersioningStrategy()
+
+    @staticmethod
+    def detect_version(folder: Path) -> str | None:
+        """Detect version or return default."""
+        version_file = folder / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
+
+        # Assume oldest version if no version found
+        # This allows upgrading legacy data
+        return "1.0.0"
+```
+
+# ... validate upgraded data
+
+```python
+@MyModelUpgrader.upgrade_step(
     target_version="2.0.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    context=UpgradeContext.DATA
+    upgrade_type=UpgradeType.FILE,
+    priority=200  # Run after other upgrades
 )
+def validate_upgraded_data(folder: Path) -> Path:
+    """Validate data after upgrade."""
+    import json
 
-# Already at v2.0.0 or higher - skipped
-data = {"version": "2.0.0", "config": {...}}
-result, applied = apply_upgrade(data, step)
-assert not applied  # Skipped
+    config_file = folder / "config.json"
+    if config_file.exists():
+        data = json.loads(config_file.read_text())
 
-# Needs upgrade - applied
-old_data = {"version": "1.0.0", "config": {...}}
-result, applied = apply_upgrade(old_data, step)
-assert applied  # Upgraded
-```
+        # Validate required fields
+        required_fields = ["schema_version", "name", "year"]
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            raise ValueError(f"Missing required fields: {missing}")
 
-# ... handle upgrade errors
+        # Validate version
+        if data["schema_version"] != "2.0.0":
+            raise ValueError("Version mismatch after upgrade")
 
-```python
-from r2x_core import apply_upgrades_with_rollback, UpgradeContext
-
-def risky_upgrade(data: dict) -> dict:
-    """Upgrade that might fail."""
-    data["version"] = "2.0.0"
-
-    if "required_field" not in data:
-        raise ValueError("Missing required field")
-
-    return data
-
-# Stop on error and rollback
-result = apply_upgrades_with_rollback(
-    data,
-    [step],
-    stop_on_error=True  # Rollback on any error
-)
-
-# Continue on errors (default)
-result = apply_upgrades_with_rollback(
-    data,
-    [step1, step2, step3],
-    stop_on_error=False  # Skip failed, continue with others
-)
-
-print(f"Successful upgrades: {result.applied_steps}")
-```
-
-# ... validate before and after upgrade
-
-```python
-from r2x_core import apply_upgrades_with_rollback, UpgradeContext
-
-def validate_v1_data(data: dict) -> bool:
-    """Validate v1 data structure."""
-    return "old_field" in data and data["version"] == "1.0.0"
-
-def validate_v2_data(data: dict) -> bool:
-    """Validate v2 data structure."""
-    return "new_field" in data and data["version"] == "2.0.0"
-
-# Validate before upgrade
-if not validate_v1_data(data):
-    raise ValueError("Invalid v1 data")
-
-# Apply upgrade with rollback
-result = apply_upgrades_with_rollback(data, steps)
-
-# Validate after upgrade
-if validate_v2_data(result.current_data):
-    final_data = result.current_data
-else:
-    # Rollback if validation fails
-    final_data = result.rollback()
-    raise ValueError("Upgrade validation failed")
-```
-
-# ... create idempotent upgrades
-
-```python
-from r2x_core import UpgradeStep, UpgradeContext
-from r2x_core import SemanticVersioningStrategy
-
-def idempotent_upgrade(data: dict) -> dict:
-    """Upgrade that can be applied multiple times safely."""
-    data["version"] = "2.0.0"
-
-    # Safe to apply multiple times
-    data.setdefault("new_field", "default")
-
-    # Check before transformation
-    if "old_field" in data and "new_field" not in data:
-        data["new_field"] = data.pop("old_field")
-
-    return data
-
-# Can be applied multiple times without errors
-step = UpgradeStep(
-    name="idempotent_v2",
-    func=idempotent_upgrade,
-    target_version="2.0.0",
-    versioning_strategy=SemanticVersioningStrategy(),
-    context=UpgradeContext.DATA
-)
+    return folder
 ```
