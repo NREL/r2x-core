@@ -1,6 +1,6 @@
 import pytest
 
-from r2x_core.datafile import DataFile
+from r2x_core.datafile import DataFile, validate_glob_pattern
 from r2x_core.reader import DataReader
 
 
@@ -340,3 +340,22 @@ def test_glob_model_validator_neither_fpath_nor_glob():
     """Test that specifying neither fpath nor glob raises ValueError."""
     with pytest.raises(ValueError, match="Either 'fpath' or 'glob' must be specified"):
         DataFile(name="test")
+
+
+def test_file_type_with_fpath(tmp_path):
+    """Test that file_type property works with fpath."""
+    xml_file = tmp_path / "model.xml"
+    xml_file.write_text("<root/>")
+
+    data_file = DataFile(name="test", fpath=xml_file)
+
+    file_type = data_file.file_type
+    assert file_type is not None
+    assert "xml" in str(type(file_type)).lower()
+
+
+def test_validate_glob_pattern_none():
+    """Test that glob validator handles None correctly."""
+
+    result = validate_glob_pattern(None)
+    assert result is None

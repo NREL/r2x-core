@@ -45,6 +45,19 @@ def test_file_mapping_timeseries_json_fails(tmp_path) -> None:
     test_file = tmp_path / "test_data.json"
     test_file.write_text("")
     mapping = DataFile(name="test", fpath=str(test_file), is_timeseries=True)
-    # Access file_type property to trigger validation
     with pytest.raises(ValueError, match="does not support time series"):
+        _ = mapping.file_type
+
+
+def test_file_type_without_fpath_or_glob() -> None:
+    """Test that file_type raises error when neither fpath nor glob is set.
+
+    This is defensive code that should never be reached in normal usage
+    due to model_validator, but we test it by bypassing validation.
+    """
+    # Use model_construct to bypass validators
+    # NOTE: This is the only way to bypass the Pydantic validation.
+    mapping = DataFile.model_construct(name="test", fpath=None, glob=None)
+
+    with pytest.raises(ValueError, match="Either fpath or glob must be set to determine file type"):
         _ = mapping.file_type
