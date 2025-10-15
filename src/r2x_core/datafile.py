@@ -280,7 +280,7 @@ class DataFile(BaseModel):
             extension = self.fpath.suffix.lower()
         elif self.glob is not None:
             # Extract extension from glob pattern (e.g., '*.xml' -> '.xml')
-            # This is a simplified approach - assumes pattern ends with extension
+            # Takes the final extension after the last dot
             if "." in self.glob:
                 extension = "." + self.glob.rsplit(".", 1)[-1].rstrip("*?[]")
             else:

@@ -114,7 +114,7 @@ class DataReader:
             return self._resolve_glob_pattern(folder, data_file)
 
         assert data_file.fpath is not None, "DataFile must have either fpath or glob"
-        return folder / data_file.fpath.resolve()
+        return folder / data_file.fpath
 
     def _generate_cache_key(self, file_path: Path, data_file: DataFile) -> str:
         """Generate a unique cache key for a file.

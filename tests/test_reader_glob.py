@@ -277,3 +277,66 @@ def test_glob_with_csv_file(data_reader, tmp_path):
     assert result is not None
     collected = result.collect()
     assert len(collected) == 2
+
+
+def test_glob_validation_empty_pattern():
+    """Test that empty glob patterns raise ValueError."""
+    with pytest.raises(ValueError, match="Glob pattern cannot be empty"):
+        DataFile(name="test", glob="")
+
+
+def test_glob_validation_whitespace_only():
+    """Test that whitespace-only glob patterns raise ValueError."""
+    with pytest.raises(ValueError, match="Glob pattern cannot be empty"):
+        DataFile(name="test", glob="   ")
+
+
+def test_glob_validation_invalid_characters():
+    """Test that glob patterns with invalid characters raise ValueError."""
+    with pytest.raises(ValueError, match="invalid characters"):
+        DataFile(name="test", glob="file\x00.xml")
+
+
+def test_glob_validation_no_wildcards():
+    """Test that patterns without wildcards raise ValueError."""
+    with pytest.raises(ValueError, match="does not contain glob wildcards"):
+        DataFile(name="test", glob="exact_filename.xml")
+
+
+def test_glob_without_extension_raises():
+    """Test that glob patterns without extensions raise ValueError."""
+
+    data_file = DataFile(name="test", glob="*")
+    with pytest.raises(ValueError, match="Cannot determine file type from glob pattern"):
+        _ = data_file.file_type
+
+
+def test_glob_timeseries_validation():
+    """Test that glob patterns validate timeseries support."""
+
+    data_file = DataFile(name="test", glob="*.xml", is_timeseries=True)
+    with pytest.raises(ValueError, match="does not support time series"):
+        _ = data_file.file_type
+
+
+def test_glob_required_file_not_found(data_reader, empty_dir):
+    """Test that missing required files raise ValueError."""
+    data_file = DataFile(name="test", glob="*.xml", is_optional=False)
+
+    with pytest.raises(ValueError, match="No files found matching pattern"):
+        data_reader.read_data_file(empty_dir, data_file)
+
+
+def test_glob_model_validator_both_fpath_and_glob(tmp_path):
+    """Test that specifying both fpath and glob raises ValueError."""
+
+    test_file = tmp_path / "file.xml"
+    test_file.write_text("<root/>")
+    with pytest.raises(ValueError, match="Both 'fpath' and 'glob' specified"):
+        DataFile(name="test", fpath=test_file, glob="*.xml")
+
+
+def test_glob_model_validator_neither_fpath_nor_glob():
+    """Test that specifying neither fpath nor glob raises ValueError."""
+    with pytest.raises(ValueError, match="Either 'fpath' or 'glob' must be specified"):
+        DataFile(name="test")
