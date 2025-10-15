@@ -28,6 +28,19 @@ from .reader import DataReader
 from .store import DataStore
 from .system import System
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
+from .upgrader import (
+    DataUpgrader,
+    UpgradeStep,
+    UpgradeType,
+    apply_upgrades,
+)
+from .versioning import (
+    FileModTimeStrategy,
+    GitVersioningStrategy,
+    SemanticVersioningStrategy,
+    VersionDetector,
+    VersioningStrategy,
+)
 
 __version__ = version("r2x_core")
 
@@ -42,9 +55,12 @@ __all__ = [
     "DataFile",
     "DataReader",
     "DataStore",
+    "DataUpgrader",
     "ExporterError",
     "FileFormat",
+    "FileModTimeStrategy",
     "FilterFunction",
+    "GitVersioningStrategy",
     "H5Format",
     "HasPerUnit",
     "HasUnits",
@@ -52,11 +68,17 @@ __all__ = [
     "PluginComponent",
     "PluginConfig",
     "PluginManager",
+    "SemanticVersioningStrategy",
     "System",
     "SystemModifier",
     "Unit",
     "UnitSystem",
+    "UpgradeStep",
+    "UpgradeType",
     "ValidationError",
+    "VersionDetector",
+    "VersioningStrategy",
+    "apply_upgrades",
     "get_unit_system",
     "h5_readers",
     "set_unit_system",

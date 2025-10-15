@@ -6,7 +6,7 @@ import tempfile
 from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import orjson
 from infrasys.component import Component
@@ -15,6 +15,9 @@ from infrasys.utils.sqlite import backup
 from loguru import logger
 
 from r2x_core import units
+
+if TYPE_CHECKING:
+    from r2x_core.upgrader import DataUpgrader
 
 
 class System(InfrasysSystem):
@@ -317,6 +320,7 @@ class System(InfrasysSystem):
         cls,
         filename: Path | str,
         upgrade_handler: Callable[..., Any] | None = None,
+        upgrader: type["DataUpgrader"] | None = None,
         **kwargs: Any,
     ) -> "System":
         """Deserialize system from JSON file.
@@ -327,6 +331,8 @@ class System(InfrasysSystem):
             Input JSON file path.
         upgrade_handler : Callable, optional
             Function to handle data model version upgrades.
+        upgrader : type[DataUpgrader], optional
+            DataUpgrader subclass to use for system upgrades after deserialization.
         **kwargs
             Additional keyword arguments passed to infrasys deserialization.
 
@@ -353,12 +359,52 @@ class System(InfrasysSystem):
         ...     return data
         >>> system = System.from_json("old_system.json", upgrade_handler=upgrade_v1_to_v2)
 
+        With system upgrades:
+
+        >>> from my_plugin.upgrader import MyPluginUpgrader
+        >>> system = System.from_json("system.json", upgrader=MyPluginUpgrader)
+
         See Also
         --------
         to_json : Serialize system to JSON file
+        upgrade_data : Phase 1 upgrades (for parser workflow)
+
+        Notes
+        -----
+        This method applies Phase 2 (SYSTEM) upgrades only. Phase 2 is ONLY for
+        cached systems loaded from JSON, NOT for the normal parser workflow.
+
+        If you're building a system from raw data:
+        1. Use upgrade_data() first (Phase 1)
+        2. Build system with parser
+        3. Save with system.to_json()
+
+        If you're loading a cached system:
+        1. Use System.from_json(upgrader=...) (Phase 2 applies here)
         """
         logger.info("Deserializing system from {}", filename)
         system: System = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
+
+        # Apply Phase 2 (SYSTEM) upgrades if upgrader is specified
+        # This is ONLY for cached systems, not the normal parser workflow
+        if upgrader:
+            from .upgrader import UpgradeType, apply_upgrades
+
+            # Filter for system upgrades from the upgrader class
+            system_steps = [step for step in upgrader.steps if step.upgrade_type == UpgradeType.SYSTEM]
+
+            if system_steps:
+                logger.info(
+                    "Applying {} system upgrade steps for cached system from upgrader '{}'",
+                    len(system_steps),
+                    upgrader.__name__,
+                )
+                upgraded_system, applied_steps = apply_upgrades(
+                    system, system_steps, upgrade_type=UpgradeType.SYSTEM
+                )
+                if applied_steps:
+                    logger.info("Applied system upgrades: {}", applied_steps)
+                    system = upgraded_system
 
         # After deserialization, update all HasPerUnit components with system_base
         for component in system.get_components(Component):

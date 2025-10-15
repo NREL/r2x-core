@@ -166,7 +166,7 @@ class FilterFunction(Protocol):
 class PluginComponent:
     """Model plugin registration data.
 
-    Holds the parser, exporter, and config classes for a model plugin.
+    Holds the parser, exporter, config, and upgrader classes for a model plugin.
     At least one of parser or exporter must be provided.
 
     Parameters
@@ -177,6 +177,8 @@ class PluginComponent:
         Parser class (BaseParser subclass)
     exporter : type | None
         Exporter class (BaseExporter subclass)
+    upgrader : type[DataUpgrader] | None
+        Upgrader class (DataUpgrader subclass)
 
     Attributes
     ----------
@@ -186,11 +188,14 @@ class PluginComponent:
         Parser class or None
     exporter : type | None
         Exporter class or None
+    upgrader : type[DataUpgrader] | None
+        Upgrader class or None
     """
 
     config: type["PluginConfig"]
     parser: type | None = None
     exporter: type | None = None
+    upgrader: type | None = None
 
 
 class PluginManager:
@@ -304,12 +309,13 @@ class PluginManager:
         config: type["PluginConfig"],
         parser: type | None = None,
         exporter: type | None = None,
+        upgrader: type | None = None,
     ) -> None:
         """Register a model plugin.
 
-        Registers a model plugin with its configuration and optionally parser
-        and/or exporter classes. At least one of parser or exporter should be
-        provided, though both None is allowed (with a warning).
+        Registers a model plugin with its configuration and optionally parser,
+        exporter, and/or upgrader classes. At least one of parser or exporter
+        should be provided, though both None is allowed (with a warning).
 
         Parameters
         ----------
@@ -321,6 +327,8 @@ class PluginManager:
             Parser class (BaseParser subclass)
         exporter : type | None, optional
             Exporter class (BaseExporter subclass)
+        upgrader : type | None, optional
+            Upgrader class (DataUpgrader subclass)
 
         Warnings
         --------
@@ -342,6 +350,15 @@ class PluginManager:
         ...     config=ReEDSConfig,
         ...     parser=ReEDSParser,
         ... )
+
+        With upgrader:
+
+        >>> PluginManager.register_model_plugin(
+        ...     name="reeds",
+        ...     config=ReEDSConfig,
+        ...     parser=ReEDSParser,
+        ...     upgrader=ReEDSDataUpgrader,
+        ... )
         """
         if parser is None and exporter is None:
             logger.warning("Plugin '{}' registered with neither parser nor exporter", name)
@@ -350,6 +367,7 @@ class PluginManager:
             config=config,
             parser=parser,
             exporter=exporter,
+            upgrader=upgrader,
         )
         logger.debug("Registered model plugin: {}", name)
 
@@ -564,6 +582,45 @@ class PluginManager:
         """
         plugin = self._registry.get(name)
         return plugin.config if plugin else None
+
+    def get_upgrader(self, config_class: type["PluginConfig"]) -> type | None:
+        """Get upgrader class for a config class.
+
+        Returns the DataUpgrader subclass for the given config class.
+        The upgrader class has registered upgrade steps and can be used
+        to upgrade data folders.
+
+        Parameters
+        ----------
+        config_class : type[PluginConfig]
+            Configuration class to get upgrader for
+
+        Returns
+        -------
+        type | None
+            DataUpgrader subclass or None if no upgrader registered
+
+        Raises
+        ------
+        KeyError
+            If config class is not registered
+
+        Examples
+        --------
+        >>> from r2x_core import PluginManager
+        >>> from reeds_plugin import ReedsConfig
+        >>>
+        >>> manager = PluginManager()
+        >>> upgrader_class = manager.get_upgrader(ReedsConfig)
+        >>> if upgrader_class:
+        ...     upgraded_folder = upgrader_class.upgrade(Path("/data"))
+        """
+        for component in self._registry.values():
+            if component.config == config_class:
+                return component.upgrader
+
+        msg = f"Config class {config_class.__name__} not registered"
+        raise KeyError(msg)
 
     def get_file_mapping_path(self, plugin_name: str) -> Path | None:
         """Get the file mapping path for a registered plugin.

@@ -95,3 +95,13 @@ plugin-standards
 plugin-registration
 plugin-usage
 ```
+
+## Versioning and Upgrades
+
+```{toctree}
+:maxdepth: 1
+
+version-management
+upgrade-data
+upgrade-systems
+```

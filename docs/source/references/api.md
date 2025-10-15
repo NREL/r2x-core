@@ -129,6 +129,65 @@ Complete API documentation for all r2x-core classes and functions.
    :show-inheritance:
 ```
 
+## Versioning and Upgrades
+
+```{eval-rst}
+.. autoclass:: r2x_core.VersioningStrategy
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.SemanticVersioningStrategy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.GitVersioningStrategy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.FileModTimeStrategy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.UpgradeContext
+   :members:
+   :undoc-members:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.UpgradeStep
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.UpgradeResult
+   :members:
+   :undoc-members:
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.apply_upgrade
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.apply_upgrades
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.apply_upgrades_with_rollback
+```
+
 ## Utilities
 
 ```{eval-rst}
