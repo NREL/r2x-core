@@ -361,3 +361,73 @@ def test_format_column_name_year():
         assert "year" in result
     finally:
         tmp_path.unlink()
+
+
+def test_h5_reader_index_names_resolves_numeric_indices():
+    """Test that index_names dataset resolves index_0, index_1 to meaningful column names.
+
+    This test verifies the fix for the issue where newer ReEDS runs use generic
+    index keys (index_0, index_1) instead of named keys (index_datetime, index_year).
+    The index_names dataset provides the mapping, and the reader should automatically
+    apply it to produce columns named "solve_year" instead of "1".
+
+    Issue: _format_column_name("index_1") was returning "1" instead of "solve_year"
+    Fix: Reader now checks for index_names dataset and maps index_N to actual names
+    """
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        # Create H5 file mimicking newer ReEDS format
+        with h5py.File(str(tmp_path), "w") as f:
+            columns = np.array([b"region1", b"region2"], dtype="S")
+            data = np.array([[100.0, 200.0], [150.0, 250.0], [175.0, 275.0]])
+            dt_strings = np.array(
+                [
+                    "2007-01-01T00:00:00-06:00",
+                    "2007-01-01T01:00:00-06:00",
+                    "2007-01-01T02:00:00-06:00",
+                ],
+                dtype="S",
+            )
+            solve_years = np.array([2030, 2030, 2030])
+
+            # Store actual index names in metadata (newer ReEDS format)
+            # index_0 contains datetime strings → maps to "index_datetime"
+            # index_1 contains years → maps to "index_year" → becomes "solve_year"
+            index_names = np.array([b"index_datetime", b"index_year"], dtype="S")
+
+            f.create_dataset("columns", data=columns)
+            f.create_dataset("data", data=data)
+            f.create_dataset("index_0", data=dt_strings)
+            f.create_dataset("index_1", data=solve_years)
+            f.create_dataset("index_names", data=index_names)
+
+        # Read with automatic index_names resolution
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="data",
+                columns_key="columns",
+                datetime_key="index_0",
+                additional_keys=["index_1"],
+            )
+
+        # ASSERTION: The issue is fixed - column should be "solve_year", not "1"
+        assert "solve_year" in result, f"Expected 'solve_year' column, got: {list(result.keys())}"
+        assert "1" not in result, f"Column should not be named '1', got: {list(result.keys())}"
+
+        # Verify the data is correct
+        assert len(result["solve_year"]) == 3
+        assert result["solve_year"][0] == 2030
+        assert result["solve_year"][1] == 2030
+        assert result["solve_year"][2] == 2030
+
+        # Verify other expected columns
+        assert "region1" in result
+        assert "region2" in result
+        assert "datetime" in result
+        assert len(result["datetime"]) == 3
+
+    finally:
+        tmp_path.unlink()
