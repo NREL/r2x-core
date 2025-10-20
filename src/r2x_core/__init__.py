@@ -25,6 +25,7 @@ from .plugins import (
     SystemModifier,
 )
 from .reader import DataReader
+from .result import Err, Ok, Result, is_err, is_ok
 from .store import DataStore
 from .system import System
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
@@ -56,6 +57,7 @@ __all__ = [
     "DataReader",
     "DataStore",
     "DataUpgrader",
+    "Err",
     "ExporterError",
     "FileFormat",
     "FileModTimeStrategy",
@@ -64,10 +66,12 @@ __all__ = [
     "H5Format",
     "HasPerUnit",
     "HasUnits",
+    "Ok",
     "ParserError",
     "PluginComponent",
     "PluginConfig",
     "PluginManager",
+    "Result",
     "SemanticVersioningStrategy",
     "System",
     "SystemModifier",
@@ -81,5 +85,7 @@ __all__ = [
     "apply_upgrades",
     "get_unit_system",
     "h5_readers",
+    "is_err",
+    "is_ok",
     "set_unit_system",
 ]
