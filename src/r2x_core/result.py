@@ -57,8 +57,9 @@ class Result(Generic[T, E]):
 
 
 class Ok(Result[T, E]):
-    __slots__ = ("value",)
     """Success result containing a value."""
+
+    __slots__ = ("value",)
 
     def __init__(self, value: T) -> None:
         """Initialize an Ok result wrapping the given value.
@@ -112,8 +113,9 @@ class Ok(Result[T, E]):
 
 
 class Err(Result[T, E]):
-    __slots__ = ("error",)
     """Error result containing an error value."""
+
+    __slots__ = ("error",)
 
     def __init__(self, error: E) -> None:
         """Initialize an Err result wrapping the given error.
