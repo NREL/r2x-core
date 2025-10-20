@@ -1,6 +1,6 @@
 """Rust-like error handling."""
 
-# ruff: noqa D!01
+# ruff: noqa D101
 from __future__ import annotations
 from typing import Callable, Generic, TypeVar
 
