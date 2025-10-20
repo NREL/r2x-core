@@ -1,6 +1,6 @@
 import pytest
 
-from r2x_core.result import Err, Ok, ResultType, is_err, is_ok
+from r2x_core.result import Err, Ok, Result, is_err, is_ok
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ def test_err_or_else(err_value):
 
 
 def test_result_type_union(ok_value, err_value):
-    def takes_result(res: ResultType[int, str]) -> int:
+    def takes_result(res: Result[int, str]) -> int:
         if res.is_ok():
             return res.unwrap()
         return -1

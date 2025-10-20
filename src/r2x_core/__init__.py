@@ -25,7 +25,7 @@ from .plugins import (
     SystemModifier,
 )
 from .reader import DataReader
-from .result import Err, Ok, is_err, is_ok
+from .result import Err, Ok, Result, is_err, is_ok
 from .store import DataStore
 from .system import System
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
@@ -71,6 +71,7 @@ __all__ = [
     "PluginComponent",
     "PluginConfig",
     "PluginManager",
+    "Result",
     "SemanticVersioningStrategy",
     "System",
     "SystemModifier",
