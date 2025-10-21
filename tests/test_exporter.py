@@ -1,11 +1,14 @@
 """Tests for the exporter module."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import BaseModel
 
 from r2x_core import BaseExporter, DataStore
+from r2x_core.exceptions import ExporterError
+from r2x_core.result import Ok, Result
 from r2x_core.system import System
 
 
@@ -16,36 +19,46 @@ class MockConfig(BaseModel):
 
 
 class ConcreteExporter(BaseExporter):
-    """Concrete implementation of BaseExporter for testing."""
+    """Concrete implementation of BaseExporter for testing.
 
-    def export(self) -> None:
-        """Implement abstract export method."""
-        # Simple implementation for testing
+    This minimal exporter implements the required prepare_export method.
+    All other hook methods use the default implementations from BaseExporter.
+    """
 
-    def export_time_series(self) -> None:
-        """Implement abstract export_time_series method."""
-        # Simple implementation for testing
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        # Simple test implementation - just return success
+        return Ok(None)
 
 
 class ExporterWithKwargs(BaseExporter):
-    """Exporter that uses additional kwargs."""
+    """Exporter that uses additional kwargs.
+
+    This exporter demonstrates how to extend BaseExporter with custom
+    initialization parameters.
+    """
 
     def __init__(
         self,
         config: BaseModel,
         system: System,
-        data_store: DataStore,
+        /,
+        *,
+        data_store: DataStore | None = None,
         custom_field: str = "default",
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize with custom field."""
-        super().__init__(config, system, data_store, custom_field=custom_field, **kwargs)
+        super().__init__(config, system, data_store=data_store, **kwargs)
+        self.custom_field = custom_field
+        # Store any additional kwargs as attributes
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
-    def export(self) -> None:
-        """Implement abstract export method."""
-
-    def export_time_series(self) -> None:
-        """Implement abstract export_time_series method."""
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        # Simple test implementation - just return success
+        return Ok(None)
 
 
 def test_base_exporter_initialization(tmp_path):
@@ -54,7 +67,7 @@ def test_base_exporter_initialization(tmp_path):
     system = System()
     data_store = DataStore()
 
-    exporter = ConcreteExporter(config, system, data_store)
+    exporter = ConcreteExporter(config, system, data_store=data_store)
 
     assert exporter.config == config
     assert exporter.system == system
@@ -70,7 +83,7 @@ def test_base_exporter_with_kwargs(tmp_path):
     exporter = ExporterWithKwargs(
         config,
         system,
-        data_store,
+        data_store=data_store,
         custom_field="test_value",
         extra_param="extra",
     )
@@ -82,14 +95,15 @@ def test_base_exporter_with_kwargs(tmp_path):
     assert exporter.extra_param == "extra"
 
 
-def test_base_exporter_abstract_methods():
-    """Test that BaseExporter cannot be instantiated directly."""
+def test_base_exporter_abstract_method():
+    """Test that BaseExporter cannot be instantiated without implementing prepare_export."""
     config = MockConfig()
     system = System()
     data_store = DataStore()
 
+    # BaseExporter should not be instantiable since prepare_export is abstract
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        BaseExporter(config, system, data_store)
+        BaseExporter(config, system, data_store=data_store)
 
 
 def test_concrete_exporter_export_method(tmp_path):
@@ -98,9 +112,10 @@ def test_concrete_exporter_export_method(tmp_path):
     system = System()
     data_store = DataStore()
 
-    exporter = ConcreteExporter(config, system, data_store)
+    exporter = ConcreteExporter(config, system, data_store=data_store)
     # Should not raise any exception
-    exporter.export()
+    result = exporter.export()
+    assert result.is_ok()
 
 
 def test_concrete_exporter_export_time_series_method(tmp_path):
@@ -109,6 +124,7 @@ def test_concrete_exporter_export_time_series_method(tmp_path):
     system = System()
     data_store = DataStore()
 
-    exporter = ConcreteExporter(config, system, data_store)
+    exporter = ConcreteExporter(config, system, data_store=data_store)
     # Should not raise any exception
-    exporter.export_time_series()
+    result = exporter.export_time_series()
+    assert result.is_ok()

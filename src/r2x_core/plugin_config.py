@@ -116,6 +116,61 @@ class PluginConfig(BaseModel):
     DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
 
     @classmethod
+    def get_config_path(cls) -> Path:
+        """Get the path to this plugin's file mapping JSON.
+
+        This method uses inspect.getfile() to locate the plugin module file,
+        then constructs the path to the file mapping JSON in the config directory.
+        By convention, plugins should store their file_mapping.json in a config/
+        subdirectory next to the config module.
+
+        The filename can be customized by overriding the FILE_MAPPING_NAME class variable.
+
+        Returns
+        -------
+        Path
+            Absolute path to the file_mapping.json file. Note that this path may
+            not exist if the plugin hasn't created the file yet.
+
+        Examples
+        --------
+        Get file mapping path for a config:
+
+        >>> from r2x_reeds.config import ReEDSConfig
+        >>> mapping_path = ReEDSConfig.get_config_path()
+        >>> print(mapping_path)
+        /path/to/r2x_reeds/config/file_mapping.json
+
+        Override the filename in a custom config:
+
+        >>> class CustomConfig(PluginConfig):
+        ...     FILE_MAPPING_NAME = "custom_mapping.json"
+        ...
+        >>> path = CustomConfig.get_config_path()
+        >>> print(path.name)
+        custom_mapping.json
+
+
+        See Also
+        --------
+        load_defaults : Similar pattern for loading constants
+        get_file_mapping_path: Get file mapping path
+        DataStore.from_plugin_config : Direct DataStore creation from config
+
+        Notes
+        -----
+        This method uses inspect.getfile() to locate the module file, then
+        navigates to the config directory. This works for both installed
+        packages and editable installs.
+        """
+        import inspect
+
+        # Get the file where the config class is defined
+        module_file = inspect.getfile(cls)
+        module_path = Path(module_file).parent
+        return module_path / cls.CONFIG_DIR
+
+    @classmethod
     def get_file_mapping_path(cls) -> Path:
         """Get the path to this plugin's file mapping JSON.
 
