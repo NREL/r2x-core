@@ -2,7 +2,7 @@
 
 # ruff: noqa D101
 from __future__ import annotations
-from typing import Callable, Generic, TypeGuard, TypeVar
+from typing import Callable, Generic, TypeGuard, TypeVar, cast
 
 T = TypeVar("T")
 E = TypeVar("E")
@@ -97,7 +97,9 @@ class Ok(Result[T, E]):
     def __eq__(self, other: object) -> bool:
         """Return self==other."""
         if isinstance(other, Ok):
-            return bool(self.value == other.value)
+            # Cast to access generic attribute with proper typing
+            other_ok = cast("Ok[T, E]", other)
+            return self.value == other_ok.value
         return False
 
     def __hash__(self) -> int:
@@ -184,7 +186,9 @@ class Err(Result[T, E]):
     def __eq__(self, other: object) -> bool:
         """Return self==other."""
         if isinstance(other, Err):
-            return bool(self.error == other.error)
+            # Cast to access generic attribute with proper typing
+            other_err = cast("Err[T, E]", other)
+            return self.error == other_err.error
         return False
 
     def __hash__(self) -> int:
