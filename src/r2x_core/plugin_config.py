@@ -137,18 +137,18 @@ class PluginConfig(BaseModel):
         Get file mapping path for a config:
 
         >>> from r2x_reeds.config import ReEDSConfig
-        >>> mapping_path = ReEDSConfig.get_config()
+        >>> mapping_path = ReEDSConfig.get_config_path()
         >>> print(mapping_path)
-        /path/to/r2x_reeds/config/
+        /path/to/r2x_reeds/config/file_mapping.json
 
         Override the filename in a custom config:
 
         >>> class CustomConfig(PluginConfig):
-        ...     CONFIG_DIR = "/my/dir/"
+        ...     FILE_MAPPING_NAME = "custom_mapping.json"
         ...
         >>> path = CustomConfig.get_config_path()
         >>> print(path.name)
-        /my/dir/
+        custom_mapping.json
 
 
         See Also

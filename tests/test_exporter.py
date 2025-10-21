@@ -1,6 +1,7 @@
 """Tests for the exporter module."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -18,35 +19,24 @@ class MockConfig(BaseModel):
 
 
 class ConcreteExporter(BaseExporter):
-    """Concrete implementation of BaseExporter for testing."""
+    """Concrete implementation of BaseExporter for testing.
 
-    def export(self) -> Result[str, ExporterError]:
-        """Implement abstract export method."""
-        return Ok(self.system.name)
-
-    def export_time_series(self) -> Result[None, ExporterError]:
-        """Implement abstract export_time_series method."""
-        return Ok(None)
-
-    def setup_configuration(self) -> Result[None, ExporterError]:
-        """Implement abstract setup_configuration method."""
-        return Ok(None)
+    This minimal exporter implements the required prepare_export method.
+    All other hook methods use the default implementations from BaseExporter.
+    """
 
     def prepare_export(self) -> Result[None, ExporterError]:
-        """Implement abstract prepare_export method."""
-        return Ok(None)
-
-    def postprocess_export(self) -> Result[None, ExporterError]:
-        """Implement abstract postprocess_export method."""
-        return Ok(None)
-
-    def validate_export(self) -> Result[None, ExporterError]:
-        """Implement abstract validate_export method."""
+        """Implement required prepare_export method."""
+        # Simple test implementation - just return success
         return Ok(None)
 
 
 class ExporterWithKwargs(BaseExporter):
-    """Exporter that uses additional kwargs."""
+    """Exporter that uses additional kwargs.
+
+    This exporter demonstrates how to extend BaseExporter with custom
+    initialization parameters.
+    """
 
     def __init__(
         self,
@@ -54,9 +44,9 @@ class ExporterWithKwargs(BaseExporter):
         system: System,
         /,
         *,
-        data_store: DataStore = None,
+        data_store: DataStore | None = None,
         custom_field: str = "default",
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize with custom field."""
         super().__init__(config, system, data_store=data_store, **kwargs)
@@ -65,28 +55,9 @@ class ExporterWithKwargs(BaseExporter):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def export(self) -> Result[str, ExporterError]:
-        """Implement abstract export method."""
-        return Ok(self.system.name)
-
-    def export_time_series(self) -> Result[None, ExporterError]:
-        """Implement abstract export_time_series method."""
-        return Ok(None)
-
-    def setup_configuration(self) -> Result[None, ExporterError]:
-        """Implement abstract setup_configuration method."""
-        return Ok(None)
-
     def prepare_export(self) -> Result[None, ExporterError]:
-        """Implement abstract prepare_export method."""
-        return Ok(None)
-
-    def postprocess_export(self) -> Result[None, ExporterError]:
-        """Implement abstract postprocess_export method."""
-        return Ok(None)
-
-    def validate_export(self) -> Result[None, ExporterError]:
-        """Implement abstract validate_export method."""
+        """Implement required prepare_export method."""
+        # Simple test implementation - just return success
         return Ok(None)
 
 
@@ -124,12 +95,13 @@ def test_base_exporter_with_kwargs(tmp_path):
     assert exporter.extra_param == "extra"
 
 
-def test_base_exporter_abstract_methods():
-    """Test that BaseExporter cannot be instantiated directly."""
+def test_base_exporter_abstract_method():
+    """Test that BaseExporter cannot be instantiated without implementing prepare_export."""
     config = MockConfig()
     system = System()
     data_store = DataStore()
 
+    # BaseExporter should not be instantiable since prepare_export is abstract
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         BaseExporter(config, system, data_store=data_store)
 
