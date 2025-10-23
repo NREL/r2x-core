@@ -100,6 +100,7 @@ class DataStore:
         self._reader = reader or DataReader()
         self.folder = folder_path.resolve()
         self._cache: dict[str, DataFile] = {}
+        self._config: PluginConfig | None = None
         logger.debug("Initialized DataStore with folder: {}", self.folder)
 
     def __contains__(self, name: str) -> bool:
@@ -187,7 +188,9 @@ class DataStore:
         mapping_path = config.__class__.get_file_mapping_path()
         logger.info("Loading DataStore from plugin config: {}", config.__class__.__name__)
         logger.debug("File mapping path: {}", mapping_path)
-        return cls.from_json(mapping_path, folder)
+        store = cls.from_json(mapping_path, folder)
+        store._config = config
+        return store
 
     @classmethod
     def from_json(
@@ -612,6 +615,48 @@ class DataStore:
         """
         return sorted(self._cache.keys())
 
+    def _substitute_filter_values(self, data_file: DataFile) -> DataFile:
+        """Substitute config variable references in filter_by with actual values.
+
+        Parameters
+        ----------
+        data_file : DataFile
+            The data file configuration.
+
+        Returns
+        -------
+        DataFile
+            A new DataFile with filter_by values substituted.
+        """
+        if not data_file.filter_by or not self._config:
+            return data_file
+
+        substituted_filters = {}
+        for column, filter_value in data_file.filter_by.items():
+            substituted_filters[column] = self._substitute_value(filter_value)
+
+        # Create a new DataFile with substituted filter_by
+        return data_file.model_copy(update={"filter_by": substituted_filters})
+
+    def _substitute_value(self, value: Any) -> Any:
+        """Recursively substitute a single filter value.
+
+        Parameters
+        ----------
+        value : Any
+            The value to substitute (can be string, list, or literal).
+
+        Returns
+        -------
+        Any
+            The substituted value.
+        """
+        if isinstance(value, str) and self._config and hasattr(self._config, value):
+            return getattr(self._config, value)
+        elif isinstance(value, list):
+            return [self._substitute_value(v) for v in value]
+        return value
+
     def read_data_file(self, /, *, name: str, use_cache: bool = True) -> Any:
         """Load data from a file using the configured reader.
 
@@ -650,6 +695,8 @@ class DataStore:
             raise KeyError(f"'{name}' not present in store.")
 
         data_file = self._cache[name]
+        # Substitute config variables in filter_by if config is available
+        data_file = self._substitute_filter_values(data_file)
         return self.reader.read_data_file(data_file, self.folder, use_cache=use_cache)
 
     def clear_cache(self) -> None:
