@@ -139,17 +139,26 @@ class DataReader:
         key_data = f"{file_path}:{mtime}:{data_file.name}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def read_data_file(self, data_file: DataFile, folder: Path, use_cache: bool = True) -> Any:
+    def read_data_file(
+        self,
+        data_file: DataFile,
+        folder: Path,
+        use_cache: bool = True,
+        placeholders: dict[str, Any] | None = None,
+    ) -> Any:
         """Read a data file using cache if available.
 
         Parameters
         ----------
-        folder : Path
-            Base directory containing the data files.
         data_file : DataFile
             Data file configuration with metadata.
+        folder : Path
+            Base directory containing the data files.
         use_cache : bool, optional
             Whether to use cached data if available. Default is True.
+        placeholders : dict[str, Any] | None
+            Dictionary mapping placeholder variable names to their values.
+            Used to substitute placeholders like {solve_year} in filter_by.
 
         Returns
         -------
@@ -161,7 +170,8 @@ class DataReader:
         FileNotFoundError
             If the file does not exist and is not optional.
         ValueError
-            If glob pattern matches zero or multiple files (for required files).
+            If glob pattern matches zero or multiple files (for required files),
+            or if placeholders are found in filter_by but no placeholders dict provided.
         """
         file_path = self._get_file_path(data_file, folder)
 
@@ -193,7 +203,7 @@ class DataReader:
             logger.debug("Reading file {} as {}", file_path, type(file_type_instance).__name__)
             raw_data = read_file_by_type(file_type_instance, file_path, **reader_kwargs)
 
-        processed_data = apply_transformation(data_file, raw_data)
+        processed_data = apply_transformation(data_file, raw_data, placeholders)
 
         if use_cache:
             self._add_to_cache(cache_key, processed_data)

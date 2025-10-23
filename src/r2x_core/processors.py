@@ -1,5 +1,6 @@
 """Simplified data transformations for different data types."""
 
+import re
 from collections.abc import Callable
 from functools import partial
 from typing import Any
@@ -11,6 +12,88 @@ from polars.datatypes.classes import DataTypeClass
 from .datafile import DataFile
 
 TransformFunction = Callable[[Any, DataFile], Any]
+
+# Regex to find simple placeholders
+_PLACEHOLDER_PATTERN = re.compile(r"\{([^}]+)\}")
+
+
+def _substitute_placeholders(value: Any, placeholders: dict[str, Any] | None = None) -> Any:
+    """Substitute placeholder patterns like {variable_name} with actual values.
+
+    This is an optimized implementation with fast paths for common cases.
+
+    Parameters
+    ----------
+    value : Any
+        Value to process (can be str, list, dict, or other types).
+    placeholders : dict[str, Any] | None
+        Dictionary mapping placeholder variable names to their values.
+
+    Returns
+    -------
+    Any
+        Value with placeholders substituted.
+
+    Raises
+    ------
+    ValueError
+        If placeholders are found but no placeholders dict provided,
+        or if a placeholder name is not found in the placeholders dict.
+
+    Examples
+    --------
+    >>> _substitute_placeholders("{solve_year}", {"solve_year": 2030})
+    2030
+    >>> _substitute_placeholders([2025, "{solve_year}"], {"solve_year": 2030})
+    [2025, 2030]
+    """
+    if not isinstance(value, str | list | dict):
+        return value
+
+    if isinstance(value, str) and "{" not in value:
+        return value
+
+    def substitute_value(val: Any) -> Any:
+        """Recursively substitute placeholders in a value."""
+        if isinstance(val, str):
+            if "{" not in val:
+                return val
+
+            match = _PLACEHOLDER_PATTERN.fullmatch(val)
+            if match:
+                var_name = match.group(1)
+                if placeholders is None:
+                    msg = (
+                        f"Found placeholder '{{{var_name}}}' but no placeholders provided.\n"
+                        f"Hint: Pass placeholders parameter when calling read_data_file(), "
+                        f"or use literal values instead of placeholders."
+                    )
+                    raise ValueError(msg)
+                if var_name not in placeholders:
+                    available = ", ".join(placeholders.keys())
+                    msg = (
+                        f"Placeholder '{{{var_name}}}' not found in placeholders.\n"
+                        f"Available placeholders: {available}"
+                    )
+                    raise ValueError(msg)
+                return placeholders[var_name]
+
+            # Check if string contains any placeholders (partial match = error)
+            if _PLACEHOLDER_PATTERN.search(val):
+                msg = (
+                    f"Found placeholder pattern in '{val}' but it's not a complete placeholder.\n"
+                    f"Placeholders must be the entire value, e.g., use '{{variable}}' not 'prefix_{{variable}}'"
+                )
+                raise ValueError(msg)
+            return val
+        elif isinstance(val, list):
+            return [substitute_value(item) for item in val]
+        elif isinstance(val, dict):
+            return {k: substitute_value(v) for k, v in val.items()}
+        else:
+            return val
+
+    return substitute_value(value)
 
 
 def transform_tabular_data(data_file: DataFile, data: pl.LazyFrame) -> pl.LazyFrame:
@@ -269,21 +352,35 @@ TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[[DataFile, Any], Any]] =
 }
 
 
-def apply_transformation(data_file: DataFile, data: Any) -> Any:
+def apply_transformation(data_file: DataFile, data: Any, placeholders: dict[str, Any] | None = None) -> Any:
     """Apply appropriate transformation based on data type.
 
     Parameters
     ----------
-    data : Any
-        Raw data to transform.
     data_file : DataFile
         Configuration with transformation instructions.
+    data : Any
+        Raw data to transform.
+    placeholders : dict[str, Any] | None
+        Dictionary mapping placeholder variable names to their values.
+        Used to substitute placeholders like {solve_year} in filter_by.
 
     Returns
     -------
     Any
         Transformed data.
+
+    Raises
+    ------
+    ValueError
+        If placeholders are found in filter_by but no placeholders dict provided.
     """
+    # If data_file has filter_by with placeholders, substitute them
+    if data_file.filter_by:
+        substituted_filters = _substitute_placeholders(data_file.filter_by, placeholders)
+        # Create new data_file with substituted filter_by
+        data_file = data_file.model_copy(update={"filter_by": substituted_filters})
+
     for registered_types, transform_func in TRANSFORMATIONS.items():
         if isinstance(data, registered_types):
             return transform_func(data_file, data)
