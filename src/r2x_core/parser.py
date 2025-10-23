@@ -482,7 +482,8 @@ class BaseParser(ABC):
         to avoid repeated file I/O.
         """
         try:
-            return self.data_store.read_data_file(name=name, **kwargs)
+            placeholders = self.config.model_dump() if self.config else None
+            return self.data_store.read_data_file(name=name, placeholders=placeholders, **kwargs)
         except KeyError as e:
             raise ParserError(f"Data file '{name}' not found in data store") from e
         except Exception as e:

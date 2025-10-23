@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from r2x_core.versioning import (
     FileModTimeStrategy,
     GitVersioningStrategy,
@@ -96,48 +98,38 @@ def test_git_versioning_set_version_on_unsupported_type():
     assert result == "string_data"
 
 
-def test_git_versioning_compare_timestamps_current_none():
-    strategy = GitVersioningStrategy(use_timestamps=True)
-    result = strategy.compare(None, "2023-01-01T10:00:00Z")
+def test_git_versioning_compare_commits_current_none():
+    commit_history = ["abc123", "def456"]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
+    result = strategy.compare(None, "abc123")
     assert result == -1
 
 
-def test_git_versioning_compare_timestamps_equal():
-    strategy = GitVersioningStrategy(use_timestamps=True)
-    timestamp = "2023-01-01T10:00:00Z"
-    result = strategy.compare(timestamp, timestamp)
-    assert result == 0
-
-
-def test_git_versioning_compare_timestamps_greater():
-    strategy = GitVersioningStrategy(use_timestamps=True)
-    current = "2023-01-01T12:00:00Z"
-    target = "2023-01-01T10:00:00Z"
-    result = strategy.compare(current, target)
-    assert result == 1
-
-
-def test_git_versioning_compare_timestamps_invalid_format():
-    strategy = GitVersioningStrategy(use_timestamps=True)
-    result = strategy.compare("invalid-timestamp", "2023-01-01T10:00:00Z")
-    assert result == -1
+def test_git_versioning_compare_commits_not_in_history():
+    commit_history = ["abc123", "def456"]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
+    with pytest.raises(ValueError):
+        strategy.compare("invalid-commit", "abc123")
 
 
 def test_git_versioning_compare_hashes_equal():
-    strategy = GitVersioningStrategy()
     commit_hash = "abc123"
+    commit_history = [commit_hash]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
     result = strategy.compare(commit_hash, commit_hash)
     assert result == 0
 
 
 def test_git_versioning_compare_hashes_greater():
-    strategy = GitVersioningStrategy()
+    commit_history = ["abc123", "xyz789"]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
     result = strategy.compare("xyz789", "abc123")
     assert result == 1
 
 
 def test_git_versioning_compare_hashes_none():
-    strategy = GitVersioningStrategy()
+    commit_history = ["abc123"]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
     result = strategy.compare(None, "abc123")
     assert result == -1
 

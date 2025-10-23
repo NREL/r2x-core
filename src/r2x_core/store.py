@@ -612,7 +612,9 @@ class DataStore:
         """
         return sorted(self._cache.keys())
 
-    def read_data_file(self, /, *, name: str, use_cache: bool = True) -> Any:
+    def read_data_file(
+        self, /, *, name: str, use_cache: bool = True, placeholders: dict[str, Any] | None = None
+    ) -> Any:
         """Load data from a file using the configured reader.
 
         Parameters
@@ -621,6 +623,9 @@ class DataStore:
             Name of the data file to load.
         use_cache : bool, optional
             Whether to use cached data if available. Default is True.
+        placeholders : dict[str, Any] | None
+            Dictionary mapping placeholder variable names to their values.
+            Used to substitute placeholders like {solve_year} in filter_by.
 
         Returns
         -------
@@ -633,13 +638,19 @@ class DataStore:
             If the specified file name is not present in the store.
         FileNotFoundError
             If the file does not exist and is not marked as optional.
+        ValueError
+            If placeholders are found in filter_by but no placeholders dict provided.
 
         Examples
         --------
         >>> store = DataStore("/path/to/data")
         >>> data_file = DataFile(name="generators", fpath="gen.csv")
         >>> store.add_data_file(data_file)
-        >>> data = store.read_data_file("generators")
+        >>> # Load without placeholders
+        >>> data = store.read_data_file(name="generators")
+        >>>
+        >>> # Load with placeholders for filter_by substitution
+        >>> data = store.read_data_file(name="generators", placeholders={"solve_year": 2030})
 
         See Also
         --------
@@ -650,7 +661,9 @@ class DataStore:
             raise KeyError(f"'{name}' not present in store.")
 
         data_file = self._cache[name]
-        return self.reader.read_data_file(data_file, self.folder, use_cache=use_cache)
+        return self.reader.read_data_file(
+            data_file, self.folder, use_cache=use_cache, placeholders=placeholders
+        )
 
     def clear_cache(self) -> None:
         """Clear both the data reader's cache and the data store's file configurations.
