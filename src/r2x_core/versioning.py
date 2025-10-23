@@ -37,7 +37,6 @@ Use git versioning strategy:
 from __future__ import annotations
 
 from abc import abstractmethod
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -237,29 +236,32 @@ class SemanticVersioningStrategy(VersioningStrategy):
 
 
 class GitVersioningStrategy(VersioningStrategy):
-    """Git-based versioning strategy using commit hashes or timestamps.
+    """Git-based versioning strategy using commit history.
 
     Parameters
     ----------
     version_field : str, default="git_version"
         The field name where git version is stored.
-    use_timestamps : bool, default=False
-        Whether to treat versions as ISO timestamps for comparison.
+    commit_history : list[str]
+        Ordered list of commit hashes from oldest to newest.
     """
 
-    def __init__(self, version_field: str = "git_version", use_timestamps: bool = False):
+    def __init__(
+        self,
+        version_field: str = "git_version",
+        commit_history: list[str] | None = None,
+    ):
         """Initialize git versioning strategy.
 
         Parameters
         ----------
         version_field : str, default="git_version"
-            Name of the field containing git version information (commit hash or timestamp).
-        use_timestamps : bool, default=False
-            If True, treat versions as ISO timestamps and compare chronologically.
-            If False, compare versions as strings lexicographically.
+            Name of the field containing git version information.
+        commit_history : list[str] | None
+            Ordered list of commit hashes (oldest to newest).
         """
         self.version_field = version_field
-        self.use_timestamps = use_timestamps
+        self.commit_history = commit_history or []
 
     def get_version(self, data: Any) -> str | None:
         """Extract git version from data structure.
@@ -314,53 +316,37 @@ class GitVersioningStrategy(VersioningStrategy):
             return data
 
     def compare(self, current: str | None, target: str) -> int:
-        """Compare git versions (commit hashes or timestamps).
-
-        If use_timestamps=True, parses versions as ISO timestamps and compares
-        chronologically. Otherwise, compares strings lexicographically.
+        """Compare git versions using commit history position.
 
         Parameters
         ----------
         current : str | None
-            Current git version (commit hash or timestamp). None means upgrade needed.
+            Current git version. None means upgrade needed.
         target : str
             Target git version to compare against.
 
         Returns
         -------
         int
-            -1 if current < target or current is None (upgrade needed)
-            0 if current == target (versions equal)
-            1 if current > target (current is newer)
-
-        Warnings
-        --------
-        Logs warning if timestamp parsing fails when use_timestamps=True.
+            -1 if current < target or current is None
+            0 if current == target
+            1 if current > target
         """
         if current is None:
             return -1
 
-        if self.use_timestamps:
-            try:
-                current_dt = datetime.fromisoformat(current.replace("Z", "+00:00"))
-                target_dt = datetime.fromisoformat(target.replace("Z", "+00:00"))
-
-                if current_dt < target_dt:
-                    return -1
-                elif current_dt > target_dt:
-                    return 1
-                else:
-                    return 0
-            except ValueError:
-                logger.warning("Invalid timestamp format: {} or {}", current, target)
+        try:
+            current_idx = self.commit_history.index(current)
+            target_idx = self.commit_history.index(target)
+            if current_idx < target_idx:
                 return -1
-        else:
-            if current < target:
-                return -1
-            elif current > target:
+            elif current_idx > target_idx:
                 return 1
             else:
                 return 0
+        except ValueError as e:
+            msg = f"Commit not found in history: {e}"
+            raise ValueError(msg) from e
 
 
 class FileModTimeStrategy(VersioningStrategy):

@@ -1,5 +1,7 @@
 """Tests for the versioning system."""
 
+import pytest
+
 from r2x_core.upgrader import UpgradeStep, UpgradeType, _apply_upgrade, apply_upgrades
 from r2x_core.versioning import (
     FileModTimeStrategy,
@@ -86,19 +88,13 @@ def test_git_versioning_strategy_set_version():
 
 
 def test_git_versioning_strategy_compare_hashes():
-    """Test comparing git commit hashes."""
-    strategy = GitVersioningStrategy()
-    result = strategy.compare("abc123", "def456")
-    assert result == -1  # "abc123" < "def456" lexically
+    """Test comparing git commit hashes using commit history."""
+    commit_history = ["a1b2c3d", "e4f5g6h", "i7j8k9l"]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
 
-
-def test_git_versioning_strategy_compare_timestamps():
-    """Test comparing git timestamps."""
-    strategy = GitVersioningStrategy(use_timestamps=True)
-    current = "2023-01-01T10:00:00Z"
-    target = "2023-01-01T11:00:00Z"
-    result = strategy.compare(current, target)
-    assert result == -1
+    assert strategy.compare("a1b2c3d", "e4f5g6h") == -1
+    assert strategy.compare("e4f5g6h", "a1b2c3d") == 1
+    assert strategy.compare("a1b2c3d", "a1b2c3d") == 0
 
 
 def test_file_mod_time_strategy_get_version(tmp_path):
@@ -360,9 +356,10 @@ def test_versioning_strategy_with_object():
     assert obj.version == "2.0.0"
 
 
-def test_git_strategy_invalid_timestamp():
-    """Test git strategy with invalid timestamp format."""
-    strategy = GitVersioningStrategy(use_timestamps=True)
-    # Should handle invalid format gracefully
-    result = strategy.compare("invalid-time", "2023-01-01T10:00:00Z")
-    assert result == -1  # Defaults to -1 on error
+def test_git_strategy_missing_commit():
+    """Test git strategy with commit not in history."""
+    commit_history = ["a1b2c3d", "e4f5g6h"]
+    strategy = GitVersioningStrategy(commit_history=commit_history)
+
+    with pytest.raises(ValueError, match="Commit not found in history"):
+        strategy.compare("unknown", "a1b2c3d")
