@@ -156,7 +156,7 @@ class PluginConfig(BaseModel):
         assert self.config_path is not None
         return self.config_path / self.DEFAULTS_FILE_NAME
 
-    def load_file_mapping(self, fpath: Path | str | None = None) -> dict[str, Any]:
+    def load_file_mapping(self, fpath: Path | str | None = None) -> list[dict[str, Any]]:
         """Load file mapping configuration from JSON.
 
         Parameters
@@ -182,9 +182,8 @@ class PluginConfig(BaseModel):
             raise FileNotFoundError(f"File mapping not found: {fpath}")
         try:
             with open(fpath, encoding="utf-8") as f:
-                data = json.load(f)
-                if not isinstance(data, dict):
-                    raise TypeError(f"Expected dict, got {type(data).__name__}")
+                data: list[dict[str, Any]] = json.load(f)
+                assert isinstance(data, list), "File mapping is not a JSON Array."
                 return data
         except json.JSONDecodeError as e:
             logger.error("Failed to parse file mapping JSON from %s: %s", fpath, e)

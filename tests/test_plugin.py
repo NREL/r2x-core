@@ -93,3 +93,24 @@ def test_load_defaults_custom_filename(tmp_path):
 def test_defaults_file_name_default():
     """Test that default DEFAULTS_FILE_NAME is defaults.json."""
     assert PluginConfig.DEFAULTS_FILE_NAME == "defaults.json"
+
+
+def test_load_file_mapping_fails_if_not_found():
+    config = PluginConfig()
+
+    with pytest.raises(FileNotFoundError):
+        config.load_file_mapping()
+
+
+def test_load_file_mapping_from_file(tmp_path):
+    json_path = tmp_path / "config.json"
+    json_data = [
+        {"name": "test1", "fpath": "file1.csv"},
+        {"name": "test2", "fpath": "file2.csv"},
+    ]
+    with open(json_path, "w") as f:
+        json.dump(json_data, f)
+
+    config = PluginConfig()
+    fmap = config.load_file_mapping(json_path)
+    assert isinstance(fmap, list)

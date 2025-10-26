@@ -6,10 +6,10 @@ import pytest
 from infrasys import Component
 
 from r2x_core.datafile import DataFile
-from r2x_core.exceptions import ComponentCreationError, ValidationError
+from r2x_core.exceptions import ComponentCreationError, ParserError, ValidationError
 from r2x_core.parser import BaseParser
 from r2x_core.plugin_config import PluginConfig
-from r2x_core.result import Ok
+from r2x_core.result import Err, Ok
 from r2x_core.store import DataStore
 
 
@@ -114,6 +114,13 @@ def test_config_validation():
 
     with pytest.raises(ValidationError):
         MockModelConfig(scenario="test")  # Missing required model_year
+
+
+def test_parser_data_store_error(sample_config):
+    class NotDataSstore: ...
+
+    with pytest.raises(TypeError):
+        MockParser(sample_config, data_store=NotDataSstore())
 
 
 def test_parser_initialization(mock_parser, sample_config, sample_data_store):
@@ -305,3 +312,42 @@ def test_parser_with_custom_validation(tmp_path):
 
         with pytest.raises(ValidationError):
             parser.build_system()
+
+
+@pytest.mark.parametrize(
+    "fail_stage",
+    [
+        "validate_inputs",
+        "prepare_data",
+        "build_system_components",
+        "build_time_series",
+        "postprocess_system",
+        "validate_system",
+    ],
+)
+def test_build_system_fails_on_specific_stage(fail_stage):
+    class MockParser(BaseParser):
+        def validate_inputs(self):
+            return Err(ValidationError("Stage failed")) if fail_stage == "validate_inputs" else Ok(None)
+
+        def prepare_data(self):
+            return Err(ValidationError("Stage failed")) if fail_stage == "prepare_data" else Ok(None)
+
+        def build_system_components(self):
+            return (
+                Err(ValidationError("Stage failed")) if fail_stage == "build_system_components" else Ok(None)
+            )
+
+        def build_time_series(self):
+            return Err(ValidationError("Stage failed")) if fail_stage == "build_time_series" else Ok(None)
+
+        def postprocess_system(self):
+            return Err(ValidationError("Stage failed")) if fail_stage == "postprocess_system" else Ok(None)
+
+        def validate_system(self):
+            return Err(ValidationError("Stage failed")) if fail_stage == "validate_system" else Ok(None)
+
+    parser = MockParser(config=PluginConfig())
+
+    with pytest.raises(ParserError):
+        parser.build_system()

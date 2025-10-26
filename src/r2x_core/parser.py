@@ -289,31 +289,31 @@ class BaseParser(ABC):
 
         logger.debug("Initializing data for {}", parser_name)
         res = self.prepare_data()
-        if isinstance(res, Err):
+        if res.is_err():
             error_msg = f"Data preparation failed: {res.error}"
             raise ParserError(error_msg)
 
         logger.info("Building system components for {}", parser_name)
         res = self.build_system_components()
-        if isinstance(res, Err):
+        if res.is_err():
             error_msg = f"Component building failed: {res.error}"
             raise ParserError(error_msg)
 
         logger.info("Building time series for {}", parser_name)
         res = self.build_time_series()
-        if isinstance(res, Err):
+        if res.is_err():
             error_msg = f"Time series building failed: {res.error}"
             raise ParserError(error_msg)
 
         logger.debug("Post-processing system for {}", parser_name)
         res = self.postprocess_system()
-        if isinstance(res, Err):
+        if res.is_err():
             error_msg = f"Post-processing failed: {res.error}"
             raise ParserError(error_msg)
 
         logger.debug("Validating complete system for {}", parser_name)
         res = self.validate_system()
-        if isinstance(res, Err):
+        if res.is_err():
             error_msg = f"System validation failed: {res.error}"
             raise ParserError(error_msg)
 
