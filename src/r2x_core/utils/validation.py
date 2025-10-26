@@ -1,13 +1,14 @@
-"""Utility functions script."""
+"""Utility function for validation."""
 
 import inspect
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from pydantic import ValidationInfo
+from r2x_core.file_types import EXTENSION_MAPPING
 
-from .file_types import EXTENSION_MAPPING
+if TYPE_CHECKING:
+    from pydantic import ValidationInfo
 
 
 def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -54,7 +55,7 @@ def validate_glob_pattern(pattern: str | None) -> str | None:
     return pattern
 
 
-def validate_file_extension(path: Path, info: ValidationInfo) -> Path:
+def validate_file_extension(path: Path, info: "ValidationInfo") -> Path:
     """Validate that the file path has a supported extension.
 
     This is a Pydantic validator that checks if the file extension from the

@@ -329,10 +329,10 @@ def main():
     output_folder.mkdir(exist_ok=True)
 
     # Create data store with file configurations
-    data_store = DataStore(folder=input_folder)
+    data_store = DataStore(folder_path=input_folder)
 
     # Configure data files
-    data_store.add_data_file(
+    data_store.add_data(
         DataFile(
             name="buses",
             fpath="buses.csv",
@@ -340,7 +340,7 @@ def main():
         )
     )
 
-    data_store.add_data_file(
+    data_store.add_data(
         DataFile(
             name="generators",
             fpath="generators.csv",

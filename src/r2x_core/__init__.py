@@ -8,12 +8,7 @@ from . import h5_readers
 from .datafile import (
     DataFile,
 )
-from .exceptions import (
-    ComponentCreationError,
-    ExporterError,
-    ParserError,
-    ValidationError,
-)
+from .exceptions import ComponentCreationError, ExporterError, ParserError, UpgradeError, ValidationError
 from .exporter import BaseExporter
 from .file_types import FileFormat, H5Format
 from .parser import BaseParser
@@ -29,18 +24,19 @@ from .result import Err, Ok, Result, is_err, is_ok
 from .store import DataStore
 from .system import System
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
-from .upgrader import (
-    DataUpgrader,
+from .upgrader import PluginUpgrader
+from .upgrader_utils import (
     UpgradeStep,
     UpgradeType,
-    apply_upgrades,
+    run_datafile_upgrades,
+    run_system_upgrades,
+    run_upgrade_step,
 )
 from .versioning import (
-    FileModTimeStrategy,
     GitVersioningStrategy,
     SemanticVersioningStrategy,
     VersionDetector,
-    VersioningStrategy,
+    VersioningModel,
 )
 
 __version__ = version("r2x_core")
@@ -56,11 +52,9 @@ __all__ = [
     "DataFile",
     "DataReader",
     "DataStore",
-    "DataUpgrader",
     "Err",
     "ExporterError",
     "FileFormat",
-    "FileModTimeStrategy",
     "FilterFunction",
     "GitVersioningStrategy",
     "H5Format",
@@ -71,21 +65,25 @@ __all__ = [
     "PluginComponent",
     "PluginConfig",
     "PluginManager",
+    "PluginUpgrader",
     "Result",
     "SemanticVersioningStrategy",
     "System",
     "SystemModifier",
     "Unit",
     "UnitSystem",
+    "UpgradeError",
     "UpgradeStep",
     "UpgradeType",
     "ValidationError",
     "VersionDetector",
-    "VersioningStrategy",
-    "apply_upgrades",
+    "VersioningModel",
     "get_unit_system",
     "h5_readers",
     "is_err",
     "is_ok",
+    "run_datafile_upgrades",
+    "run_system_upgrades",
+    "run_upgrade_step",
     "set_unit_system",
 ]

@@ -146,22 +146,22 @@ Plugins should store file mapping in `config/file_mapping.json`:
 
 # ... get file mapping path
 
-Use `get_file_mapping_path()` from your config class to get the path to file mappings:
+Load and use file mappings from `config/file_mapping.json`:
 
 ```python
 from r2x_core import PluginConfig
+import json
 
 class MyModelConfig(PluginConfig):
     solve_year: int
     weather_year: int
 
 # Get the mapping file path
-mapping_path = MyModelConfig.get_file_mapping_path()
+mapping_path = MyModelConfig().file_mapping_path
 print(f"Mappings at: {mapping_path}")
 
 # Load mappings if file exists
 if mapping_path.exists():
-    import json
     with open(mapping_path) as f:
         mappings = json.load(f)
 ```
@@ -171,12 +171,14 @@ if mapping_path.exists():
 Override `FILE_MAPPING_NAME` to use a different filename:
 
 ```python
+from r2x_core import PluginConfig
+
 class CustomConfig(PluginConfig):
     FILE_MAPPING_NAME = "data_mappings.json"  # Instead of file_mapping.json
     solve_year: int
 
 # Will look for config/data_mappings.json
-path = CustomConfig.get_file_mapping_path()
+path = CustomConfig().file_mapping_path
 ```
 
 # ... create DataStore from config
@@ -194,10 +196,10 @@ class MyModelConfig(PluginConfig):
 config = MyModelConfig(solve_year=2030, weather_year=2012)
 
 # Create DataStore directly from config
-store = DataStore.from_plugin_config(config, folder="/data/mymodel")
+store = DataStore.from_plugin_config(config, folder_path="/data/mymodel")
 
 # The store automatically discovers and loads config/file_mapping.json
-print(store.list_data_files())
+print(store.list_data())
 ```
 
 # ... get mapping path from PluginManager
@@ -219,7 +221,7 @@ if mapping_path and mapping_path.exists():
 
 # ... generate CLI schemas
 
-Use `get_cli_schema()` to generate CLI-friendly schemas from configuration classes:
+PluginConfig instances can be integrated with CLI tools. You can access field information via the Pydantic model_fields:
 
 ```python
 from r2x_core.plugin_config import PluginConfig
@@ -229,47 +231,51 @@ class MyModelConfig(PluginConfig):
     weather_year: int
     scenario: str = "base"
 
-# Get CLI schema
-schema = MyModelConfig.get_cli_schema()
+# Access model fields for CLI generation
+config = MyModelConfig(solve_year=2030, weather_year=2012)
+for field_name, field_info in config.model_fields.items():
+    print(f"Field: {field_name}, Type: {field_info.annotation}")
 ```
 
 # ... build CLI tools from schema
 
-Use the schema to build argument parsers dynamically:
+Use Pydantic's built-in model schema capabilities with argparse:
 
 ```python
 import argparse
 from my_plugin.config import MyModelConfig
 
-# Get schema
-schema = MyModelConfig.get_cli_schema()
+# Create config instance
+config = MyModelConfig(solve_year=2030, weather_year=2012)
 
-# Build parser
-parser = argparse.ArgumentParser(description=schema["description"])
+# Build parser using Pydantic field information
+parser = argparse.ArgumentParser(description="MyModel Configuration")
 
-for field_name, field_info in schema["properties"].items():
-    # Skip inherited fields you don't want exposed
-    if field_name == "defaults":
-        continue
+for field_name, field_info in config.model_fields.items():
+    if field_name == "config_path":
+        continue  # Skip inherited fields
 
-    flag = field_info["cli_flag"]
-    required = field_info["required"]
-    help_text = field_info.get("description", "")
-    field_type = field_info.get("type")
+    # Convert snake_case to --kebab-case
+    flag = f"--{field_name.replace('_', '-')}"
 
-    # Map JSON schema types to Python types
-    type_map = {"integer": int, "string": str, "boolean": bool, "number": float}
+    # Extract type and default
+    field_type = field_info.annotation
+    default = field_info.default if field_info.default is not None else None
+    description = field_info.description or ""
+
+    # Map types to Python types
+    type_map = {int: int, str: str, bool: bool, float: float}
     py_type = type_map.get(field_type, str)
 
-    if field_type == "boolean":
-        parser.add_argument(flag, action="store_true", help=help_text)
+    if field_type == bool:
+        parser.add_argument(flag, action="store_true", help=description)
     else:
         parser.add_argument(
             flag,
             type=py_type,
-            required=required,
-            help=help_text,
-            default=field_info.get("default")
+            required=field_info.is_required(),
+            help=description,
+            default=default
         )
 
 # Parse arguments
@@ -280,13 +286,12 @@ config = MyModelConfig(
     solve_year=args.solve_year,
     weather_year=args.weather_year,
     scenario=args.scenario,
-    verbose=args.verbose
 )
 ```
 
 # ... understand CLI flag naming
 
-Field names are automatically converted to CLI-friendly flags:
+Field names are automatically converted to CLI-friendly flags by converting snake_case to kebab-case:
 
 | Field Name             | CLI Flag                 |
 | ---------------------- | ------------------------ |
@@ -383,15 +388,8 @@ config = MyModelConfig(
     weather_year=2012,
 )
 
-# Create data store directly from config (recommended)
-store = DataStore.from_plugin_config(config, folder="/data/mymodel")
-
-# Use defaults in parser logic
-parser = MyModelParser(config, store)
-parser.excluded_techs = defaults.get("excluded_techs", [])
-
-# Or manually get mapping path
-mapping_path = MyModelConfig.get_file_mapping_path()
+# Create data store from mapping file
+mapping_path = config.file_mapping_path
 store = DataStore.from_json(mapping_path, folder="/data/mymodel")
 
 # Build system
@@ -428,14 +426,15 @@ defaults = {"tech": ["solar", "wind"]}
 ## Use file mapping discovery
 
 ```python
-# Good - uses from_plugin_config (cleanest)
+# Good - uses property access (cleanest)
+config = MyConfig(year=2030)
+mapping_path = config.file_mapping_path
+store = DataStore.from_json(mapping_path, folder=data_folder)
+
+# Also good - uses property access
 defaults = MyConfig.load_defaults()
 config = MyConfig(year=2030)
-store = DataStore.from_plugin_config(config, folder=data_folder)
-
-# Also good - uses standard discovery
-mapping_path = MyConfig.get_file_mapping_path()
-store = DataStore.from_json(mapping_path, folder=data_folder)
+defaults_data = config.load_defaults()
 
 # Not recommended - hardcoding paths
 store = DataStore.from_json("/hardcoded/path/mappings.json", folder=data_folder)
@@ -444,11 +443,15 @@ store = DataStore.from_json("/hardcoded/path/mappings.json", folder=data_folder)
 ## Generate CLI schema for tools
 
 ```python
-# Good - dynamic schema generation
-schema = MyConfig.get_cli_schema()
-# Build CLI tools from schema
+# Good - use Pydantic field information
+from my_plugin.config import MyConfig
+config = MyConfig(year=2030)
+for field_name, field_info in config.model_fields.items():
+    # Build CLI args from field metadata
 
 # Not recommended - manually defining CLI args
+import argparse
+parser = argparse.ArgumentParser()
 parser.add_argument("--solve-year", type=int, required=True)
 parser.add_argument("--weather-year", type=int, required=True)
 # ... manually list all arguments

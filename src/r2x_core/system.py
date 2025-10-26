@@ -17,7 +17,7 @@ from loguru import logger
 from r2x_core import units
 
 if TYPE_CHECKING:
-    from r2x_core.upgrader import DataUpgrader
+    from r2x_core.upgrader import PluginUpgrader
 
 
 class System(InfrasysSystem):
@@ -320,7 +320,7 @@ class System(InfrasysSystem):
         cls,
         filename: Path | str,
         upgrade_handler: Callable[..., Any] | None = None,
-        upgrader: type["DataUpgrader"] | None = None,
+        upgrader: type["PluginUpgrader"] | None = None,
         **kwargs: Any,
     ) -> "System":
         """Deserialize system from JSON file.
@@ -385,26 +385,8 @@ class System(InfrasysSystem):
         logger.info("Deserializing system from {}", filename)
         system: System = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
 
-        # Apply Phase 2 (SYSTEM) upgrades if upgrader is specified
-        # This is ONLY for cached systems, not the normal parser workflow
-        if upgrader:
-            from .upgrader import UpgradeType, apply_upgrades
-
-            # Filter for system upgrades from the upgrader class
-            system_steps = [step for step in upgrader.steps if step.upgrade_type == UpgradeType.SYSTEM]
-
-            if system_steps:
-                logger.info(
-                    "Applying {} system upgrade steps for cached system from upgrader '{}'",
-                    len(system_steps),
-                    upgrader.__name__,
-                )
-                upgraded_system, applied_steps = apply_upgrades(
-                    system, system_steps, upgrade_type=UpgradeType.SYSTEM
-                )
-                if applied_steps:
-                    logger.info("Applied system upgrades: {}", applied_steps)
-                    system = upgraded_system
+        # Note: Phase 2 (SYSTEM) upgrades are not applied to cached systems
+        # as they would require proper data migration and schema handling
 
         # After deserialization, update all HasPerUnit components with system_base
         for component in system.get_components(Component):

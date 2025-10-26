@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from loguru import logger
 
 DATA_FOLDER = "tests/data"
 REEDS_SCENARIO = "test_Pacific"
@@ -12,6 +13,14 @@ def empty_file(tmp_path) -> Path:
     empty_fpath.write_text("")
     yield empty_fpath
     empty_fpath.unlink()
+
+
+@pytest.fixture
+def caplog(caplog):
+    logger.enable("r2x_core")
+    handler_id = logger.add(caplog.handler, format="{message}")
+    yield caplog
+    logger.remove(handler_id)
 
 
 @pytest.fixture

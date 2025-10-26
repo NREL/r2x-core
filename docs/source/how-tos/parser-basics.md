@@ -283,8 +283,8 @@ class MultiYearParser(BaseParser):
 # Define transformations in DataFile
 from r2x_core import DataFile
 
-data_store = DataStore(folder="/data")
-data_store.add_data_file(DataFile(
+data_store = DataStore(folder_path="/data")
+data_store.add_data(DataFile(
     name="generators",
     fpath="raw_generators.csv",
     transformations=[

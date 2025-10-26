@@ -10,9 +10,12 @@ from pydantic import (
     ConfigDict,
     Field,
     FilePath,
+    ValidationError,
     computed_field,
     model_validator,
 )
+
+from r2x_core.result import Err, Ok, Result
 
 from .file_types import EXTENSION_MAPPING, FileFormat
 from .utils import validate_file_extension, validate_glob_pattern
@@ -264,3 +267,61 @@ class DataFile(BaseModel):
             raise ValueError(msg)
 
         return file_type_class()
+
+
+def create_data_files_from_records(
+    records: list[dict[str, Any]], folder_path: Path
+) -> Result[list[DataFile], list[ValidationError]]:
+    """Construct a list of DataFile objects from a list of record dicts.
+
+    Ensures:
+    - `fpath` exists and is resolvable relative to folder_fpath
+    - resolution happens before model validation
+    - all ValidationError instances are collected
+    """
+    data_files: list[DataFile] = []
+    errors: list[ValidationError] = []
+
+    for idx, record in enumerate(records):
+        try:
+            resolved = resolve_data_file_path(record["fpath"], folder_path)
+            record["fpath"] = resolved
+
+            data_files.append(DataFile.model_validate(record))
+
+        except (KeyError, TypeError) as exc:
+            errors.append(
+                ValidationError.from_exception_data(
+                    title=f"Record[{idx}] missing or invalid fpath",
+                    line_errors=[{"type": "value_error", "input": str(exc), "loc": ("fpath",)}],
+                )
+            )
+
+        except FileNotFoundError as exc:
+            errors.append(
+                ValidationError.from_exception_data(
+                    title=f"Record[{idx}] path resolution error",
+                    line_errors=[
+                        {"type": "value_error.path.not_found", "input": str(exc), "loc": ("fpath",)}
+                    ],
+                )
+            )
+
+        except ValidationError as exc:
+            errors.append(exc)
+
+    if errors:
+        return Err(errors)
+
+    return Ok(data_files)
+
+
+def resolve_data_file_path(raw_path: str | Path, folder_path: Path) -> Path:
+    """Resolve a relative or absolute raw path."""
+    path = Path(raw_path)
+    resolved = path if path.is_absolute() else folder_path / path
+
+    if not resolved.exists():
+        raise FileNotFoundError(f"File not found: {resolved}")
+
+    return resolved
