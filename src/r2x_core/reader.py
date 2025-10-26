@@ -7,6 +7,8 @@ from typing import Any
 
 from loguru import logger
 
+from r2x_core.exceptions import ReaderError
+
 from .datafile import DataFile
 from .file_readers import read_file_by_type
 from .file_types import EXTENSION_MAPPING
@@ -204,6 +206,11 @@ class DataReader:
             raw_data = read_file_by_type(file_type_instance, file_path, **reader_kwargs)
 
         processed_data = apply_transformation(data_file, raw_data, placeholders)
+
+        if processed_data.is_err():
+            raise ReaderError(processed_data.error)
+
+        processed_data = processed_data.unwrap()
 
         if use_cache:
             self._add_to_cache(cache_key, processed_data)

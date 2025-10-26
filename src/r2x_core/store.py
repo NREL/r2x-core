@@ -1,720 +1,385 @@
-"""Data Storage for managing R2X data files and their metadata."""
+"""Data Storage for managing R2X data files and their metadata.
+
+Example usage of :class:`DataStore`:
+
+Initialize a DataStore from a folder containing data files:
+
+>>> from pathlib import Path
+>>> from r2x_core.store import DataStore
+>>> store = DataStore(folder_path="./data")
+>>> store.list_data()
+['file1', 'file2']
+
+Add data files and read them:
+
+>>> data = store.read_data("file1")
+>>> "file1" in store
+True
+
+Export store configuration to JSON:
+
+>>> store.to_json("config.json")
+"""
 
 import json
-from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from loguru import logger
+from pydantic import ValidationError
 
-from .datafile import DataFile
+from r2x_core.exceptions import UpgradeError
+from r2x_core.upgrader_utils import run_datafile_upgrades
+
+from .datafile import DataFile, create_data_files_from_records
+from .plugin_config import PluginConfig
 from .reader import DataReader
-from .utils import filter_valid_kwargs
-
-if TYPE_CHECKING:
-    from .plugin_config import PluginConfig
-    from .upgrader import DataUpgrader
+from .upgrader import PluginUpgrader
+from .utils import backup_folder, filter_valid_kwargs
 
 
 class DataStore:
     """Container for managing data file mappings and loading data.
 
-    The DataStore class provides a centralized interface for managing collections of
-    data files, their metadata, and coordinating data loading operations. It maintains
-    a registry of DataFile instances and delegates actual file reading operations to
-    a DataReader instance.
+    The :class:`DataStore` provides a high-level interface for managing
+    a collection of :class:`DataFile` instances, including loading data,
+    caching, and executing version upgrades. It can be initialized from
+    a folder path, JSON configuration, or :class:`PluginConfig`.
 
     Parameters
     ----------
-    folder : str or Path, optional
-        Base directory containing the data files. If None, uses current working directory.
-    reader : DataReader, optional
-        Custom data reader instance for handling file I/O operations. If None,
-        creates a default DataReader instance.
+    folder_path : str | Path | None, optional
+        Path to the folder containing data files. If None, uses current
+        working directory. Default is None.
+    reader : DataReader | None, optional
+        Custom :class:`DataReader` instance. If None, a default reader
+        is created. Default is None.
+    upgrader : PluginUpgrader | None, optional
+        Version upgrader strategy. If None, no upgrading is performed.
+        Default is None.
 
     Attributes
     ----------
     folder : Path
-        Resolved absolute path to the base data directory.
+        The resolved folder path containing the data files.
     reader : DataReader
-        Data reader instance used for file operations.
+        The data reader instance used to load data.
+    upgrader : PluginUpgrader | None
+        The version upgrader strategy, if provided.
 
-    Examples
-    --------
-    Create a basic data store:
-
-    >>> store = DataStore(folder="/path/to/data")
-    >>> data_file = DataFile(name="generators", fpath="gen_data.csv")
-    >>> store.add_data_file(data_file)
-    >>> data = store.read_data_file("generators")
-
-    Load from JSON configuration:
-
-    >>> store = DataStore.from_json("config.json", folder="/path/to/data")
-    >>> files = store.list_data_files()
-    >>> print(files)
-    ['generators', 'transmission', 'load']
-
-    Batch operations:
-
-    >>> files = [DataFile(name="gen", fpath="gen.csv"), DataFile(name="load", fpath="load.csv")]
-    >>> store.add_data_files(files)
-    >>> store.remove_data_files(["gen", "load"])
+    Methods
+    -------
+    from_data_files(data_files, folder_path, upgrader)
+        Create a DataStore from a list of DataFile instances.
+    from_json(json_fpath, folder_path, upgrader)
+        Create a DataStore from a JSON configuration file.
+    from_plugin_config(plugin_config, folder_path, upgrader)
+        Create a DataStore from a PluginConfig instance.
+    add_data(*data_files, overwrite)
+        Add one or more DataFile instances to the store.
+    read_data(name, use_cache, placeholders)
+        Load data from a file by name.
+    list_data()
+        List all data file names in the store.
+    remove_data(*names)
+        Remove one or more data files from the store.
+    clear_cache()
+        Clear internal caches.
+    to_json(fpath, **model_dump_kwargs)
+        Export store configuration to JSON.
+    upgrade_data(backup, upgrader_context)
+        Run version upgrades on data files.
 
     See Also
     --------
-    DataFile : Data file metadata and configuration
-    DataReader : File reading and processing operations
+    :class:`DataFile` : Individual data file configuration.
+    :class:`DataReader` : Reader for loading data files.
+    :class:`PluginUpgrader` : Version upgrade strategy.
+    :class:`PluginConfig` : Plugin configuration source.
+
+    Examples
+    --------
+    Create a DataStore from a folder:
+
+    >>> store = DataStore(folder_path="./data")
+    >>> files = store.list_data()
+
+    Load data with caching:
+
+    >>> data = store.read_data("file1", use_cache=True)
+
+    Add data files and export configuration:
+
+    >>> from r2x_core.datafile import DataFile
+    >>> df = DataFile(name="new_file", path="data.csv")
+    >>> store.add_data(df)
+    >>> store.to_json("config.json")
 
     Notes
     -----
-    The DataStore maintains DataFile metadata in memory but delegates actual file
-    reading to the DataReader, which may implement its own caching strategies.
-    The store itself does not cache file contents, only the DataFile configurations.
+    All data file names must be unique within a store. The reader cache
+    is managed separately from the file configuration cache.
     """
 
-    def __init__(self, folder: str | Path | None = None, reader: DataReader | None = None) -> None:
-        """Initialize the DataStore.
+    def __init__(
+        self,
+        /,
+        folder_path: str | Path | None = None,
+        *,
+        reader: DataReader | None = None,
+        upgrader: PluginUpgrader | None = None,
+    ) -> None:
+        """Initialize the DataStore."""
+        if folder_path is None:
+            logger.debug("Starting store in current directory: {}", str(Path.cwd()))
+            folder_path = Path.cwd()
 
-        Parameters
-        ----------
-        folder : str | Path | None, optional
-            Base directory containing the data files. If None, uses current
-            working directory. Default is None.
-        reader : DataReader | None, optional
-            Custom data reader instance for handling file I/O operations.
-            If None, creates a default DataReader instance. Default is None.
+        if isinstance(folder_path, str):
+            folder_path = Path(folder_path)
 
-        Raises
-        ------
-        FileNotFoundError
-            If the specified folder does not exist.
-        """
-        if folder is None:
-            folder = Path.cwd()
-
-        folder_path = Path(folder)
         if not folder_path.exists():
             raise FileNotFoundError(f"Folder does not exist: {folder_path}")
 
         self._reader = reader or DataReader()
-        self.folder = folder_path.resolve()
+        self._folder = folder_path.resolve()
         self._cache: dict[str, DataFile] = {}
+        self._upgrader = upgrader
         logger.debug("Initialized DataStore with folder: {}", self.folder)
 
+    @property
+    def upgrader(self) -> PluginUpgrader | None:
+        """Return the :class:`PluginUpgrader` instance, if provided."""
+        return self._upgrader
+
+    @property
+    def folder(self) -> Path:
+        """Return the resolved folder path containing data files."""
+        return self._folder
+
+    @property
+    def reader(self) -> DataReader:
+        """Return the :class:`DataReader` instance."""
+        return self._reader
+
+    def __getitem__(self, key: str) -> DataFile:
+        """Access data file by name. Equivalent to :meth:`_get_data_file_by_name`."""
+        return self._get_data_file_by_name(name=key)
+
     def __contains__(self, name: str) -> bool:
-        """Check if a data file exists in the store.
-
-        Parameters
-        ----------
-        name : str
-            Name of the data file to check for.
-
-        Returns
-        -------
-        bool
-            True if the data file exists in the store, False otherwise.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> data_file = DataFile(name="generators", fpath="gen.csv")
-        >>> store.add_data_file(data_file)
-        >>> "generators" in store
-        True
-        >>> "missing_file" in store
-        False
-
-        Notes
-        -----
-        This method enables the use of the 'in' operator with DataStore instances,
-        providing a convenient way to check for data file existence without
-        raising exceptions.
-        """
+        """Check if a :class:`DataFile` exists in the store."""
         return name in self._cache
 
     @classmethod
-    def from_plugin_config(cls, config: "PluginConfig", folder: Path | str) -> "DataStore":
-        """Create a DataStore instance from a PluginConfig.
-
-        This is a convenience constructor that automatically discovers and loads
-        the file mapping JSON associated with a plugin configuration class.
+    def from_data_files(
+        cls,
+        data_files: list[DataFile],
+        folder_path: Path | str | None = None,
+        upgrader: PluginUpgrader | None = None,
+    ) -> "DataStore":
+        """Create a :class:`DataStore` from a list of :class:`DataFile` instances.
 
         Parameters
         ----------
-        config : PluginConfig
-            Plugin configuration instance. The file mapping path will be
-            discovered from the config class using get_file_mapping_path().
-        folder : Path or str
-            Base directory containing the data files referenced in the configuration.
+        data_files : list[DataFile]
+            List of DataFile instances to add to the store.
+        folder_path : Path | str | None, optional
+            Path to the folder containing data files. Default is None.
+        upgrader : PluginUpgrader | None, optional
+            Version upgrader strategy. Default is None.
 
         Returns
         -------
         DataStore
-            A new DataStore instance populated with DataFile configurations
-            from the plugin's file mapping.
-
-        Raises
-        ------
-        FileNotFoundError
-            If the configuration file does not exist or if data files are missing.
-        TypeError
-            If the JSON file does not contain a valid array structure.
-        ValidationError
-            If any DataFile configuration in the JSON is invalid.
-
-        Examples
-        --------
-        Simple usage:
-
-        >>> from r2x_reeds.config import ReEDSConfig
-        >>> config = ReEDSConfig(solve_year=2030, weather_year=2012)
-        >>> store = DataStore.from_plugin_config(config, folder="/data/reeds")
-        >>> store.list_data_files()
-        ['generators', 'buses', 'transmission']
-
-        See Also
-        --------
-        from_json : Create from an explicit JSON file path
-        PluginConfig.get_file_mapping_path : Get the file mapping path
-
-        Notes
-        -----
-        This method provides a cleaner API than manually calling
-        config.get_file_mapping_path() and then DataStore.from_json().
-        It's the recommended way to create a DataStore for plugin-based workflows.
+            New DataStore instance with provided data files.
         """
-        mapping_path = config.__class__.get_file_mapping_path()
-        logger.info("Loading DataStore from plugin config: {}", config.__class__.__name__)
-        logger.debug("File mapping path: {}", mapping_path)
-        return cls.from_json(mapping_path, folder)
+        store = cls(folder_path, upgrader=upgrader)
+        store.add_data(*data_files)
+        return store
 
     @classmethod
     def from_json(
         cls,
-        fpath: Path | str,
-        folder: Path | str,
-        upgrader: type["DataUpgrader"] | None = None,
+        json_fpath: Path | str,
+        folder_path: Path | str,
+        upgrader: PluginUpgrader | None = None,
     ) -> "DataStore":
-        """Create a DataStore instance from a JSON configuration file.
-
-        If upgrader is specified, automatically detects the data version and applies
-        file upgrades (renaming, restructuring, etc.) before loading data files.
-        This provides a seamless upgrade experience without manual intervention.
+        """Create a :class:`DataStore` from a JSON configuration file.
 
         Parameters
         ----------
-        fpath : Path or str
-            Path to the JSON configuration file containing DataFile specifications.
-        folder : Path or str
-            Base directory containing the data files referenced in the configuration.
-        upgrader : type[DataUpgrader], optional
-            DataUpgrader subclass to use for automatic data upgrades. If provided:
-            1. Detects current version from data folder
-            2. Creates backup of original data
-            3. Applies file upgrades (rename, move, restructure files)
-            4. Loads upgraded data into DataStore
-            If None, loads data without upgrades.
+        json_fpath : Path | str
+            Path to the JSON file containing data file configurations.
+        folder_path : Path | str
+            Path to the folder containing data files.
+        upgrader : PluginUpgrader | None, optional
+            Version upgrader strategy. Default is None.
 
         Returns
         -------
         DataStore
-            A new DataStore instance populated with DataFile configurations
-            from the JSON file.
+            New DataStore instance with data files from JSON.
 
         Raises
         ------
         FileNotFoundError
-            If the configuration file does not exist, or if any referenced data files
-            are not found in the specified folder.
+            If folder_path or json_fpath does not exist.
         TypeError
-            If the JSON file does not contain a valid array structure.
+            If JSON file is not a JSON array.
         ValidationError
-            If any DataFile configuration in the JSON is invalid (raised by Pydantic
-            during DataFile creation).
-        KeyError
-            If any data file names are duplicated (raised during add_data_files).
-
-        Examples
-        --------
-        Load DataStore without upgrades (simple case):
-
-        >>> store = DataStore.from_json("config.json", "/path/to/data")
-        >>> store.list_data_files()
-        ['generators', 'load']
-
-        Load with automatic upgrades (recommended for evolving data formats):
-
-        >>> from my_plugin.upgrader import MyPluginUpgrader
-        >>> store = DataStore.from_json(
-        ...     "config.json",
-        ...     "/path/to/data",
-        ...     upgrader=MyPluginUpgrader  # Automatically upgrades data
-        ... )
-        >>> # Data is automatically upgraded from v1.0 -> v2.0 -> v2.1
-        >>> # Original data backed up to "/path/to/data_backup"
-        >>> store.list_data_files()
-        ['nodes', 'generators']  # Note: 'buses' renamed to 'nodes' in v2.0
-
-        Load from plugin config (common pattern):
-
-        >>> from r2x_core import PluginManager
-        >>> manager = PluginManager()
-        >>> config_path = manager.get_file_mapping_path("reeds")
-        >>> store = DataStore.from_json(config_path, "/data/reeds")
-
-        See Also
-        --------
-        to_json : Save DataStore configuration to JSON
-        from_config_dict : Create DataStore from configuration dictionary
-        DataFile : Individual data file configuration structure
-        UpgradeType : Enum defining upgrade operation types
-
-        Notes
-        -----
-        The JSON file must contain an array of objects, where each object
-        represents a valid DataFile configuration with at minimum 'name'
-        and 'fpath' fields.
-
-        When upgrader is specified, the upgrade process:
-        1. Detects version from data folder before any file operations
-        2. Moves original folder to {folder_name}_backup for safety
-        3. Copies backup to original location and applies upgrades there
-        4. Loads DataStore from upgraded folder at original location
-        5. Original data remains safe in backup location
+            If data files in JSON are invalid.
         """
-        import shutil
+        folder_path = Path(folder_path)
+        json_fpath = Path(json_fpath)
 
-        from .upgrader import UpgradeType, apply_upgrades
+        if not folder_path.exists():
+            raise FileNotFoundError(f"Data folder not found: {folder_path}")
 
-        folder_path = Path(folder)
+        if not json_fpath.exists():
+            raise FileNotFoundError(f"Configuration file not found: {json_fpath}")
 
-        # Apply file upgrades if upgrader is specified
-        if upgrader is not None:
-            if not folder_path.exists():
-                raise FileNotFoundError(f"Data folder not found: {folder_path}")
-
-            # Detect version from data folder using the upgrader class
-            version = upgrader.detect_version(folder_path)
-            logger.info(
-                "Detected version '{}' for upgrader '{}' in folder: {}",
-                version if version else "unknown",
-                upgrader.__name__,
-                folder_path,
-            )
-
-            # Get file operation upgrade steps from the upgrader class
-            file_ops = [s for s in upgrader.steps if s.upgrade_type == UpgradeType.FILE]
-
-            if file_ops:
-                logger.info(
-                    "Applying {} file upgrade steps for upgrader '{}'",
-                    len(file_ops),
-                    upgrader.__name__,
-                )
-
-                # Create backup of original data
-                backup_folder = folder_path.parent / f"{folder_path.name}_backup"
-                if backup_folder.exists():
-                    logger.warning("Backup folder already exists, removing: {}", backup_folder)
-                    shutil.rmtree(backup_folder)
-
-                shutil.move(str(folder_path), str(backup_folder))
-                logger.info("Created backup at: {}", backup_folder)
-
-                # Copy backup to original location for upgrades
-                shutil.copytree(backup_folder, folder_path)
-
-                # Apply file upgrades to the copy
-                _, applied = apply_upgrades(folder_path, file_ops, upgrade_type=UpgradeType.FILE)
-                if applied:
-                    logger.info("Applied file upgrades: {}", applied)
-                else:
-                    logger.debug("No file upgrades needed")
-            else:
-                logger.debug("No file upgrade steps found for plugin '{}'", upgrader)
-
-        # Load configuration and create DataStore
-        fpath = Path(fpath)
-        if not fpath.exists():
-            raise FileNotFoundError(f"Configuration file not found: {fpath}")
-
-        with open(fpath, encoding="utf-8") as f:
+        with open(json_fpath, encoding="utf-8") as f:
             data_files_json = json.load(f)
 
         if not isinstance(data_files_json, list):
-            msg = f"JSON file `{fpath}` is not a JSON array."
+            msg = f"JSON file `{json_fpath}` is not a JSON array."
             raise TypeError(msg)
 
-        return cls.from_config_dict(data_files_json, folder_path)
+        result = create_data_files_from_records(data_files_json, folder_path=folder_path)
+        if result.is_err():
+            errors = result.err()
+            line_errors: list[Any] = [e for err in errors for e in err.errors()]
+            raise ValidationError.from_exception_data(
+                title=f"Invalid data files in {json_fpath}",
+                line_errors=line_errors,
+            )
+        data_files = result.unwrap()
+        return cls.from_data_files(folder_path=folder_path, data_files=data_files, upgrader=upgrader)
 
     @classmethod
-    def from_config_dict(cls, config: list[dict[str, Any]], folder: Path | str) -> "DataStore":
-        """Create a DataStore instance from a configuration dictionary.
-
-        This is the preferred method when using upgrade_data(), which
-        returns an upgraded configuration dictionary.
+    def from_plugin_config(
+        cls,
+        plugin_config: PluginConfig,
+        folder_path: Path | str,
+        upgrader: PluginUpgrader | None = None,
+    ) -> "DataStore":
+        """Create a :class:`DataStore` from a :class:`PluginConfig` instance.
 
         Parameters
         ----------
-        config : list[dict[str, Any]]
-            List of DataFile configuration dictionaries.
-        folder : Path or str
-            Base directory containing the data files.
+        plugin_config : PluginConfig
+            Plugin configuration containing file mappings.
+        folder_path : Path | str
+            Path to the folder containing data files.
+        upgrader : PluginUpgrader | None, optional
+            Version upgrader strategy. Default is None.
 
         Returns
         -------
         DataStore
-            A new DataStore instance populated with DataFile configurations.
-
-        Raises
-        ------
-        FileNotFoundError
-            If any referenced data files are not found in the specified folder.
-        ValidationError
-            If any DataFile configuration is invalid.
-        KeyError
-            If any data file names are duplicated.
-
-        Examples
-        --------
-        Use with upgrade_data():
-
-        >>> from r2x_core import upgrade_data
-        >>> config_dict, upgraded_folder = upgrade_data(
-        ...     config_file="config.json",
-        ...     data_folder="/data",
-        ...     upgrader="my_plugin"
-        ... )
-        >>> store = DataStore.from_config_dict(config_dict, upgraded_folder)
-
-        See Also
-        --------
-        from_json : Create from JSON file
-        upgrade_data : Upgrade data and configuration
+            New DataStore instance with data files from plugin config.
         """
-        folder = Path(folder)
-        store = cls(folder=folder)
+        json_fpath = plugin_config.file_mapping_path
+        logger.info("Loading DataStore from plugin config: {}", type(plugin_config).__name__)
+        logger.debug("File mapping path: %s", json_fpath)
+        return cls.from_json(json_fpath=json_fpath, folder_path=folder_path, upgrader=upgrader)
 
-        # Validate that all files exist and update paths to be absolute
-        files_not_found = []
-        for file_data in config:
-            updated_fpath = folder / file_data["fpath"]
-            if not updated_fpath.exists():
-                logger.warning("File {} not found on: {}", file_data["name"], updated_fpath)
-                files_not_found.append(file_data["name"])
-                continue
-            file_data["fpath"] = updated_fpath
-
-        if files_not_found:
-            msg = f"The following files {files_not_found} were not found in the specified folder={folder}."
-            raise FileNotFoundError(msg)
-
-        data_files = [DataFile(**file_data) for file_data in config]
-        store.add_data_files(data_files)
-        logger.info("Loaded {} data files from configuration", len(data_files))
-        return store
-
-    def add_data_file(self, data_file: DataFile, overwrite: bool = False) -> None:
-        """Add a single data file to the store.
+    def add_data(self, *data_files: DataFile, overwrite: bool = False) -> None:
+        """Add one or more :class:`DataFile` instances to the store.
 
         Parameters
         ----------
-        data_file : DataFile
-            The data file configuration to add to the store.
+        *data_files : DataFile
+            Variable number of DataFile instances to add.
         overwrite : bool, optional
-            Whether to overwrite an existing file with the same name.
+            If True, overwrite existing data files with the same name.
             Default is False.
 
         Raises
         ------
+        TypeError
+            If any item is not a DataFile instance.
         KeyError
-            If a file with the same name already exists and overwrite is False.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> data_file = DataFile(name="generators", fpath="gen_data.csv")
-        >>> store.add_data_file(data_file)
-
-        >>> # Overwrite existing file
-        >>> new_data_file = DataFile(name="generators", fpath="new_gen_data.csv")
-        >>> store.add_data_file(new_data_file, overwrite=True)
-
-        See Also
-        --------
-        add_data_files : Add multiple data files at once
-        remove_data_file : Remove a data file from the store
+            If a data file with the same name exists and overwrite is False.
         """
-        if data_file.name in self._cache and not overwrite:
-            msg = f"Data file '{data_file.name}' already exists. "
-            msg += "Use overwrite=True to replace it."
-            raise KeyError(msg)
+        return self._add_data_file(*data_files, overwrite=overwrite)
 
-        self._cache[data_file.name] = data_file
-        logger.debug("Added data file '{}' to store", data_file.name)
+    def clear_cache(self) -> None:
+        """Clear both the :class:`DataReader` cache and store file configurations."""
+        self.reader.clear_cache()
+        self._cache.clear()
+        logger.debug("Cleared data reader cache and data store configurations")
 
-    def add_data_files(self, data_files: Iterable[DataFile], overwrite: bool = False) -> None:
-        """Add multiple data files to the store.
-
-        Parameters
-        ----------
-        data_files : Iterable[DataFile]
-            Collection of data file configurations to add to the store.
-        overwrite : bool, optional
-            Whether to overwrite existing files with the same names.
-            Default is False.
-
-        Raises
-        ------
-        KeyError
-            If any file with the same name already exists and overwrite is False.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> files = [
-        ...     DataFile(name="generators", fpath="gen.csv"),
-        ...     DataFile(name="transmission", fpath="trans.csv"),
-        ...     DataFile(name="load", fpath="load.csv")
-        ... ]
-        >>> store.add_data_files(files)
-
-        See Also
-        --------
-        add_data_file : Add a single data file
-        remove_data_files : Remove multiple data files
-        """
-        for data_file in data_files:
-            self.add_data_file(data_file, overwrite=overwrite)
-
-    def remove_data_file(self, name: str) -> None:
-        """Remove a data file from the store.
-
-        Parameters
-        ----------
-        name : str
-            Name of the data file to remove.
-
-        Raises
-        ------
-        KeyError
-            If the specified file name is not present in the store.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> data_file = DataFile(name="generators", fpath="gen.csv")
-        >>> store.add_data_file(data_file)
-        >>> store.remove_data_file("generators")
-
-        See Also
-        --------
-        remove_data_files : Remove multiple data files at once
-        add_data_file : Add a data file to the store
-        """
-        if name not in self._cache:
-            raise KeyError(f"Data file '{name}' not found in store.")
-
-        del self._cache[name]
-        logger.debug("Removed data file '{}' from store", name)
-
-    def remove_data_files(self, names: Iterable[str]) -> None:
-        """Remove multiple data files from the store.
-
-        Parameters
-        ----------
-        names : Iterable[str]
-            Collection of data file names to remove.
-
-        Raises
-        ------
-        KeyError
-            If any specified file name is not present in the store.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> files = [
-        ...     DataFile(name="gen", fpath="gen.csv"),
-        ...     DataFile(name="load", fpath="load.csv")
-        ... ]
-        >>> store.add_data_files(files)
-        >>> store.remove_data_files(["gen", "load"])
-
-        See Also
-        --------
-        remove_data_file : Remove a single data file
-        add_data_files : Add multiple data files
-        """
-        for name in names:
-            self.remove_data_file(name)
-
-    def get_data_file_by_name(self, name: str) -> DataFile:
-        """Retrieve a data file configuration by name.
-
-        Parameters
-        ----------
-        name : str
-            Name of the data file to retrieve.
-
-        Returns
-        -------
-        DataFile
-            The data file configuration object.
-
-        Raises
-        ------
-        KeyError
-            If the specified file name is not present in the store.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> data_file = store.get_data_file_by_name("generators")
-        >>> print(data_file.fpath)
-        generators.csv
-
-        See Also
-        --------
-        list_data_files : Get all data file names
-        read_data_file : Load the actual file contents
-        """
-        if name not in self._cache:
-            available_files = list(self._cache.keys())
-            raise KeyError(f"'{name}' not present in store. Available files: {available_files}")
-
-        return self._cache[name]
-
-    def list_data_files(self) -> list[str]:
+    def list_data(self) -> list[str]:
         """List all data file names in the store.
 
         Returns
         -------
         list[str]
-            Sorted list of all data file names present in the store.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> files = [
-        ...     DataFile(name="generators", fpath="gen.csv"),
-        ...     DataFile(name="load", fpath="load.csv")
-        ... ]
-        >>> store.add_data_files(files)
-        >>> store.list_data_files()
-        ['generators', 'load']
-
-        See Also
-        --------
-        get_data_file_by_name : Get a specific data file configuration
-        __contains__ : Check if a specific file exists
+            Sorted list of all data file names.
         """
         return sorted(self._cache.keys())
 
-    def read_data_file(
-        self, /, *, name: str, use_cache: bool = True, placeholders: dict[str, Any] | None = None
+    def read_data(
+        self, name: str, *, use_cache: bool = True, placeholders: dict[str, Any] | None = None
     ) -> Any:
-        """Load data from a file using the configured reader.
+        """Load data from a file using the configured :class:`DataReader`.
 
         Parameters
         ----------
         name : str
             Name of the data file to load.
         use_cache : bool, optional
-            Whether to use cached data if available. Default is True.
-        placeholders : dict[str, Any] | None
-            Dictionary mapping placeholder variable names to their values.
-            Used to substitute placeholders like {solve_year} in filter_by.
+            If True, use cached data if available. Default is True.
+        placeholders : dict[str, Any] | None, optional
+            Placeholder values for template substitution. Default is None.
 
         Returns
         -------
         Any
-            The loaded data, type depends on file type and reader configuration.
+            Loaded data from the file.
 
         Raises
         ------
         KeyError
-            If the specified file name is not present in the store.
-        FileNotFoundError
-            If the file does not exist and is not marked as optional.
-        ValueError
-            If placeholders are found in filter_by but no placeholders dict provided.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> data_file = DataFile(name="generators", fpath="gen.csv")
-        >>> store.add_data_file(data_file)
-        >>> # Load without placeholders
-        >>> data = store.read_data_file(name="generators")
-        >>>
-        >>> # Load with placeholders for filter_by substitution
-        >>> data = store.read_data_file(name="generators", placeholders={"solve_year": 2030})
-
-        See Also
-        --------
-        get_data_file_by_name : Get the file configuration
-        clear_cache : Clear the reader's cache
+            If the data file name is not in the store.
         """
-        if name not in self:
-            raise KeyError(f"'{name}' not present in store.")
+        return self._read_data_file_by_name(name=name, use_cache=use_cache, placeholders=placeholders)
 
-        data_file = self._cache[name]
-        return self.reader.read_data_file(
-            data_file, self.folder, use_cache=use_cache, placeholders=placeholders
-        )
-
-    def clear_cache(self) -> None:
-        """Clear both the data reader's cache and the data store's file configurations.
-
-        This method clears the underlying DataReader's cache of loaded file contents
-        and also removes all data file configurations from the DataStore.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> # Load some data files...
-        >>> store.clear_cache()  # Clear cached file contents and configurations
-
-        See Also
-        --------
-        reader : Access the underlying DataReader instance
-        """
-        self.reader.clear_cache()
-        self._cache.clear()
-        logger.debug("Cleared data reader cache and data store configurations")
-
-    def to_json(self, fpath: str | Path, **model_dump_kwargs: dict[str, Any]) -> None:
-        """Save the DataStore configuration to a JSON file.
+    def remove_data(self, *names: str) -> None:
+        """Remove one or more data files from the store.
 
         Parameters
         ----------
-        fpath : str or Path
-            Path where the JSON configuration file will be saved.
+        *names : str
+            Variable number of data file names to remove.
+            Examples: remove_data("file1", "file2")
+
+        Raises
+        ------
+        KeyError
+            If any data file name is not in the store.
+        """
+        for name in names:
+            if name not in self._cache:
+                raise KeyError(f"Data file '{name}' not found in store.")
+
+        for name in names:
+            del self._cache[name]
+            logger.debug("Removed data file '{}' from store", name)
+
+    def to_json(self, fpath: str | Path, **model_dump_kwargs: dict[str, Any]) -> None:
+        """Save the :class:`DataStore` configuration to a JSON file.
+
+        Parameters
+        ----------
+        fpath : str | Path
+            Path where JSON file will be written.
         **model_dump_kwargs : dict[str, Any]
-            Additional keyword arguments passed to the DataFile.model_dump method
-            for controlling serialization behavior.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> files = [DataFile(name="generators", fpath="gen.csv"), DataFile(name="load", fpath="load.csv")]
-        >>> store.add_data_files(files)
-        >>> store.to_json("config.json")
-
-        >>> # Save with custom serialization options
-        >>> store.to_json("config.json", exclude_none=True)
-
-        See Also
-        --------
-        from_json : Load DataStore configuration from JSON
-        DataFile.model_dump : Individual file serialization method
+            Additional keyword arguments passed to :meth:`DataFile.model_dump`.
 
         Notes
         -----
-        The resulting JSON file will contain an array of DataFile configurations
-        that can be loaded back using the `from_json` class method.
+        Output JSON is formatted with 2-space indentation and includes Unicode.
         """
         json_data = [
             data_file.model_dump(
@@ -730,37 +395,157 @@ class DataStore:
 
         logger.info("Created JSON file at {}", fpath)
 
-    @property
-    def reader(self) -> DataReader:
-        """Get the data reader instance.
-
-        Returns
-        -------
-        DataReader
-            The configured data reader instance.
-
-        Examples
-        --------
-        >>> store = DataStore("/path/to/data")
-        >>> reader = store.reader
-        >>> reader.clear_cache()
-        """
-        return self._reader
-
-    @reader.setter
-    def reader(self, reader: DataReader) -> None:
-        """Set a new data reader instance.
+    def upgrade_data(self, backup: bool = False, upgrader_context: dict[str, Any] | None = None) -> None:
+        """Run version upgrades on data files.
 
         Parameters
         ----------
-        reader : DataReader
-            New data reader instance to use.
+        backup : bool, optional
+            If True, create a backup of the folder before upgrading. Default is False.
+        upgrader_context : dict[str, Any] | None, optional
+            Context dictionary passed to upgrade steps. Default is None.
 
         Raises
         ------
-        TypeError
-            If reader is not a valid DataReader instance.
+        UpgradeError
+            If upgrader is not configured or upgrade fails.
+
+        Notes
+        -----
+        Requires a :class:`PluginUpgrader` instance provided at initialization.
         """
-        if not isinstance(reader, DataReader):
-            raise TypeError("reader must be a valid DataReader instance.")
-        self._reader = reader
+        return self._upgrade_data(backup=backup, upgrader_context=upgrader_context)
+
+    def _add_data_file(self, *data_files: DataFile, overwrite: bool = False) -> None:
+        """Add :class:`DataFile` instances to the store (internal).
+
+        Parameters
+        ----------
+        *data_files : DataFile
+            Variable number of DataFile instances.
+        overwrite : bool, optional
+            If True, overwrite existing data files. Default is False.
+        """
+        if any(not isinstance(data_file, DataFile) for data_file in data_files):
+            raise TypeError
+
+        if any(data_file.name in self._cache for data_file in data_files) and not overwrite:
+            msg = "Some data files already exists with the same name. "
+            msg += "Pass overwrite=True to replace it."
+            raise KeyError(msg)
+
+        for data_file in data_files:
+            self._cache[data_file.name] = data_file
+            logger.debug("Added data file '{}' to store", data_file.name)
+        return
+
+    def _get_data_file_by_name(self, name: str) -> DataFile:
+        """Retrieve a :class:`DataFile` configuration by name (internal).
+
+        Parameters
+        ----------
+        name : str
+            Name of the data file.
+
+        Returns
+        -------
+        DataFile
+            The requested data file.
+
+        Raises
+        ------
+        KeyError
+            If the data file name is not in the store.
+        """
+        if name not in self._cache:
+            available_files = list(self._cache.keys())
+            raise KeyError(f"'{name}' not present in store. Available files: {available_files}")
+
+        return self._cache[name]
+
+    def _read_data_file_by_name(
+        self, /, *, name: str, use_cache: bool = True, placeholders: dict[str, Any] | None = None
+    ) -> Any:
+        """Load data from a file by name (internal).
+
+        Parameters
+        ----------
+        name : str
+            Name of the data file.
+        use_cache : bool, optional
+            If True, use cached data. Default is True.
+        placeholders : dict[str, Any] | None, optional
+            Placeholder values for substitution. Default is None.
+
+        Returns
+        -------
+        Any
+            Loaded data.
+
+        Raises
+        ------
+        KeyError
+            If the data file name is not in the store.
+        """
+        if name not in self:
+            raise KeyError(f"'{name}' not present in store.")
+
+        data_file = self._cache[name]
+        return self.reader.read_data_file(
+            data_file, self.folder, use_cache=use_cache, placeholders=placeholders
+        )
+
+    def _upgrade_data(self, backup: bool = False, upgrader_context: dict[str, Any] | None = None) -> None:
+        """Run version upgrades (internal).
+
+        Parameters
+        ----------
+        backup : bool, optional
+            If True, create a folder backup. Default is False.
+        upgrader_context : dict[str, Any] | None, optional
+            Context for upgrade steps. Default is None.
+
+        Raises
+        ------
+        UpgradeError
+            If upgrader is not configured or upgrade fails.
+        """
+        if not self._upgrader:
+            msg = "Instance of store does not have an upgrader class."
+            raise UpgradeError(msg)
+
+        from .upgrader_utils import UpgradeType
+
+        version = self._upgrader.version  # Upgrader instance holds the current version of the plugin.
+        logger.info(
+            "Detected version '{}' for upgrader '{}' in folder: {}",
+            version if version else "unknown",
+            type(self._upgrader).__name__,
+            self._folder,
+        )
+        registered_file_ops_steps = [s for s in self._upgrader.steps if s.upgrade_type == UpgradeType.FILE]
+        if not registered_file_ops_steps:
+            logger.debug("Not registered steps found. Skipping upgrader.")
+            return None
+        logger.warning(
+            "Applying {} file upgrade steps for upgrader '{}'",
+            len(registered_file_ops_steps),
+            type(self._upgrader).__name__,
+        )
+
+        if backup:
+            result_backup = backup_folder(self._folder)
+
+            if result_backup.is_err():
+                raise UpgradeError(result_backup.err())
+
+        result = run_datafile_upgrades(
+            steps=registered_file_ops_steps,
+            folder_path=self._folder,
+            current_version=version,
+            upgrader_context=upgrader_context,
+            strategy=self._upgrader.strategy,
+        )
+        if result.is_err():
+            raise UpgradeError(result.err())
+        return

@@ -1,37 +1,30 @@
 """Versioning strategies for R2X Core.
 
-This module provides versioning strategy implementations for version management
-in data and system upgrades.
+Provides pluggable version comparison strategies for upgrade systems.
 
 Classes
 -------
-VersioningStrategy
-    Protocol defining the interface for version management.
+VersioningModel
+    Protocol defining version comparison interface
 SemanticVersioningStrategy
-    Implementation using semantic versioning (e.g., "1.2.3").
+    Compares semantic versions (e.g., "1.2.3")
 GitVersioningStrategy
-    Implementation using git commit hashes or timestamps.
-FileModTimeStrategy
-    Implementation using file modification timestamps.
+    Compares versions using git commit history order
 
 Examples
 --------
-Use semantic versioning strategy:
+Semantic versioning:
 
 >>> from r2x_core.versioning import SemanticVersioningStrategy
->>> strategy = SemanticVersioningStrategy(version_field="version")
->>> data = {"version": "1.0.0", "value": 10}
->>> current = strategy.get_version(data)  # "1.0.0"
->>> comparison = strategy.compare(current, "2.0.0")  # -1 (current < target)
->>> updated_data = strategy.set_version(data, "2.0.0")
+>>> strategy = SemanticVersioningStrategy()
+>>> strategy.compare_versions("1.0.0", "2.0.0")  # -1 (1.0.0 < 2.0.0)
 
-Use git versioning strategy:
+Git-based versioning:
 
 >>> from r2x_core.versioning import GitVersioningStrategy
->>> strategy = GitVersioningStrategy(use_timestamps=True)
->>> data = {"git_version": "2024-01-01T00:00:00Z"}
->>> current = strategy.get_version(data)
->>> comparison = strategy.compare(current, "2024-06-01T00:00:00Z")  # -1
+>>> commits = ["abc123", "def456", "ghi789"]
+>>> strategy = GitVersioningStrategy(commits)
+>>> strategy.compare_versions("abc123", "def456")  # -1 (older < newer)
 """
 
 from __future__ import annotations
@@ -40,427 +33,154 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Protocol
 
-from loguru import logger
-from packaging.version import Version
 
+class VersioningModel(Protocol):
+    """Protocol for version comparison strategies.
 
-class VersioningStrategy(Protocol):
-    """Protocol for version management strategies.
-
-    This protocol defines the interface that all versioning strategies must implement.
-    It allows plugins to define their own version comparison logic while maintaining
-    a consistent interface for the upgrade system.
-
-    Methods
-    -------
-    get_version(data) -> str | None
-        Extract the current version from the data structure.
-    set_version(data, version) -> Any
-        Update the version in the data structure.
-    compare(current, target) -> int
-        Compare two versions (-1: current < target, 0: equal, 1: current > target).
+    Defines interface for comparing versions across different versioning schemes.
+    Implementations include semantic versioning and git-based versioning.
     """
 
     @abstractmethod
-    def get_version(self, data: Any) -> str | None:
-        """Extract the current version from data.
-
-        Parameters
-        ----------
-        data : Any
-            The data structure (file, dict, model instance, etc.).
-
-        Returns
-        -------
-        str | None
-            Current version string, or None if no version found.
-        """
-        ...
-
-    @abstractmethod
-    def set_version(self, data: Any, version: str) -> Any:
-        """Update the version in the data structure.
-
-        Parameters
-        ----------
-        data : Any
-            The data structure to update.
-        version : str
-            The new version to set.
-
-        Returns
-        -------
-        Any
-            The updated data structure.
-        """
-        ...
-
-    @abstractmethod
-    def compare(self, current: str | None, target: str) -> int:
+    def compare_versions(self, current: Any, target: Any) -> int:
         """Compare two versions.
 
         Parameters
         ----------
-        current : str | None
-            Current version string, None treated as "0.0.0" or earliest.
-        target : str
-            Target version string.
+        current : Any
+            Current version string
+        target : Any
+            Target version string
 
         Returns
         -------
         int
-            -1 if current < target, 0 if equal, 1 if current > target.
+            -1 if current < target, 0 if equal, 1 if current > target
         """
-        ...
+        raise NotImplementedError
 
 
-class SemanticVersioningStrategy(VersioningStrategy):
-    """Semantic versioning strategy using packaging.version.
+class SemanticVersioningStrategy(VersioningModel):
+    """Semantic versioning comparison using Python's string comparison.
 
-    Parameters
-    ----------
-    version_field : str, default="version"
-        The field name where version is stored in data structures.
-    default_version : str, default="0.0.0"
-        Default version to use when no version is found.
+    Compares versions following major.minor.patch format.
+    Uses simple string comparison (assumes properly formatted versions).
 
     Examples
     --------
     >>> strategy = SemanticVersioningStrategy()
-    >>> data = {"version": "1.0.0"}
-    >>> strategy.get_version(data)
-    '1.0.0'
-    >>> strategy.compare("1.0.0", "2.0.0")
+    >>> strategy.compare_versions("1.0.0", "2.0.0")
     -1
-    >>> strategy.set_version(data, "2.0.0")
-    {'version': '2.0.0'}
+    >>> strategy.compare_versions("2.0.0", "2.0.0")
+    0
+    >>> strategy.compare_versions("3.0.0", "2.0.0")
+    1
+
+    Notes
+    -----
+    Does not handle pre-release suffixes (rc, alpha, beta).
+    For complex semantic versioning, use packaging.version.Version instead.
     """
 
-    def __init__(self, version_field: str = "version", default_version: str = "0.0.0"):
-        """Initialize semantic versioning strategy.
+    def compare_versions(self, current: str, target: str) -> int:
+        """Compare two semantic versions using numeric comparison.
 
-        Parameters
-        ----------
-        version_field : str, default="version"
-            Name of the field containing version information in data structures.
-        default_version : str, default="0.0.0"
-            Default version to use when no version is found. Used as the current
-            version when comparing against None.
+        Splits versions into components and compares numerically.
+        Handles different component lengths (1.0 vs 1.0.0).
         """
-        self.version_field = version_field
-        self.default_version = default_version
+        current_parts = [int(x) for x in current.split(".")]
+        target_parts = [int(x) for x in target.split(".")]
 
-    def get_version(self, data: Any) -> str | None:
-        """Extract version from data structure.
+        max_len = max(len(current_parts), len(target_parts))
+        current_parts.extend([0] * (max_len - len(current_parts)))
+        target_parts.extend([0] * (max_len - len(target_parts)))
 
-        Supports dictionaries, objects with attributes, and returns None for
-        file paths or unsupported types.
-
-        Parameters
-        ----------
-        data : Any
-            Data structure to extract version from (dict, object, or Path).
-
-        Returns
-        -------
-        str | None
-            Version string if found, None otherwise.
-        """
-        if isinstance(data, dict):
-            version = data.get(self.version_field)
-            return str(version) if version is not None else None
-        elif hasattr(data, self.version_field):
-            version = getattr(data, self.version_field)
-            return str(version) if version is not None else None
-        elif isinstance(data, (str, Path)):
-            return None
-        return None
-
-    def set_version(self, data: Any, version: str) -> Any:
-        """Set version in data structure.
-
-        Updates the version field in dictionaries or object attributes.
-        Logs a warning for unsupported types.
-
-        Parameters
-        ----------
-        data : Any
-            Data structure to update (dict or object with attributes).
-        version : str
-            New version string to set.
-
-        Returns
-        -------
-        Any
-            The updated data structure.
-        """
-        if isinstance(data, dict):
-            data[self.version_field] = version
-            return data
-        elif hasattr(data, self.version_field):
-            setattr(data, self.version_field, version)
-            return data
-        else:
-            logger.warning("Cannot set version on data type: {}", type(data))
-            return data
-
-    def compare(self, current: str | None, target: str) -> int:
-        """Compare two semantic versions.
-
-        Uses packaging.version.Version for proper semantic version comparison.
-        None is treated as the default_version.
-
-        Parameters
-        ----------
-        current : str | None
-            Current version string. None is treated as default_version.
-        target : str
-            Target version string to compare against.
-
-        Returns
-        -------
-        int
-            -1 if current < target (upgrade needed)
-            0 if current == target (versions equal)
-            1 if current > target (current is newer)
-        """
-        current_version = Version(current or self.default_version)
-        target_version = Version(target)
-
-        if current_version < target_version:
+        if current_parts < target_parts:
             return -1
-        elif current_version > target_version:
+        if current_parts > target_parts:
             return 1
-        else:
-            return 0
+        return 0
 
 
-class GitVersioningStrategy(VersioningStrategy):
-    """Git-based versioning strategy using commit history.
+class GitVersioningStrategy(VersioningModel):
+    """Git-based versioning using commit history order.
+
+    Compares versions by their position in a git commit history.
+    Earlier commits are considered older versions.
 
     Parameters
     ----------
-    version_field : str, default="git_version"
-        The field name where git version is stored.
     commit_history : list[str]
-        Ordered list of commit hashes from oldest to newest.
+        List of commit hashes ordered from oldest to newest
+
+    Examples
+    --------
+    >>> commits = ["abc123", "def456", "ghi789"]
+    >>> strategy = GitVersioningStrategy(commits)
+    >>> strategy.compare_versions("abc123", "def456")
+    -1
+    >>> strategy.compare_versions("def456", "def456")
+    0
+    >>> strategy.compare_versions("ghi789", "def456")
+    1
     """
 
-    def __init__(
-        self,
-        version_field: str = "git_version",
-        commit_history: list[str] | None = None,
-    ):
-        """Initialize git versioning strategy.
+    def __init__(self, commit_history: list[str]) -> None:
+        """Initialize Git versioning strategy.
 
         Parameters
         ----------
-        version_field : str, default="git_version"
-            Name of the field containing git version information.
-        commit_history : list[str] | None
-            Ordered list of commit hashes (oldest to newest).
+        commit_history : list[str]
+            List of commit hashes ordered from oldest to newest
         """
-        self.version_field = version_field
-        self.commit_history = commit_history or []
+        self.commit_history = commit_history
 
-    def get_version(self, data: Any) -> str | None:
-        """Extract git version from data structure.
-
-        Supports dictionaries and objects with attributes. Returns None for
-        unsupported types.
-
-        Parameters
-        ----------
-        data : Any
-            Data structure to extract version from (dict or object).
-
-        Returns
-        -------
-        str | None
-            Git version string (commit hash or timestamp) if found, None otherwise.
-        """
-        if isinstance(data, dict):
-            version = data.get(self.version_field)
-            return str(version) if version is not None else None
-        elif hasattr(data, self.version_field):
-            version = getattr(data, self.version_field)
-            return str(version) if version is not None else None
-        return None
-
-    def set_version(self, data: Any, version: str) -> Any:
-        """Set git version in data structure.
-
-        Updates the version field in dictionaries or object attributes.
-        Logs a warning for unsupported types.
-
-        Parameters
-        ----------
-        data : Any
-            Data structure to update (dict or object with attributes).
-        version : str
-            New git version string to set (commit hash or timestamp).
-
-        Returns
-        -------
-        Any
-            The updated data structure.
-        """
-        if isinstance(data, dict):
-            data[self.version_field] = version
-            return data
-        elif hasattr(data, self.version_field):
-            setattr(data, self.version_field, version)
-            return data
-        else:
-            logger.warning("Cannot set git version on data type: {}", type(data))
-            return data
-
-    def compare(self, current: str | None, target: str) -> int:
+    def compare_versions(self, current: str | None, target: str) -> int:
         """Compare git versions using commit history position.
 
         Parameters
         ----------
         current : str | None
-            Current git version. None means upgrade needed.
+            Current git commit hash
         target : str
-            Target git version to compare against.
+            Target git commit hash
 
         Returns
         -------
         int
-            -1 if current < target or current is None
+            -1 if current older than target
             0 if current == target
-            1 if current > target
+            1 if current newer than target
+
+        Raises
+        ------
+        ValueError
+            If current or target not found in commit_history
         """
         if current is None:
+            raise ValueError("Current version cannot be None")
+
+        is_current_in_history = current not in self.commit_history
+        is_target_in_history = target not in self.commit_history
+
+        if is_current_in_history or is_target_in_history:
+            msg = f"Failed to find commits in history. Is current in history? {is_current_in_history}"
+            msg += f" Is target in history? {is_target_in_history}"
+            raise ValueError(msg)
+        current_idx = self.commit_history.index(current)
+        target_idx = self.commit_history.index(target)
+        if current_idx < target_idx:
             return -1
-
-        try:
-            current_idx = self.commit_history.index(current)
-            target_idx = self.commit_history.index(target)
-            if current_idx < target_idx:
-                return -1
-            elif current_idx > target_idx:
-                return 1
-            else:
-                return 0
-        except ValueError as e:
-            msg = f"Commit not found in history: {e}"
-            raise ValueError(msg) from e
-
-
-class FileModTimeStrategy(VersioningStrategy):
-    """File modification time versioning strategy.
-
-    Uses file modification timestamps as versions.
-
-    Examples
-    --------
-    >>> strategy = FileModTimeStrategy()
-    >>> version = strategy.get_version("/path/to/file.json")
-    >>> # Returns file modification time as string
-    """
-
-    def get_version(self, data: Any) -> str | None:
-        """Get file modification time as version.
-
-        Extracts the modification time from a file path. Only works with
-        file paths (str or Path), returns None for other data types.
-
-        Parameters
-        ----------
-        data : Any
-            File path (str or Path) to get modification time from.
-
-        Returns
-        -------
-        str | None
-            File modification time as string (Unix timestamp), or None if
-            data is not a path or file doesn't exist.
-        """
-        if isinstance(data, (str, Path)):
-            path = Path(data)
-            if path.exists():
-                return str(path.stat().st_mtime)
-        return None
-
-    def set_version(self, data: Any, version: str) -> Any:
-        """Set version (not supported for file modification times).
-
-        File modification times cannot be set directly through this strategy.
-        This method logs a warning and returns the data unchanged.
-
-        Parameters
-        ----------
-        data : Any
-            Data structure (ignored).
-        version : str
-            Version string (ignored).
-
-        Returns
-        -------
-        Any
-            The unchanged data structure.
-
-        Warnings
-        --------
-        Always logs a warning that modification times cannot be set directly.
-        """
-        logger.warning("Cannot set file modification time directly")
-        return data
-
-    def compare(self, current: str | None, target: str) -> int:
-        """Compare file modification timestamps.
-
-        Compares timestamps as floating point numbers (Unix timestamps).
-
-        Parameters
-        ----------
-        current : str | None
-            Current modification time as string. None means upgrade needed.
-        target : str
-            Target modification time to compare against.
-
-        Returns
-        -------
-        int
-            -1 if current < target or current is None (upgrade needed)
-            0 if current == target (times equal)
-            1 if current > target (current is newer)
-
-        Warnings
-        --------
-        Logs warning if timestamp strings cannot be parsed as float.
-        """
-        if current is None:
-            return -1
-
-        try:
-            current_time = float(current)
-            target_time = float(target)
-
-            if current_time < target_time:
-                return -1
-            elif current_time > target_time:
-                return 1
-            else:
-                return 0
-        except ValueError:
-            logger.warning("Invalid timestamp: {} or {}", current, target)
-            return -1
+        if current_idx > target_idx:
+            return 1
+        return 0
 
 
 class VersionDetector(Protocol):
-    """Protocol for detecting version from data folder without DataStore.
+    """Protocol for detecting version from data files.
 
-    Plugins implement this protocol to specify how to read version information
-    from their data files before DataStore initialization. This enables version
-    detection before file operations during upgrades.
-
-    Methods
-    -------
-    detect_version(folder: Path) -> str | None
-        Detect version from the data folder.
+    Plugins implement this to read version information from data files
+    before DataStore initialization, enabling version detection for upgrades.
 
     Examples
     --------
@@ -491,7 +211,7 @@ class VersionDetector(Protocol):
     """
 
     @abstractmethod
-    def detect_version(self, folder: Path) -> str | None:
+    def detect_version(self, folder_path: Path) -> str | None:
         """Detect version from data folder.
 
         This method is called before DataStore initialization and should
@@ -512,4 +232,3 @@ class VersionDetector(Protocol):
         Implementations should handle missing files gracefully and
         return None rather than raising exceptions.
         """
-        ...

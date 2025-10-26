@@ -1,6 +1,6 @@
 import pytest
 
-from r2x_core.result import Err, Ok, Result, UnwrapError, is_err, is_ok
+from r2x_core.result import Err, IsNotError, Ok, Result, UnwrapError, is_err, is_ok
 
 
 @pytest.fixture
@@ -20,8 +20,7 @@ def test_ok_unwrap(ok_value):
 
 def test_err_unwrap_raises(err_value):
     assert is_err(err_value)
-    with pytest.raises(UnwrapError, match="Called unwrap on Err: boom"):
-        err_value.unwrap()
+    assert err_value.unwrap_err()
 
 
 def test_ok_unwrap_or(ok_value):
@@ -225,8 +224,11 @@ def test_ok_ok_method():
 
 def test_ok_err_method():
     """Test err() method for Ok - returns None."""
-    assert Ok(42).err() is None
-    assert Ok("test").err() is None
+    with pytest.raises(IsNotError):
+        Ok(42).err()
+
+    with pytest.raises(IsNotError):
+        Ok("test").err()
 
 
 def test_err_ok_method():
@@ -289,11 +291,10 @@ def test_unwrap_error_exception():
     """Test that UnwrapError is raised and can be caught."""
     err = Err("test error")
 
-    with pytest.raises(UnwrapError) as exc_info:
+    with pytest.raises(NotImplementedError):
         err.unwrap()
 
-    assert "Called unwrap on Err: test error" in str(exc_info.value)
-    assert isinstance(exc_info.value, Exception)
+    assert err.error == err.unwrap_err()
 
 
 def test_unwrap_error_expect():

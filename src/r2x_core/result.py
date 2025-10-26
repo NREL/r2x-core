@@ -2,7 +2,7 @@
 
 # ruff: noqa D101
 from __future__ import annotations
-from typing import Callable, Generic, TypeGuard, TypeVar, cast
+from typing import Callable, Generic, Literal, Optional, TypeVar, cast, overload, Any, TypeGuard
 
 T = TypeVar("T")
 E = TypeVar("E")
@@ -16,6 +16,10 @@ class UnwrapError(Exception):
     pass
 
 
+class IsNotError(Exception):
+    pass
+
+
 class Result(Generic[T, E]):
     """Base type for Ok/Err results."""
 
@@ -23,6 +27,10 @@ class Result(Generic[T, E]):
 
     def unwrap(self) -> T:
         """Return the contained value if successful, else raise in subclass."""
+        raise NotImplementedError
+
+    def unwrap_err(self) -> E:
+        """Return the contained error if Err, else raise in subclass."""
         raise NotImplementedError
 
     def unwrap_or(self, default: T) -> T:
@@ -38,12 +46,10 @@ class Result(Generic[T, E]):
         raise NotImplementedError
 
     def is_ok(self) -> bool:
-        """Return True if this is an Ok result, False otherwise."""
-        raise NotImplementedError
+        return isinstance(self, Ok)
 
     def is_err(self) -> bool:
-        """Return True if this is an Err result, False otherwise."""
-        raise NotImplementedError
+        return isinstance(self, Err)
 
     def map(self, func: Callable[[T], U]) -> Result[U, E]:
         """Apply func to the contained value if Ok, returning a new Result."""
@@ -65,9 +71,14 @@ class Result(Generic[T, E]):
         """Return the success value if Ok, otherwise None."""
         raise NotImplementedError
 
-    def err(self) -> E | None:
+    def err(self) -> E:
         """Return the error value if Err, otherwise None."""
         raise NotImplementedError
+
+    @property
+    def error(self) -> E | None:
+        """Return the error value if Err, otherwise None."""
+        return self.err()
 
 
 class Ok(Result[T, E]):
@@ -76,15 +87,25 @@ class Ok(Result[T, E]):
     __slots__ = ("value",)
     __match_args__ = ("value",)
 
-    def __init__(self, value: T) -> None:
+    value: T
+
+    # Ok() or Ok(None) -> T resolves to None
+    @overload
+    def __init__(self: "Ok[None, E]", value: Literal[None] = None) -> None: ...
+
+    # Ok(value) -> T resolves to the type of value
+    @overload
+    def __init__(self: "Ok[T, E]", value: T) -> None: ...
+
+    def __init__(self, value: Optional[T] = None) -> None:
         """Initialize an Ok result wrapping the given value.
 
         Parameters
         ----------
-        value : T
-            The success value to wrap.
+        value : T, optional
+            The success value to wrap. If not provided, defaults to None.
         """
-        self.value = value
+        self.value = cast(T, value)
 
     def __repr__(self) -> str:
         """Return repr(self)."""
@@ -97,9 +118,7 @@ class Ok(Result[T, E]):
     def __eq__(self, other: object) -> bool:
         """Return self==other."""
         if isinstance(other, Ok):
-            # Cast to access generic attribute with proper typing
-            other_ok = cast("Ok[T, E]", other)
-            return self.value == other_ok.value
+            return bool(self.value == other.value)
         return False
 
     def __hash__(self) -> int:
@@ -113,6 +132,10 @@ class Ok(Result[T, E]):
     def unwrap(self) -> T:
         """Return the wrapped success value."""
         return self.value
+
+    def unwrap_err(self) -> E:
+        """Called on Ok — no error present."""
+        raise UnwrapError("Called unwrap_err on Ok")
 
     def unwrap_or(self, default: T) -> T:
         """Return the wrapped value, ignoring default."""
@@ -150,19 +173,19 @@ class Ok(Result[T, E]):
         """Ignore errors and return self unchanged."""
         return Ok(self.value)
 
-    def ok(self) -> T | None:
+    def ok(self) -> T:
         """Return the success value."""
         return self.value
 
-    def err(self) -> E | None:
+    def err(self) -> E:
         """Return None as this is not an error."""
-        return None
+        raise IsNotError
 
 
 class Err(Result[T, E]):
     """Error result containing an error value."""
 
-    __slots__ = ("error",)
+    __slots__ = ("_error_value",)
     __match_args__ = ("error",)
 
     def __init__(self, error: E) -> None:
@@ -173,35 +196,32 @@ class Err(Result[T, E]):
         error : E
             The error to wrap.
         """
-        self.error = error
+        self._error_value = error
 
     def __repr__(self) -> str:
         """Return repr(self)."""
-        return f"Err({self.error!r})"
+        return f"Err({self._error_value!r})"
 
     def __str__(self) -> str:
         """Return str(self)."""
-        return f"Err({self.error})"
+        return f"Err({self._error_value})"
 
     def __eq__(self, other: object) -> bool:
         """Return self==other."""
         if isinstance(other, Err):
-            # Cast to access generic attribute with proper typing
-            other_err = cast("Err[T, E]", other)
-            return self.error == other_err.error
+            return bool(self._error_value == other._error_value)
         return False
 
     def __hash__(self) -> int:
         """Return hash(self)."""
-        return hash(("Err", self.error))
+        return hash(("Err", self._error_value))
 
     def __bool__(self) -> bool:
         """Return False (Err results are falsy)."""
         return False
 
-    def unwrap(self) -> T:
-        """Raise an error indicating unwrap was called on Err."""
-        raise UnwrapError(f"Called unwrap on Err: {self.error}")
+    def unwrap_err(self) -> E:
+        return self._error_value
 
     def unwrap_or(self, default: T) -> T:
         """Return the default value as this is an Err result."""
@@ -209,11 +229,11 @@ class Err(Result[T, E]):
 
     def unwrap_or_else(self, func: Callable[[E], T]) -> T:
         """Invoke func on the error to obtain a default value."""
-        return func(self.error)
+        return func(self._error_value)
 
     def expect(self, msg: str) -> T:
         """Raise an error with a custom message and the wrapped error."""
-        raise UnwrapError(f"{msg}: {self.error}")
+        raise UnwrapError(f"{msg}: {self._error_value}")
 
     def is_ok(self) -> bool:
         """Return False indicating this is not an Ok result."""
@@ -225,27 +245,27 @@ class Err(Result[T, E]):
 
     def map(self, func: Callable[[T], U]) -> Result[U, E]:
         """Ignore success mapping and return self unchanged."""
-        return Err(self.error)
+        return Err(self._error_value)
 
     def map_err(self, func: Callable[[E], F]) -> Result[T, F]:
         """Apply func to the error, returning a new Err result."""
-        return Err(func(self.error))
+        return Err(func(self._error_value))
 
     def and_then(self, func: Callable[[T], Result[U, E]]) -> Result[U, E]:
         """Ignore chaining for Err and return self unchanged."""
-        return Err(self.error)
+        return Err(self._error_value)
 
     def or_else(self, func: Callable[[E], Result[T, F]]) -> Result[T, F]:
         """Invoke func on the error to recover and return its result."""
-        return func(self.error)
+        return func(self._error_value)
 
     def ok(self) -> T | None:
         """Return None as this is an error."""
         return None
 
-    def err(self) -> E | None:
+    def err(self) -> E:
         """Return the error value."""
-        return self.error
+        return self._error_value
 
 
 def is_ok(result: Result[T, E]) -> TypeGuard[Ok[T, E]]:

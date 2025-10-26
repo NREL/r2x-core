@@ -74,3 +74,11 @@ class ExporterError(R2XCoreError):
     >>> raise ExporterError("No Generator components found in system")
     >>> raise ExporterError("Output directory does not exist: /path/to/output")
     """
+
+
+class UpgradeError(R2XCoreError):
+    """Exception raised for upgrader-related errors."""
+
+
+class ReaderError(R2XCoreError):
+    """Exception raised for data reading related errors."""

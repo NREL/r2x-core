@@ -27,7 +27,7 @@ from r2x_core.store import DataStore
 
 
 @pytest.fixture
-def csv_datafile(tmp_path) -> DataFile:
+def example_data_file_json(tmp_path) -> DataFile:
     """Create FileMapping for unitdata.csv."""
     json_fpath = tmp_path / "example_json.json"
     json_array = [
@@ -73,25 +73,25 @@ def json_store(tmp_path) -> DataFile:
     test_file = tmp_path / "test_data.json"
     test_file.write_text('{"name":"test"}')
     data_file = DataFile(name="json", fpath=str(test_file), key_mapping={"name": "TestRemap"})
-    store = DataStore(folder=tmp_path)
-    store.add_data_file(data_file)
+    store = DataStore(tmp_path)
+    store.add_data(data_file)
     yield store
 
 
 @pytest.fixture(scope="function")
-def csv_store(reeds_data_folder, csv_datafile):
-    store = DataStore.from_json(csv_datafile, folder=reeds_data_folder)
+def example_store(reeds_data_folder, example_data_file_json):
+    store = DataStore.from_json(example_data_file_json, folder_path=reeds_data_folder)
     yield store
 
 
-def test_transform_tabular_data(csv_store):
-    store: DataStore = csv_store
+def test_transform_tabular_data(example_store: DataStore):
+    store: DataStore = example_store
 
-    datafile = store.get_data_file_by_name("unitdata")
+    datafile = store["unitdata"]
     assert isinstance(datafile, DataFile)
     assert isinstance(datafile.file_type, TableFormat)
 
-    file = store.read_data_file(name="unitdata")
+    file = store.read_data(name="unitdata")
     schema = file.collect_schema()
     assert isinstance(file, LazyFrame)
     assert len(schema.names()) == 8  # 3 index + 5 value columns
@@ -102,17 +102,12 @@ def test_transform_tabular_data(csv_store):
 
 def test_transform_json(json_store):
     store: DataStore = json_store
-    datafile = store.get_data_file_by_name("json")
+    datafile = store["json"]
     assert isinstance(datafile, DataFile)
 
-    file = store.read_data_file(name="json")
+    file = store.read_data(name="json")
     assert isinstance(file, dict)
     assert "TestRemap" in file
-
-
-# =============================================================================
-# Comprehensive tests for individual processor functions
-# =============================================================================
 
 
 @pytest.fixture
@@ -429,7 +424,7 @@ def test_apply_transformation_with_lazyframe(sample_csv):
     df = pl.scan_csv(sample_csv)
     data_file = DataFile(name="test", fpath=sample_csv, drop_columns=["city"])
 
-    result = apply_transformation(data_file, df)
+    result = apply_transformation(data_file, df).unwrap()
 
     assert isinstance(result, pl.LazyFrame)
     assert "city" not in result.collect_schema().names()
@@ -440,7 +435,7 @@ def test_apply_transformation_with_dict(sample_json_file):
     data = {"name": "Alice", "age": 30}
     data_file = DataFile(name="test", fpath=sample_json_file, value_columns=["name"])
 
-    result = apply_transformation(data_file, data)
+    result = apply_transformation(data_file, data).unwrap()
 
     assert isinstance(result, dict)
     assert set(result.keys()) == {"name"}
@@ -452,7 +447,7 @@ def test_apply_transformation_unsupported_type(sample_json_file):
     data_file = DataFile(name="test", fpath=sample_json_file)
 
     # Should return data unchanged for unsupported types
-    result = apply_transformation(data_file, data)
+    result = apply_transformation(data_file, data).unwrap()
 
     assert result == data
 
@@ -473,7 +468,7 @@ def test_register_custom_transformation(sample_json_file):
     custom_data = CustomType("hello")
     data_file = DataFile(name="test", fpath=sample_json_file)
 
-    result = apply_transformation(data_file, custom_data)
+    result = apply_transformation(data_file, custom_data).unwrap()
 
     assert result.value == "HELLO"
 

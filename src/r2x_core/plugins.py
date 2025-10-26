@@ -166,30 +166,58 @@ class FilterFunction(Protocol):
 class PluginComponent:
     """Model plugin registration data.
 
-    Holds the parser, exporter, config, and upgrader classes for a model plugin.
-    At least one of parser or exporter must be provided.
+    Container holding parser, exporter, config, and upgrader classes for a model
+    plugin. Used by :class:`PluginManager` to store and retrieve complete plugin
+    definitions. At least one of parser or exporter must be provided.
 
     Parameters
     ----------
     config : type[PluginConfig]
-        Pydantic config class for the model
+        Pydantic config class defining model-specific parameters
     parser : type | None
-        Parser class (BaseParser subclass)
+        Parser class implementing :class:`BaseParser`
     exporter : type | None
-        Exporter class (BaseExporter subclass)
+        Exporter class implementing :class:`BaseExporter`
     upgrader : type[DataUpgrader] | None
-        Upgrader class (DataUpgrader subclass)
+        Optional upgrader class implementing data folder migrations
 
     Attributes
     ----------
     config : type[PluginConfig]
-        Configuration class
+        Configuration class for the model
     parser : type | None
         Parser class or None
     exporter : type | None
         Exporter class or None
     upgrader : type[DataUpgrader] | None
         Upgrader class or None
+
+    See Also
+    --------
+    :class:`PluginManager` : Registry manager for plugin components
+    :class:`BaseParser` : Base parser class
+    :class:`BaseExporter` : Base exporter class
+
+    Examples
+    --------
+    Create a plugin component for a model plugin:
+
+    >>> from r2x_core.plugins import PluginComponent
+    >>> from my_model import MyParser, MyExporter, MyConfig
+    >>>
+    >>> component = PluginComponent(
+    ...     config=MyConfig,
+    ...     parser=MyParser,
+    ...     exporter=MyExporter,
+    ...     upgrader=None
+    ... )
+    >>> component.parser
+    <class 'my_model.MyParser'>
+
+    Notes
+    -----
+    The dataclass is frozen (immutable) to prevent accidental modifications
+    after registration.
     """
 
     config: type["PluginConfig"]
@@ -199,11 +227,13 @@ class PluginComponent:
 
 
 class PluginManager:
-    """Singleton registry for parsers, exporters, modifiers, and filters.
+    """Singleton registry for parsers, exporters, system modifiers, and filters.
 
-    PluginManager maintains class-level registries for all plugin types and provides
-    discovery via entry points. It uses the singleton pattern to ensure a single
-    source of truth for all registered plugins.
+    PluginManager is the central plugin registry maintaining class-level registries
+    for all plugin types. It supports both programmatic registration via decorators
+    and automatic discovery via entry points (group: r2x_plugin). Uses the singleton
+    pattern to ensure a single source of truth for all registered plugins across
+    the application lifecycle.
 
     Class Attributes
     ----------------
@@ -212,27 +242,27 @@ class PluginManager:
     _initialized : bool
         Whether entry points have been loaded
     _registry : dict[str, PluginComponent]
-        Model plugin registry (name -> PluginComponent)
+        Model plugin registry mapping name to PluginComponent
     _modifier_registry : dict[str, SystemModifier]
-        System modifier registry (name -> function)
+        System modifier registry mapping name to modifier function
     _filter_registry : dict[str, FilterFunction]
-        Filter function registry (name -> function)
+        Filter function registry mapping name to filter function
 
     Properties
     ----------
     registered_parsers : dict[str, type]
-        All registered parser classes
+        All registered parser classes by model name
     registered_exporters : dict[str, type]
-        All registered exporter classes
+        All registered exporter classes by model name
     registered_modifiers : dict[str, SystemModifier]
-        All registered system modifiers
+        All registered system modifier functions by name
     registered_filters : dict[str, FilterFunction]
-        All registered filter functions
+        All registered filter functions by name
 
     Methods
     -------
-    register_model_plugin(name, config, parser=None, exporter=None)
-        Register a model plugin with parser and/or exporter
+    register_model_plugin(name, config, parser=None, exporter=None, upgrader=None)
+        Register a complete model plugin
     register_system_modifier(name)
         Decorator to register a system modifier function
     register_filter(name)
@@ -242,29 +272,63 @@ class PluginManager:
     load_exporter(name)
         Load an exporter class by name
     load_config_class(name)
-        Load config class for a plugin
-
-    Examples
-    --------
-    Register and discover plugins:
-
-    >>> manager = PluginManager()
-    >>> PluginManager.register_model_plugin("switch", SwitchConfig, SwitchParser, SwitchExporter)
-    >>> parser_class = manager.load_parser("switch")
-    >>> print(list(manager.registered_parsers.keys()))
-    ['switch']
-
-    Use as decorator:
-
-    >>> @PluginManager.register_system_modifier("add_storage")
-    ... def add_storage(system, **kwargs):
-    ...     return system
+        Load configuration class for a plugin by name
+    get_upgrader(config_class)
+        Get upgrader class for a configuration class
+    get_file_mapping_path(plugin_name)
+        Get file mapping path for a plugin
 
     See Also
     --------
-    PluginComponent : Data structure for model plugins
-    SystemModifier : Protocol for modifier functions
-    FilterFunction : Protocol for filter functions
+    :class:`PluginComponent` : Data structure for model plugin registration
+    :class:`SystemModifier` : Protocol for system modifier functions
+    :class:`FilterFunction` : Protocol for filter functions
+    :class:`PluginConfig` : Base configuration class for plugins
+
+    Examples
+    --------
+    Register and use a complete model plugin:
+
+    >>> from r2x_core.plugins import PluginManager, PluginComponent
+    >>> from my_model import MyConfig, MyParser, MyExporter
+    >>>
+    >>> manager = PluginManager()
+    >>> PluginManager.register_model_plugin(
+    ...     name="my_model",
+    ...     config=MyConfig,
+    ...     parser=MyParser,
+    ...     exporter=MyExporter
+    ... )
+    >>> parser_class = manager.load_parser("my_model")
+
+    Register a system modifier with the decorator:
+
+    >>> @PluginManager.register_system_modifier("add_storage")
+    ... def add_storage(system: System, capacity_mw: float = 100.0, **kwargs) -> System:
+    ...     # Add storage to system
+    ...     return system
+
+    Register a filter function with the decorator:
+
+    >>> @PluginManager.register_filter("rename_cols")
+    ... def rename_cols(data: pl.LazyFrame, mapping: dict[str, str]) -> pl.LazyFrame:
+    ...     return data.rename(mapping)
+
+    Notes
+    -----
+    Plugin Discovery Process:
+
+    1. Programmatic registration: Plugins registered via :meth:`register_model_plugin`
+    2. Entry point discovery: External packages can register via entry points in
+       their setup.py/pyproject.toml (group: r2x_plugin)
+    3. Lazy loading: Entry points are discovered on first PluginManager instantiation
+
+    Design Patterns:
+
+    - Singleton pattern: One instance shared globally
+    - Class-level registries: Shared across all instances
+    - Immutable components: PluginComponent uses frozen dataclass
+    - Flexible signatures: System modifiers accept **kwargs for extensibility
     """
 
     _instance: ClassVar["PluginManager | None"] = None
@@ -626,8 +690,8 @@ class PluginManager:
         """Get the file mapping path for a registered plugin.
 
         This is a convenience method that loads the plugin's config class
-        and delegates to its get_file_mapping_path() classmethod. This allows
-        getting the file mapping path without directly importing the config class.
+        and gets its file_mapping_path property. This allows getting the
+        file mapping path without directly importing the config class.
 
         Parameters
         ----------
@@ -668,7 +732,7 @@ class PluginManager:
 
         See Also
         --------
-        PluginConfig.get_file_mapping_path : Config classmethod this delegates to
+        PluginConfig.file_mapping_path : Config property this delegates to
         load_config_class : Load the config class directly
 
         Notes
@@ -680,4 +744,9 @@ class PluginManager:
         if config_class is None:
             return None
 
-        return config_class.get_file_mapping_path()
+        # Instantiate the config class to access the property
+        try:
+            config = config_class()
+            return config.file_mapping_path
+        except Exception:
+            return None

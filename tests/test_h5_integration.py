@@ -56,14 +56,14 @@ def test_datastore_from_json_with_reader_kwargs():
         # Load DataStore from JSON
         from r2x_core.store import DataStore
 
-        store = DataStore.from_json(config_file, folder=tmpdir_path)
+        store = DataStore.from_json(config_file, folder_path=tmpdir_path)
 
         # Verify the store loaded correctly
-        files = store.list_data_files()
+        files = store.list_data()
         assert len(files) == 1
         assert "load" in files
 
-        data_file = store.get_data_file_by_name("load")
+        data_file = store["load"]
         assert data_file.reader_kwargs["data_key"] == "data"
         assert data_file.reader_kwargs["columns_key"] == "columns"
 
@@ -150,10 +150,10 @@ def test_datastore_from_json_with_multiple_h5_files():
         # Load DataStore from JSON
         from r2x_core.store import DataStore
 
-        store = DataStore.from_json(config_file, folder=tmpdir_path)
+        store = DataStore.from_json(config_file, folder_path=tmpdir_path)
 
         # Verify all files loaded
-        files = store.list_data_files()
+        files = store.list_data()
         assert len(files) == 3
 
         # Read each file
@@ -162,20 +162,19 @@ def test_datastore_from_json_with_multiple_h5_files():
         reader = DataReader()
 
         # Load file (ReEDS schema)
-        load_file_obj = store.get_data_file_by_name("load")
+        load_file_obj = store["load"]
         load_df = reader.read_data_file(load_file_obj, tmpdir_path).collect()
         assert "region1" in load_df.columns
         assert "datetime" in load_df.columns
 
-        # Custom file (tabular schema)
-        cf_file_obj = store.get_data_file_by_name("cf")
+        cf_file_obj = store["cf"]
         cf_df = reader.read_data_file(cf_file_obj, tmpdir_path).collect()
         assert "tech_a" in cf_df.columns
         assert "tech_b" in cf_df.columns
         assert "year" in cf_df.columns
 
         # Simple file (default schema)
-        simple_file_obj = store.get_data_file_by_name("simple")
+        simple_file_obj = store["simple"]
         simple_df = reader.read_data_file(simple_file_obj, tmpdir_path).collect()
         assert "simple_data" in simple_df.columns
 
@@ -203,21 +202,21 @@ def test_datastore_roundtrip_with_reader_kwargs():
                 "datetime_key": "index_datetime",
             },
         )
-        store = DataStore(folder=tmpdir_path)
-        store.add_data_file(data_file)
+        store = DataStore(tmpdir_path)
+        store.add_data(data_file)
 
         # Export to JSON
         json_file = tmpdir_path / "export.json"
         store.to_json(json_file)
 
         # Read back
-        store_loaded = DataStore.from_json(json_file, folder=tmpdir_path)
+        store_loaded = DataStore.from_json(json_file, folder_path=tmpdir_path)
 
         # Verify reader_kwargs preserved
-        files = store_loaded.list_data_files()
+        files = store_loaded.list_data()
         assert len(files) == 1
         assert "test" in files
 
-        loaded_file = store_loaded.get_data_file_by_name("test")
+        loaded_file = store_loaded["test"]
         assert loaded_file.reader_kwargs is not None
         assert loaded_file.reader_kwargs["data_key"] == "data"
