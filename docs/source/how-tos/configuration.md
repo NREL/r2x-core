@@ -29,22 +29,22 @@ with open("data_config.json", "w") as f:
 
 ```python
 # Load DataStore from JSON
-store = DataStore.from_json("data_config.json", folder="/path/to/data")
+store = DataStore.from_json("data_config.json", folder_path="/path/to/data")
 
 # List loaded files
-print(store.list_data_files())
+print(store.list_data())
 ```
 
 # ... export existing configurations
 
 ```python
 # Create store and add files
-store = DataStore(folder="/path/to/data")
+store = DataStore(folder_path="/path/to/data")
 files = [
     DataFile(name="gen", fpath="generators.csv"),
     DataFile(name="load", fpath="loads.csv")
 ]
-store.add_data_files(files)
+store.add_data(*files)
 
 # Export to JSON
 store.to_json("exported_config.json")

@@ -25,19 +25,26 @@ R2X Core serves as the foundation for building translators between power system 
 
 R2X Core offers the following capabilities:
 
-- **Plugin-based architecture** - Automatic discovery and registration of parsers, exporters, and transformations
+- **Plugin-based architecture** - Singleton registry with automatic discovery and registration of parsers, exporters, system modifiers, and filters
 - **Standardized component models** - Power system components via [infrasys](https://github.com/NREL/infrasys)
 - **Multiple file format support** - Native support for CSV, HDF5, Parquet, JSON, and XML
-- **Type-safe configuration** - Pydantic models for validation and IDE support
+- **Type-safe configuration** - Pydantic-based `PluginConfig` for model-specific parameters with defaults loading
 - **Data transformation pipeline** - Built-in filters, column mapping, and reshaping operations
 - **Abstract base classes** - `BaseParser` and `BaseExporter` for implementing translators
-- **System modifiers** - Apply transformations to entire power system models
+- **System modifiers** - Apply transformations to entire power system models with flexible context passing
+- **Filter functions** - Register custom data processing functions for reusable transformations
 - **Flexible data store** - Automatic format detection and intelligent caching
+- **Entry point discovery** - External packages can register plugins via setuptools/pyproject.toml entry points
 
 ## Quick Start
 
 ```python
-from r2x_core import PluginManager, BaseParser
+from r2x_core import PluginManager, BaseParser, BaseExporter, PluginConfig
+
+# Define type-safe configuration
+class MyModelConfig(PluginConfig):
+    folder: str
+    year: int
 
 # Register your model plugin
 PluginManager.register_model_plugin(
@@ -49,11 +56,23 @@ PluginManager.register_model_plugin(
 
 # Use it
 manager = PluginManager()
-parser = manager.load_parser("my_model")
-system = parser(config, data_store).build_system()
+parser_class = manager.load_parser("my_model")
+config = MyModelConfig(folder="/path/to/data", year=2030)
+system = parser_class(config, data_store=data_store).build_system()
 ```
 
 👉 [See the full tutorial](tutorials/getting-started.md) for a complete example.
+
+### Plugin Discovery
+
+Plugins can be registered programmatically or discovered from entry points. External packages register via `pyproject.toml`:
+
+```toml
+[project.entry-points.r2x_plugin]
+my_model = "my_package.plugins:my_plugin_component"
+```
+
+See {doc}`references/plugins` for detailed examples and {doc}`how-tos/plugin-registration` for advanced patterns.
 
 ## Indices and Tables
 
