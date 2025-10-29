@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 from infrasys import Component
 from pydantic import ValidationError as PydanticValidationError
 
-from r2x_core.result import Err, Ok, Result
+from ..result import Err, Ok, Result
 
 T = TypeVar("T", bound=Component)
 

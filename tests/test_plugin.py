@@ -114,3 +114,108 @@ def test_load_file_mapping_from_file(tmp_path):
     config = PluginConfig()
     fmap = config.load_file_mapping(json_path)
     assert isinstance(fmap, list)
+
+
+def test_load_defaults_with_scalar_overrides(tmp_path):
+    """Test that scalar overrides replace default values."""
+    defaults_data = {
+        "default_capacity": 100.0,
+        "threshold": 50,
+        "model_name": "original",
+    }
+    defaults_file = tmp_path / "test_defaults.json"
+    with open(defaults_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    overrides = {
+        "default_capacity": 200.0,
+        "threshold": 75,
+        "model_name": "updated",
+    }
+    config = PluginConfig(defaults=overrides)
+    result = config.load_defaults(defaults_file)
+
+    assert result["default_capacity"] == 200.0
+    assert result["threshold"] == 75
+    assert result["model_name"] == "updated"
+
+
+def test_load_defaults_with_list_merging(tmp_path):
+    """Test that list overrides merge with defaults, removing duplicates."""
+    defaults_data = {
+        "tech_categories": ["solarpv", "wind"],
+        "excluded_techs": ["coal", "oil"],
+    }
+    defaults_file = tmp_path / "test_defaults.json"
+    with open(defaults_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    overrides = {
+        "tech_categories": ["wind", "storage"],  # "wind" is duplicate
+        "excluded_techs": ["nuclear"],
+    }
+    config = PluginConfig(defaults=overrides)
+    result = config.load_defaults(defaults_file)
+
+    # Should merge lists, removing duplicates
+    assert result["tech_categories"] == ["solarpv", "wind", "storage"]
+    assert result["excluded_techs"] == ["coal", "oil", "nuclear"]
+
+
+def test_load_defaults_with_mixed_overrides(tmp_path):
+    """Test overrides with both scalar and list values."""
+    defaults_data = {
+        "model": ["solarpv", "wind"],
+        "threshold": 100,
+        "scenario": "base",
+    }
+    defaults_file = tmp_path / "test_defaults.json"
+    with open(defaults_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    overrides = {
+        "model": ["storage"],  # Will be merged with ["solarpv", "wind"]
+        "threshold": 150,  # Will replace 100
+        "new_param": "added",  # New key
+    }
+    config = PluginConfig(defaults=overrides)
+    result = config.load_defaults(defaults_file)
+
+    assert result["model"] == ["solarpv", "wind", "storage"]
+    assert result["threshold"] == 150
+    assert result["scenario"] == "base"
+    assert result["new_param"] == "added"
+
+
+def test_load_defaults_with_no_overrides(tmp_path):
+    """Test that load_defaults works unchanged when no overrides provided."""
+    defaults_data = {
+        "excluded_techs": ["coal", "oil"],
+        "default_capacity": 100.0,
+    }
+    defaults_file = tmp_path / "test_defaults.json"
+    with open(defaults_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    config = PluginConfig()
+    result = config.load_defaults(defaults_file)
+
+    assert result == defaults_data
+
+
+def test_load_defaults_replaces_list_with_scalar(tmp_path):
+    """Test that overriding a list with scalar value works."""
+    defaults_data = {
+        "tech_categories": ["solarpv", "wind"],
+    }
+    defaults_file = tmp_path / "test_defaults.json"
+    with open(defaults_file, "w") as f:
+        json.dump(defaults_data, f)
+
+    overrides = {
+        "tech_categories": "single_tech",  # Scalar replaces list
+    }
+    config = PluginConfig(defaults=overrides)
+    result = config.load_defaults(defaults_file)
+
+    assert result["tech_categories"] == "single_tech"

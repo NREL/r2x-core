@@ -118,7 +118,11 @@ def _(file_type_class: H5Format, file_path: Path, **reader_kwargs: Any) -> LazyF
     ...     index_key="timestamps"
     ... )
     """
-    from . import h5_readers
+    # Lazily import the HDF5 helper module to avoid package-level import cycles
+    # and to keep this module lightweight when only non-HDF5 readers are used.
+    import importlib
+
+    h5_readers = importlib.import_module(".h5_readers", package=__name__)
 
     logger.debug("Reading H5 file: {}", file_path)
     with h5pyFile(str(file_path), "r") as f:

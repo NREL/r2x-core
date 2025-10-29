@@ -28,13 +28,12 @@ from typing import Any
 from loguru import logger
 from pydantic import ValidationError
 
-from r2x_core.exceptions import UpgradeError
-from r2x_core.upgrader_utils import run_datafile_upgrades
-
 from .datafile import DataFile, create_data_files_from_records
+from .exceptions import UpgradeError
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .upgrader import PluginUpgrader
+from .upgrader_utils import run_datafile_upgrades
 from .utils import backup_folder, filter_valid_kwargs
 
 

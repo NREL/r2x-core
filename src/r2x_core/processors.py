@@ -9,9 +9,8 @@ import polars as pl
 from loguru import logger
 from polars.datatypes.classes import DataTypeClass
 
-from r2x_core.exceptions import ValidationError
-
 from .datafile import DataFile
+from .exceptions import ValidationError
 from .result import Err, Ok, Result
 
 TransformFunction = Callable[[Any, DataFile], Any]

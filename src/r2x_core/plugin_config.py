@@ -72,7 +72,7 @@ class PluginConfig(BaseModel):
     load_file_mapping(fpath=None)
         Load file mapping configuration from JSON.
     load_defaults(defaults_file=None)
-        Load default values from JSON.
+        Load default values from JSON with optional overrides from the config.
 
     See Also
     --------
@@ -104,10 +104,13 @@ class PluginConfig(BaseModel):
     ...     scenario="high_re"
     ... )
 
-    Load defaults from JSON:
+    Load defaults from JSON with optional overrides:
 
     >>> defaults = config.load_defaults()
     >>> print(defaults.get("model_year"))
+    >>> # Define overrides in the config
+    >>> config = ReEDSConfig(model_year=2030, defaults={"tech_categories": ["solar", "wind"]})
+    >>> defaults = config.load_defaults()
 
     Notes
     -----
@@ -121,6 +124,7 @@ class PluginConfig(BaseModel):
     DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
 
     config_path: Path | None = Field(default=None)
+    defaults: dict[str, Any] | None = Field(default=None, description="Overrides for loaded defaults")
 
     @model_validator(mode="after")
     def resolve_config_path_after(self) -> "PluginConfig":
@@ -200,7 +204,14 @@ class PluginConfig(BaseModel):
         Returns
         -------
         dict[str, Any]
-            Default parameters and constants as dictionary
+            Default parameters and constants as dictionary with overrides applied
+
+        Notes
+        -----
+        If the config instance has a `defaults` attribute defined, those values
+        will be used to override or merge with the loaded defaults:
+        - Scalar values: override the default value
+        - List values: merged with the default list (duplicates removed, order preserved)
 
         Raises
         ------
@@ -217,6 +228,21 @@ class PluginConfig(BaseModel):
                 data = json.load(f)
                 if not isinstance(data, dict):
                     raise TypeError(f"Expected dict, got {type(data).__name__}")
+
+                # Apply overrides from self.defaults if provided
+                if self.defaults:
+                    for key, value in self.defaults.items():
+                        if key in data and isinstance(data[key], list) and isinstance(value, list):
+                            # For lists, merge and remove duplicates (preserving order)
+                            seen = set(data[key])
+                            for item in value:
+                                if item not in seen:
+                                    data[key].append(item)
+                                    seen.add(item)
+                        else:
+                            # For scalar values or new keys, simply override
+                            data[key] = value
+
                 return data
         except json.JSONDecodeError as e:
             logger.error("Failed to parse defaults JSON from %s: %s", fpath, e)

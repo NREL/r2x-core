@@ -7,9 +7,8 @@ from typing import Any
 
 from loguru import logger
 
-from r2x_core.exceptions import ReaderError
-
 from .datafile import DataFile
+from .exceptions import ReaderError
 from .file_readers import read_file_by_type
 from .file_types import EXTENSION_MAPPING
 from .processors import apply_transformation, register_transformation

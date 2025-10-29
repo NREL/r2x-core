@@ -14,10 +14,10 @@ from infrasys.system import System as InfrasysSystem
 from infrasys.utils.sqlite import backup
 from loguru import logger
 
-from r2x_core import units
+from . import units
 
 if TYPE_CHECKING:
-    from r2x_core.upgrader import PluginUpgrader
+    from .upgrader import PluginUpgrader
 
 
 class System(InfrasysSystem):

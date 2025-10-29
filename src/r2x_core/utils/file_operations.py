@@ -4,7 +4,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from r2x_core.result import Err, Ok, Result
+from ..result import Err, Ok, Result
 
 
 def backup_folder(folder_path: Path | str) -> Result[None, str]:
