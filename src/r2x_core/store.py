@@ -29,12 +29,9 @@ from loguru import logger
 from pydantic import ValidationError
 
 from .datafile import DataFile, create_data_files_from_records
-from .exceptions import UpgradeError
 from .plugin_config import PluginConfig
 from .reader import DataReader
-from .upgrader import PluginUpgrader
-from .upgrader_utils import run_datafile_upgrades
-from .utils import backup_folder, filter_valid_kwargs
+from .utils import filter_valid_kwargs
 
 
 class DataStore:
@@ -53,9 +50,6 @@ class DataStore:
     reader : DataReader | None, optional
         Custom :class:`DataReader` instance. If None, a default reader
         is created. Default is None.
-    upgrader : PluginUpgrader | None, optional
-        Version upgrader strategy. If None, no upgrading is performed.
-        Default is None.
 
     Attributes
     ----------
@@ -63,37 +57,30 @@ class DataStore:
         The resolved folder path containing the data files.
     reader : DataReader
         The data reader instance used to load data.
-    upgrader : PluginUpgrader | None
-        The version upgrader strategy, if provided.
 
     Methods
     -------
-    from_data_files(data_files, folder_path, upgrader)
+    from_data_files(data_files, folder_path)
         Create a DataStore from a list of DataFile instances.
-    from_json(json_fpath, folder_path, upgrader)
+    from_json(json_fpath, folder_path)
         Create a DataStore from a JSON configuration file.
-    from_plugin_config(plugin_config, folder_path, upgrader)
+    from_plugin_config(plugin_config, folder_path)
         Create a DataStore from a PluginConfig instance.
     add_data(*data_files, overwrite)
         Add one or more DataFile instances to the store.
-    read_data(name, use_cache, placeholders)
+    read_data(name, placeholders)
         Load data from a file by name.
     list_data()
         List all data file names in the store.
     remove_data(*names)
         Remove one or more data files from the store.
-    clear_cache()
-        Clear internal caches.
     to_json(fpath, **model_dump_kwargs)
         Export store configuration to JSON.
-    upgrade_data(backup, upgrader_context)
-        Run version upgrades on data files.
 
     See Also
     --------
     :class:`DataFile` : Individual data file configuration.
     :class:`DataReader` : Reader for loading data files.
-    :class:`PluginUpgrader` : Version upgrade strategy.
     :class:`PluginConfig` : Plugin configuration source.
 
     Examples
@@ -103,9 +90,9 @@ class DataStore:
     >>> store = DataStore(folder_path="./data")
     >>> files = store.list_data()
 
-    Load data with caching:
+    Load data:
 
-    >>> data = store.read_data("file1", use_cache=True)
+    >>> data = store.read_data("file1")
 
     Add data files and export configuration:
 
@@ -126,7 +113,6 @@ class DataStore:
         folder_path: str | Path | None = None,
         *,
         reader: DataReader | None = None,
-        upgrader: PluginUpgrader | None = None,
     ) -> None:
         """Initialize the DataStore."""
         if folder_path is None:
@@ -142,13 +128,7 @@ class DataStore:
         self._reader = reader or DataReader()
         self._folder = folder_path.resolve()
         self._cache: dict[str, DataFile] = {}
-        self._upgrader = upgrader
         logger.debug("Initialized DataStore with folder: {}", self.folder)
-
-    @property
-    def upgrader(self) -> PluginUpgrader | None:
-        """Return the :class:`PluginUpgrader` instance, if provided."""
-        return self._upgrader
 
     @property
     def folder(self) -> Path:
@@ -173,7 +153,6 @@ class DataStore:
         cls,
         data_files: list[DataFile],
         folder_path: Path | str | None = None,
-        upgrader: PluginUpgrader | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a list of :class:`DataFile` instances.
 
@@ -183,15 +162,13 @@ class DataStore:
             List of DataFile instances to add to the store.
         folder_path : Path | str | None, optional
             Path to the folder containing data files. Default is None.
-        upgrader : PluginUpgrader | None, optional
-            Version upgrader strategy. Default is None.
 
         Returns
         -------
         DataStore
             New DataStore instance with provided data files.
         """
-        store = cls(folder_path, upgrader=upgrader)
+        store = cls(folder_path)
         store.add_data(*data_files)
         return store
 
@@ -200,7 +177,6 @@ class DataStore:
         cls,
         json_fpath: Path | str,
         folder_path: Path | str,
-        upgrader: PluginUpgrader | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a JSON configuration file.
 
@@ -210,8 +186,6 @@ class DataStore:
             Path to the JSON file containing data file configurations.
         folder_path : Path | str
             Path to the folder containing data files.
-        upgrader : PluginUpgrader | None, optional
-            Version upgrader strategy. Default is None.
 
         Returns
         -------
@@ -243,9 +217,6 @@ class DataStore:
             msg = f"JSON file `{json_fpath}` is not a JSON array."
             raise TypeError(msg)
 
-        if upgrader:
-            upgrader.upgrade_data_files(folder_path=folder_path)
-
         result = create_data_files_from_records(data_files_json, folder_path=folder_path)
         if result.is_err():
             errors = result.err()
@@ -255,14 +226,13 @@ class DataStore:
                 line_errors=line_errors,
             )
         data_files = result.unwrap()
-        return cls.from_data_files(folder_path=folder_path, data_files=data_files, upgrader=upgrader)
+        return cls.from_data_files(folder_path=folder_path, data_files=data_files)
 
     @classmethod
     def from_plugin_config(
         cls,
         plugin_config: PluginConfig,
         folder_path: Path | str,
-        upgrader: PluginUpgrader | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a :class:`PluginConfig` instance.
 
@@ -272,8 +242,6 @@ class DataStore:
             Plugin configuration containing file mappings.
         folder_path : Path | str
             Path to the folder containing data files.
-        upgrader : PluginUpgrader | None, optional
-            Version upgrader strategy. Default is None.
 
         Returns
         -------
@@ -282,8 +250,61 @@ class DataStore:
         """
         json_fpath = plugin_config.file_mapping_path
         logger.info("Loading DataStore from plugin config: {}", type(plugin_config).__name__)
-        logger.debug("File mapping path: %s", json_fpath)
-        return cls.from_json(json_fpath=json_fpath, folder_path=folder_path, upgrader=upgrader)
+        logger.debug("File mapping path: {}", json_fpath)
+        return cls.from_json(json_fpath=json_fpath, folder_path=folder_path)
+
+    @classmethod
+    def load_file(cls, fpath: str | Path, name: str | None = None) -> Any:
+        """Load a single data file conveniently without creating a full DataStore.
+
+        This is a convenience method for loading a single file with minimal setup.
+        For complex use cases with multiple files, use the full DataStore API.
+
+        Parameters
+        ----------
+        fpath : str | Path
+            Path to the data file to load.
+        name : str | None, optional
+            Name identifier for the file. If None, uses the file stem (name without extension).
+            Default is None.
+
+        Returns
+        -------
+        Any
+            Loaded data from the file (type depends on file format).
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        Exception
+            If the file cannot be read.
+
+        Examples
+        --------
+        >>> # Load a CSV file
+        >>> data = DataStore.load_file("data/inputs.csv")
+        >>> # Load with custom name
+        >>> data = DataStore.load_file("data/inputs.csv", name="input_data")
+        """
+        fpath = Path(fpath)
+
+        if not fpath.exists():
+            raise FileNotFoundError(f"File not found: {fpath}")
+
+        if name is None:
+            name = fpath.stem
+
+        store = cls(folder_path=fpath.parent)
+
+        data_file = DataFile(
+            name=name,
+            fpath=fpath,
+            description=f"Loaded from {fpath.name}",
+        )
+        store.add_data(data_file)
+
+        return store.read_data(name=name)
 
     def add_data(self, *data_files: DataFile, overwrite: bool = False) -> None:
         """Add one or more :class:`DataFile` instances to the store.
@@ -305,12 +326,6 @@ class DataStore:
         """
         return self._add_data_file(*data_files, overwrite=overwrite)
 
-    def clear_cache(self) -> None:
-        """Clear both the :class:`DataReader` cache and store file configurations."""
-        self.reader.clear_cache()
-        self._cache.clear()
-        logger.debug("Cleared data reader cache and data store configurations")
-
     def list_data(self) -> list[str]:
         """List all data file names in the store.
 
@@ -321,17 +336,13 @@ class DataStore:
         """
         return sorted(self._cache.keys())
 
-    def read_data(
-        self, name: str, *, use_cache: bool = True, placeholders: dict[str, Any] | None = None
-    ) -> Any:
+    def read_data(self, name: str, *, placeholders: dict[str, Any] | None = None) -> Any:
         """Load data from a file using the configured :class:`DataReader`.
 
         Parameters
         ----------
         name : str
             Name of the data file to load.
-        use_cache : bool, optional
-            If True, use cached data if available. Default is True.
         placeholders : dict[str, Any] | None, optional
             Placeholder values for template substitution. Default is None.
 
@@ -345,7 +356,7 @@ class DataStore:
         KeyError
             If the data file name is not in the store.
         """
-        return self._read_data_file_by_name(name=name, use_cache=use_cache, placeholders=placeholders)
+        return self._read_data_file_by_name(name=name, placeholders=placeholders)
 
     def remove_data(self, *names: str) -> None:
         """Remove one or more data files from the store.
@@ -397,27 +408,6 @@ class DataStore:
 
         logger.info("Created JSON file at {}", fpath)
 
-    def upgrade_data(self, backup: bool = False, upgrader_context: dict[str, Any] | None = None) -> None:
-        """Run version upgrades on data files.
-
-        Parameters
-        ----------
-        backup : bool, optional
-            If True, create a backup of the folder before upgrading. Default is False.
-        upgrader_context : dict[str, Any] | None, optional
-            Context dictionary passed to upgrade steps. Default is None.
-
-        Raises
-        ------
-        UpgradeError
-            If upgrader is not configured or upgrade fails.
-
-        Notes
-        -----
-        Requires a :class:`PluginUpgrader` instance provided at initialization.
-        """
-        return self._upgrade_data(backup=backup, upgrader_context=upgrader_context)
-
     def _add_data_file(self, *data_files: DataFile, overwrite: bool = False) -> None:
         """Add :class:`DataFile` instances to the store (internal).
 
@@ -465,17 +455,13 @@ class DataStore:
 
         return self._cache[name]
 
-    def _read_data_file_by_name(
-        self, /, *, name: str, use_cache: bool = True, placeholders: dict[str, Any] | None = None
-    ) -> Any:
+    def _read_data_file_by_name(self, /, *, name: str, placeholders: dict[str, Any] | None = None) -> Any:
         """Load data from a file by name (internal).
 
         Parameters
         ----------
         name : str
             Name of the data file.
-        use_cache : bool, optional
-            If True, use cached data. Default is True.
         placeholders : dict[str, Any] | None, optional
             Placeholder values for substitution. Default is None.
 
@@ -493,61 +479,4 @@ class DataStore:
             raise KeyError(f"'{name}' not present in store.")
 
         data_file = self._cache[name]
-        return self.reader.read_data_file(
-            data_file, self.folder, use_cache=use_cache, placeholders=placeholders
-        )
-
-    def _upgrade_data(self, backup: bool = False, upgrader_context: dict[str, Any] | None = None) -> None:
-        """Run version upgrades (internal).
-
-        Parameters
-        ----------
-        backup : bool, optional
-            If True, create a folder backup. Default is False.
-        upgrader_context : dict[str, Any] | None, optional
-            Context for upgrade steps. Default is None.
-
-        Raises
-        ------
-        UpgradeError
-            If upgrader is not configured or upgrade fails.
-        """
-        if not self._upgrader:
-            msg = "Instance of store does not have an upgrader class."
-            raise UpgradeError(msg)
-
-        from .upgrader_utils import UpgradeType
-
-        version = self._upgrader.version  # Upgrader instance holds the current version of the plugin.
-        logger.info(
-            "Detected version '{}' for upgrader '{}' in folder: {}",
-            version if version else "unknown",
-            type(self._upgrader).__name__,
-            self._folder,
-        )
-        registered_file_ops_steps = [s for s in self._upgrader.steps if s.upgrade_type == UpgradeType.FILE]
-        if not registered_file_ops_steps:
-            logger.debug("Not registered steps found. Skipping upgrader.")
-            return None
-        logger.warning(
-            "Applying {} file upgrade steps for upgrader '{}'",
-            len(registered_file_ops_steps),
-            type(self._upgrader).__name__,
-        )
-
-        if backup:
-            result_backup = backup_folder(self._folder)
-
-            if result_backup.is_err():
-                raise UpgradeError(result_backup.err())
-
-        result = run_datafile_upgrades(
-            steps=registered_file_ops_steps,
-            folder_path=self._folder,
-            current_version=version,
-            upgrader_context=upgrader_context,
-            strategy=self._upgrader.strategy,
-        )
-        if result.is_err():
-            raise UpgradeError(result.err())
-        return
+        return self.reader.read_data_file(data_file, self.folder, placeholders=placeholders)

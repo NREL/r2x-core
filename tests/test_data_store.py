@@ -1,18 +1,16 @@
 """Tests for DataStore class."""
 
 import json
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pytest
 
-from r2x_core import DataFile, DataReader, DataStore, PluginUpgrader, UpgradeType
-from r2x_core.exceptions import UpgradeError
-from r2x_core.versioning import SemanticVersioningStrategy
+if TYPE_CHECKING:
+    from r2x_core import DataStore
 
 
 @pytest.fixture
-def test_folder(tmp_path):
+def folder_with_data(tmp_path):
     folder = tmp_path / "data"
     folder.mkdir()
     (folder / "file1.csv").write_text("col1,col2\n1,2\n3,4")
@@ -21,402 +19,170 @@ def test_folder(tmp_path):
 
 
 @pytest.fixture
-def data_file_1(test_folder):
-    return DataFile(name="test1", fpath=test_folder / "file1.csv")
+def data_store_example(folder_with_data) -> "DataStore":
+    from r2x_core import DataFile, DataStore
+
+    df_01 = DataFile(name="test1", fpath=folder_with_data / "file1.csv")
+    df_02 = DataFile(name="test2", fpath=folder_with_data / "file2.csv")
+
+    store = DataStore(folder_with_data)
+    store.add_data(df_01, df_02)
+    return store
 
 
-@pytest.fixture
-def data_file_2(test_folder):
-    return DataFile(name="test2", fpath=test_folder / "file2.csv")
+def test_datastore_folder_operations(data_store_example, folder_with_data):
+    store = data_store_example
+    assert store.folder == folder_with_data.resolve()
+    assert store.folder.exists()
 
 
-@pytest.fixture
-def data_files(data_file_1, data_file_2):
-    return [data_file_1, data_file_2]
+def test_instance_fails_with_nonexistent_folder():
+    from r2x_core import DataStore
 
-
-def test_datastore_instance():
-    store = DataStore()
-    assert isinstance(store, DataStore)
-
-
-def test_datastore_with_folder(test_folder):
-    store = DataStore(test_folder)
-    assert store.folder == test_folder.resolve()
-
-
-def test_datastore_with_string_folder(test_folder):
-    store = DataStore(str(test_folder))
-    assert store.folder == test_folder.resolve()
-
-
-def test_datastore_with_nonexistent_folder():
     with pytest.raises(FileNotFoundError):
         DataStore("/nonexistent/path")
 
 
-def test_datastore_folder_property(test_folder):
-    store = DataStore(test_folder)
-    assert isinstance(store.folder, Path)
-    assert store.folder.exists()
+def test_add_data_overwrite_datafile(data_store_example, folder_with_data):
+    from r2x_core import DataFile
 
+    store = data_store_example
 
-def test_datastore_reader_property():
-    store = DataStore()
-    assert isinstance(store.reader, DataReader)
-
-
-def test_datastore_upgrader_property():
-    store = DataStore()
-    assert store.upgrader is None
-
-
-def test_add_data_single_file(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    assert "test1" in store
-
-
-def test_add_data_multiple_files(test_folder, data_files):
-    store = DataStore(test_folder)
-    store.add_data(*data_files)
-    assert "test1" in store
-    assert "test2" in store
-
-
-def test_add_data_overwrite_false(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    with pytest.raises(KeyError):
-        store.add_data(data_file_1, overwrite=False)
-
-
-def test_add_data_overwrite_true(test_folder, data_file_1, data_file_2):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    new_file = DataFile(name="test1", fpath=test_folder / "file2.csv")
+    new_file = DataFile(name="test1", fpath=folder_with_data / "file2.csv")
     store.add_data(new_file, overwrite=True)
-    assert store["test1"].fpath == test_folder / "file2.csv"
+    assert store["test1"].fpath == folder_with_data / "file2.csv"
+
+    with pytest.raises(KeyError):
+        store.add_data(new_file)
 
 
-def test_add_data_invalid_type(test_folder):
-    store = DataStore(test_folder)
-    with pytest.raises(TypeError):
-        store.add_data("not a datafile")
-
-
-def test_contains(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
+def test_store_accessing_data(data_store_example):
+    store = data_store_example
     assert "test1" in store
-    assert "nonexistent" not in store
-
-
-def test_getitem(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
     retrieved = store["test1"]
     assert retrieved.name == "test1"
 
-
-def test_getitem_missing(test_folder):
-    store = DataStore(test_folder)
+    assert "nonexistent" not in store
     with pytest.raises(KeyError):
         store["nonexistent"]
 
 
-def test_list_data_empty(test_folder):
-    store = DataStore(test_folder)
-    assert store.list_data() == []
-
-
-def test_list_data_sorted(test_folder, data_files):
-    store = DataStore(test_folder)
-    store.add_data(*data_files)
+def test_list_data_sorted(data_store_example):
+    store = data_store_example
     assert store.list_data() == ["test1", "test2"]
 
 
-def test_remove_data_single(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    store.remove_data("test1")
-    assert "test1" not in store
+def test_remove_data_files(data_store_example, folder_with_data):
+    from r2x_core import DataFile
 
+    store = data_store_example
+    file_to_remove = DataFile(name="file_to_remove", fpath=folder_with_data / "file2.csv")
+    store.add_data(file_to_remove)
 
-def test_remove_data_multiple(test_folder, data_files):
-    store = DataStore(test_folder)
-    store.add_data(*data_files)
-    store.remove_data("test1", "test2")
-    assert "test1" not in store
-    assert "test2" not in store
+    assert "file_to_remove" in store
+    store.remove_data("file_to_remove")
+    assert "file_to_remove" not in store
 
-
-def test_remove_data_missing(test_folder):
-    store = DataStore(test_folder)
     with pytest.raises(KeyError):
         store.remove_data("nonexistent")
 
 
-def test_clear_cache(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    store.clear_cache()
-    assert store.list_data() == []
+def test_clear_cache(folder_with_data):
+    from r2x_core import DataFile, DataStore
+
+    store = DataStore(folder_with_data)
+    df_01 = DataFile(name="test_1", fpath=folder_with_data / "file1.csv")
+    store.add_data(df_01)
+    assert store.list_data() == ["test_1"]
 
 
-def test_read_data(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
+def test_reader_operations(data_store_example):
+    from r2x_core import DataReader
+
+    store = data_store_example
+    assert isinstance(store.reader, DataReader)
+
+
+def test_read_data(data_store_example):
+    store = data_store_example
     data = store.read_data("test1")
     assert data is not None
-
-
-def test_read_data_missing(test_folder):
-    store = DataStore(test_folder)
     with pytest.raises(KeyError):
         store.read_data("nonexistent")
 
 
-def test_read_data_use_cache_true(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    data1 = store.read_data("test1", use_cache=True)
-    data2 = store.read_data("test1", use_cache=True)
+def test_read_data_cache(data_store_example, folder_with_data):
+    """Test that reading files always returns fresh data.
+
+    Since most file formats return lazy frames (e.g., polars.LazyFrame),
+    actual I/O happens at collection time. There is no caching, so each
+    read always gets the current file content.
+    """
+    store = data_store_example
+
+    # First read
+    data1 = store.read_data("test1").collect()
     assert data1 is not None
-    assert data2 is not None
+    assert len(data1) == 2
+
+    # Modify the file
+    (folder_with_data / "file1.csv").write_text("col1,col2\n10,20")
+
+    # Read again - should get modified content (no caching)
+    data2 = store.read_data("test1").collect()
+    assert len(data2) == 1, "Should read modified file content"
 
 
-def test_read_data_use_cache_false(test_folder, data_file_1):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    data = store.read_data("test1", use_cache=False)
-    assert data is not None
+def test_to_json_serialization(data_store_example, tmp_path, folder_with_data):
+    from r2x_core import DataStore
 
-
-def test_to_json(test_folder, data_files, tmp_path):
-    store = DataStore(test_folder)
-    store.add_data(*data_files)
+    store = data_store_example
     json_path = tmp_path / "config.json"
     store.to_json(json_path)
     assert json_path.exists()
 
-
-def test_to_json_content(test_folder, data_file_1, tmp_path):
-    store = DataStore(test_folder)
-    store.add_data(data_file_1)
-    json_path = tmp_path / "config.json"
-    store.to_json(json_path)
     with open(json_path) as f:
         data = json.load(f)
     assert isinstance(data, list)
-    assert len(data) == 1
+    assert len(data) == 2
     assert data[0]["name"] == "test1"
 
-
-def test_from_data_files(test_folder, data_files):
-    store = DataStore.from_data_files(data_files, test_folder)
-    assert "test1" in store
-    assert "test2" in store
-
-
-def test_from_data_files_no_folder(data_files):
-    store = DataStore.from_data_files(data_files)
-    assert "test1" in store
-    assert "test2" in store
-
-
-def test_from_json(test_folder, data_files, tmp_path):
-    json_path = tmp_path / "config.json"
-    json_data = [
-        {"name": "test1", "fpath": str(test_folder / "file1.csv")},
-        {"name": "test2", "fpath": str(test_folder / "file2.csv")},
-    ]
-    with open(json_path, "w") as f:
-        json.dump(json_data, f)
-    new_store = DataStore.from_json(json_path, test_folder)
+    new_store = DataStore.from_json(json_path, folder_with_data)
     assert "test1" in new_store
     assert "test2" in new_store
 
 
-def test_from_json_missing_folder(tmp_path):
-    json_path = tmp_path / "config.json"
-    json_path.write_text("[]")
-    with pytest.raises(FileNotFoundError):
-        DataStore.from_json(json_path, "/nonexistent/path")
+def test_from_data_files_constructor(data_store_example, folder_with_data):
+    from r2x_core import DataFile, DataStore
 
+    df_01 = DataFile(name="test1", fpath=folder_with_data / "file1.csv")
+    df_02 = DataFile(name="test2", fpath=folder_with_data / "file2.csv")
+    store = DataStore.from_data_files(data_files=[df_01, df_02])
+    assert "test1" in store
+    assert "test2" in store
 
-def test_from_json_missing_file(test_folder):
-    with pytest.raises(FileNotFoundError):
-        DataStore.from_json("/nonexistent/config.json", test_folder)
-
-
-def test_from_json_not_array(test_folder, tmp_path):
-    json_path = tmp_path / "config.json"
-    json_path.write_text('{"not": "array"}')
-    with pytest.raises(TypeError):
-        DataStore.from_json(json_path, test_folder)
-
-
-def test_upgrade_data_no_upgrader(test_folder):
-    store = DataStore(test_folder)
-    with pytest.raises(UpgradeError):
-        store.upgrade_data()
-
-
-def test_from_json_validation_error(tmp_path):
-    from pydantic import ValidationError
-
-    (tmp_path / "test.csv").write_text("test")
-    json_file = tmp_path / "invalid.json"
-    json_file.write_text('[{"name": 123, "fpath": "test.csv"}]')
-    with pytest.raises(ValidationError):
-        DataStore.from_json(json_fpath=json_file, folder_path=tmp_path)
-
-
-def test_upgrade_data_no_steps(test_folder):
-    class EmptyUpgrader(PluginUpgrader): ...
-
-    (test_folder / "VERSION").write_text("1.0.0")
-    strategy = SemanticVersioningStrategy()
-    upgrader = EmptyUpgrader(strategy=strategy, version="1.0.0")
-    store = DataStore(test_folder, upgrader=upgrader)
-    result = store.upgrade_data()
-    assert result is None
-
-
-def test_upgrade_data_backup_failure(test_folder, monkeypatch):
-    from r2x_core.result import Err
-
-    class TestUpgrader(PluginUpgrader): ...
-
-    @TestUpgrader.register_upgrade_step(
-        target_version="2.0.0",
-        upgrade_type=UpgradeType.FILE,
-        priority=1,
-    )
-    def upgrade_files(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
-        return folder
-
-    def mock_backup_folder(folder_path):
-        return Err("Backup failed")
-
-    monkeypatch.setattr("r2x_core.store.backup_folder", mock_backup_folder)
-
-    (test_folder / "VERSION").write_text("1.0.0")
-    strategy = SemanticVersioningStrategy()
-    upgrader = TestUpgrader(strategy=strategy, version="1.0.0")
-    store = DataStore(test_folder, upgrader=upgrader)
-
-    with pytest.raises(UpgradeError):
-        store.upgrade_data(backup=True)
-
-
-def test_upgrade_data_execution_failure(test_folder, monkeypatch):
-    from r2x_core.result import Err
-
-    class TestUpgrader(PluginUpgrader): ...
-
-    @TestUpgrader.register_upgrade_step(
-        target_version="2.0.0",
-        upgrade_type=UpgradeType.FILE,
-        priority=1,
-    )
-    def upgrade_files(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
-        return folder
-
-    def mock_run_datafile_upgrades(*args, **kwargs):
-        return Err("Upgrade execution failed")
-
-    monkeypatch.setattr("r2x_core.store.run_datafile_upgrades", mock_run_datafile_upgrades)
-
-    (test_folder / "VERSION").write_text("1.0.0")
-    strategy = SemanticVersioningStrategy()
-    upgrader = TestUpgrader(strategy=strategy, version="1.0.0")
-    store = DataStore(test_folder, upgrader=upgrader)
-
-    with pytest.raises(UpgradeError):
-        store.upgrade_data(backup=False)
-
-
-def test_upgrade_data_with_upgrader(test_folder):
-    class TestUpgrader(PluginUpgrader): ...
-
-    @TestUpgrader.register_upgrade_step(
-        target_version="2.0.0",
-        upgrade_type=UpgradeType.FILE,
-        priority=1,
-    )
-    def upgrade_files(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
-        (folder / "upgraded.txt").write_text("upgraded")
-        return folder
-
-    (test_folder / "VERSION").write_text("1.0.0")
-    strategy = SemanticVersioningStrategy()
-    upgrader = TestUpgrader(strategy=strategy, version="1.0.0")
-    store = DataStore(test_folder, upgrader=upgrader)
-    store.upgrade_data()
-    assert (test_folder / "upgraded.txt").exists()
-
-
-def test_upgrade_data_with_backup(test_folder):
-    class TestUpgrader(PluginUpgrader): ...
-
-    @TestUpgrader.register_upgrade_step(
-        target_version="2.0.0",
-        upgrade_type=UpgradeType.FILE,
-        priority=1,
-    )
-    def upgrade_files(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
-        (folder / "upgraded.txt").write_text("upgraded")
-        return folder
-
-    (test_folder / "VERSION").write_text("1.0.0")
-    strategy = SemanticVersioningStrategy()
-    upgrader = TestUpgrader(strategy=strategy, version="1.0.0")
-    store = DataStore(test_folder, upgrader=upgrader)
-    store.upgrade_data(backup=True)
-    assert (test_folder / "upgraded.txt").exists()
-
-
-def test_upgrade_data_with_context(test_folder):
-    class TestUpgrader(PluginUpgrader): ...
-
-    @TestUpgrader.register_upgrade_step(
-        target_version="2.0.0",
-        upgrade_type=UpgradeType.FILE,
-        priority=1,
-    )
-    def upgrade_files(folder: Path, upgrader_context: dict[str, Any] | None = None) -> Path:
-        value = upgrader_context.get("key", "default") if upgrader_context else "default"
-        (folder / "context.txt").write_text(value)
-        return folder
-
-    (test_folder / "VERSION").write_text("1.0.0")
-    strategy = SemanticVersioningStrategy()
-    upgrader = TestUpgrader(strategy=strategy, version="1.0.0")
-    store = DataStore(test_folder, upgrader=upgrader)
-    store.upgrade_data(upgrader_context={"key": "custom_value"})
-    assert (test_folder / "context.txt").read_text() == "custom_value"
-
-
-def test_read_data_with_placeholders(test_folder):
-    store = DataStore(test_folder)
-    data_file = DataFile(name="test1", fpath=test_folder / "file1.csv")
-    store.add_data(data_file)
-    data = store.read_data("test1", placeholders={"year": 2030})
+    data = store.read_data("test1")
     assert data is not None
 
 
-def test_datastore_with_custom_reader(test_folder):
-    reader = DataReader()
-    store = DataStore(test_folder, reader=reader)
-    assert store.reader is reader
+def test_from_data_files_constructor_with_relative_paths(data_store_example, folder_with_data, caplog):
+    from pathlib import Path
 
+    import polars as pl
 
-def test_datastore_with_upgrader(test_folder):
-    class TestUpgrader(PluginUpgrader): ...
+    from r2x_core import DataFile, DataStore
 
-    strategy = SemanticVersioningStrategy()
-    upgrader = TestUpgrader(strategy=strategy)
-    store = DataStore(test_folder, upgrader=upgrader)
-    assert store.upgrader is upgrader
+    (Path.cwd() / "local_file.csv").write_text("col1,col2\n1,2\n3,4")
+    df_01 = DataFile(name="test1", relative_fpath="file1.csv")
+    df_02 = DataFile(name="test2", relative_fpath="file2.csv")
+    df_03 = DataFile(name="test3", fpath="local_file.csv")
+    store = DataStore.from_data_files(data_files=[df_01, df_02, df_03], folder_path=folder_with_data)
+    assert "test1" in store
+    assert "test2" in store
+    assert "test3" in store
+
+    for data in [df_01, df_02, df_03]:
+        d = store.read_data(data.name)
+        assert d is not None
+        assert isinstance(d, pl.LazyFrame)
+        assert not d.collect().is_empty()

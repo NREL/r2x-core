@@ -61,7 +61,7 @@ def _(file_type_class: TableFormat, file_path: Path, **reader_kwargs: Any) -> La
     pl.LazyFrame
         Lazy DataFrame containing the tabular data.
     """
-    logger.debug("Reading table file: {}", file_path)
+    logger.debug("Scanning {}", file_path)
     if file_path.suffix.lower() == ".tsv":
         return scan_csv(file_path, separator="\t", **reader_kwargs)
     return scan_csv(file_path, **reader_kwargs)
@@ -122,7 +122,7 @@ def _(file_type_class: H5Format, file_path: Path, **reader_kwargs: Any) -> LazyF
     # and to keep this module lightweight when only non-HDF5 readers are used.
     import importlib
 
-    h5_readers = importlib.import_module(".h5_readers", package=__name__)
+    h5_readers = importlib.import_module(".h5_readers", package=__package__)
 
     logger.debug("Reading H5 file: {}", file_path)
     with h5pyFile(str(file_path), "r") as f:

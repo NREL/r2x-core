@@ -59,5 +59,7 @@ def test_file_type_without_fpath_or_glob() -> None:
     # NOTE: This is the only way to bypass the Pydantic validation.
     mapping = DataFile.model_construct(name="test", fpath=None, glob=None)
 
-    with pytest.raises(ValueError, match="Either fpath or glob must be set to determine file type"):
+    with pytest.raises(
+        ValueError, match="Either fpath, relative_fpath, or glob must be set to determine file type"
+    ):
         _ = mapping.file_type

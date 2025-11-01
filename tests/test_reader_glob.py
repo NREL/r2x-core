@@ -6,7 +6,7 @@ from r2x_core.reader import DataReader
 
 @pytest.fixture
 def data_reader():
-    return DataReader(max_cache_size=5)
+    return DataReader()
 
 
 @pytest.fixture
@@ -126,24 +126,6 @@ def test_glob_ignores_directories(tmp_path, data_reader):
         data_reader.read_data_file(data_file, test_dir)
 
 
-def test_glob_caching(data_reader, single_xml_dir):
-    data_file = DataFile(name="test_xml", glob="*.xml")
-
-    result1 = data_reader.read_data_file(data_file, single_xml_dir, use_cache=True)
-    result2 = data_reader.read_data_file(data_file, single_xml_dir, use_cache=True)
-
-    assert result1 is result2
-
-
-def test_glob_cache_disabled(data_reader, single_xml_dir):
-    data_file = DataFile(name="test_xml", glob="*.xml")
-
-    _result1 = data_reader.read_data_file(data_file, single_xml_dir, use_cache=False)
-    _result2 = data_reader.read_data_file(data_file, single_xml_dir, use_cache=False)
-
-    assert len(data_reader._cache) == 0
-
-
 def test_glob_optional_file_not_found(data_reader, empty_dir):
     data_file = DataFile(name="test_xml", glob="*.xml", is_optional=True)
 
@@ -236,18 +218,6 @@ def test_resolve_glob_pattern_single_match(data_reader, single_xml_dir):
     assert resolved.suffix == ".xml"
 
 
-def test_cache_key_consistent_for_glob(data_reader, single_xml_dir):
-    data_file = DataFile(name="test_xml", glob="*.xml")
-
-    file_path1 = data_reader._get_file_path(data_file, single_xml_dir)
-    key1 = data_reader._generate_cache_key(data_file, file_path1)
-
-    file_path2 = data_reader._get_file_path(data_file, single_xml_dir)
-    key2 = data_reader._generate_cache_key(data_file, file_path2)
-
-    assert key1 == key2
-
-
 def test_glob_with_json_file(data_reader, tmp_path):
     test_dir = tmp_path / "test"
     test_dir.mkdir()
@@ -331,13 +301,13 @@ def test_glob_model_validator_both_fpath_and_glob(tmp_path):
 
     test_file = tmp_path / "file.xml"
     test_file.write_text("<root/>")
-    with pytest.raises(ValueError, match="Both 'fpath' and 'glob' specified"):
+    with pytest.raises(ValueError):
         DataFile(name="test", fpath=test_file, glob="*.xml")
 
 
 def test_glob_model_validator_neither_fpath_nor_glob():
     """Test that specifying neither fpath nor glob raises ValueError."""
-    with pytest.raises(ValueError, match="Either 'fpath' or 'glob' must be specified"):
+    with pytest.raises(ValueError):
         DataFile(name="test")
 
 

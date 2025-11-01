@@ -31,3 +31,11 @@ class ReaderError(R2XCoreError):
 
 class CLIError(R2XCoreError):
     """Error raised during CLI plugin execution."""
+
+
+class UnwrapError(Exception):
+    """Exception raised when unwrapping an Err result."""
+
+
+class IsNotError(Exception):
+    """Exception raised when accessing .err if Ok()."""

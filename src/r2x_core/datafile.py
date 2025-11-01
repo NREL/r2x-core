@@ -31,14 +31,19 @@ class DataFile(BaseModel):
     name : str
         Unique identifier for this file mapping configuration.
     fpath : pathlib.Path, optional
-        Path to the data file relative to the ReEDS case directory. Must have a
+        Absolute or absolute-like path to the data file. Must exist and have a
         supported extension (.csv, .tsv, .h5, .hdf5, .json, .xml).
-        Either fpath or glob must be specified, but not both.
+        Exactly one of fpath, relative_fpath, or glob must be specified.
+    relative_fpath : pathlib.Path | str, optional
+        Path to the data file relative to a DataStore's folder_path. Useful when
+        multiple files are stored in a base directory and you want to specify only
+        the relative path. Must have a supported extension.
+        Exactly one of fpath, relative_fpath, or glob must be specified.
     glob : str, optional
         Glob pattern to locate a file by extension (e.g., '*.xml', 'data_?.csv').
         Must contain at least one wildcard character (*, ?, [, ]).
         Pattern must match exactly one file.
-        Either fpath or glob must be specified, but not both.
+        Exactly one of fpath, relative_fpath, or glob must be specified.
     description : str, optional
         Human-readable description of the data file contents.
     is_input : bool, default True
@@ -111,6 +116,14 @@ class DataFile(BaseModel):
     ...     reader_function=PlexosDB.from_xml,  # Callable function
     ... )
 
+    File mapping with relative path (when used with DataStore):
+
+    >>> mapping = DataFile(
+    ...     name="generation_data",
+    ...     relative_fpath="outputs/gen_h.csv",  # Relative to DataStore folder_path
+    ...     description="Hourly generation by technology",
+    ... )
+
     File mapping with glob pattern (when filename is unknown):
 
     >>> mapping = DataFile(
@@ -131,8 +144,9 @@ class DataFile(BaseModel):
 
     Notes
     -----
-    - Exactly one of `fpath` or `glob` must be specified
-    - File paths are validated to ensure they have supported extensions
+    - Exactly one of `fpath`, `relative_fpath`, or `glob` must be specified
+    - `fpath` must be an absolute or existing path that is validated immediately
+    - `relative_fpath` is validated when combined with DataStore.folder_path
     - Glob patterns must contain at least one wildcard (*, ?, [, ]) and must match exactly one file
     - File type is inferred from the file extension (or from glob pattern ending)
     - The `file_type` property is computed automatically and excluded from serialization
@@ -149,7 +163,13 @@ class DataFile(BaseModel):
     fpath: Annotated[
         FilePath | None,
         AfterValidator(validate_file_extension),
-        Field(description="File path (must exist)"),
+        Field(description="Absolute file path (must exist). Use this for absolute paths."),
+    ] = None
+    relative_fpath: Annotated[
+        Path | str | None,
+        Field(
+            description="Relative file path (relative to DataStore.folder_path). Use this for paths relative to a base folder."
+        ),
     ] = None
     glob: Annotated[
         str | None,
@@ -197,8 +217,8 @@ class DataFile(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     @model_validator(mode="after")
-    def validate_fpath_or_glob(self) -> "DataFile":
-        """Validate that exactly one of fpath or glob is specified.
+    def validate_path_sources(self) -> "DataFile":
+        """Validate that exactly one of fpath, relative_fpath, or glob is specified.
 
         Returns
         -------
@@ -208,16 +228,18 @@ class DataFile(BaseModel):
         Raises
         ------
         ValueError
-            If neither fpath nor glob is specified, or both are specified
+            If none of fpath/relative_fpath/glob are specified, or more than one are specified
         """
-        if self.fpath is None and self.glob is None:
-            msg = "Either 'fpath' or 'glob' must be specified"
+        paths_set = sum([self.fpath is not None, self.relative_fpath is not None, self.glob is not None])
+
+        if paths_set == 0:
+            msg = "Exactly one of 'fpath', 'relative_fpath', or 'glob' must be specified"
             raise ValueError(msg)
 
-        if self.fpath is not None and self.glob is not None:
+        if paths_set > 1:
             msg = (
-                "Both 'fpath' and 'glob' specified. "
-                "Use 'fpath' for direct paths or 'glob' for pattern matching, not both."
+                "Multiple path sources specified. "
+                "Use exactly one of: 'fpath' (absolute path), 'relative_fpath' (relative path), or 'glob' (pattern matching)."
             )
             raise ValueError(msg)
 
@@ -241,6 +263,12 @@ class DataFile(BaseModel):
         """
         if self.fpath is not None:
             extension = self.fpath.suffix.lower()
+        elif self.relative_fpath is not None:
+            # Convert to Path if string
+            rel_path = (
+                Path(self.relative_fpath) if isinstance(self.relative_fpath, str) else self.relative_fpath
+            )
+            extension = rel_path.suffix.lower()
         elif self.glob is not None:
             # Extract extension from glob pattern (e.g., '*.xml' -> '.xml')
             # Takes the final extension after the last dot
@@ -250,7 +278,7 @@ class DataFile(BaseModel):
                 msg = "Cannot determine file type from glob pattern without extension"
                 raise ValueError(msg)
         else:
-            msg = "Either fpath or glob must be set to determine file type"
+            msg = "Either fpath, relative_fpath, or glob must be set to determine file type"
             raise ValueError(msg)
 
         file_type_class = EXTENSION_MAPPING.get(extension)

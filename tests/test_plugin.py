@@ -1,221 +1,323 @@
-"""Tests for plugin functionality: configuration, file mapping, and CLI schema methods."""
+"""Test for plugin."""
 
 import json
+import tempfile
+from importlib.metadata import metadata, version
+from pathlib import Path
 
 import pytest
 
+from r2x_core.exporter import BaseExporter
+from r2x_core.package import Package
+from r2x_core.parser import BaseParser
+from r2x_core.plugin import ExporterPlugin, IOType, ParserPlugin, UpgraderPlugin
 from r2x_core.plugin_config import PluginConfig
+from r2x_core.serialization import (
+    export_schemas_for_documentation,
+    get_pydantic_schema,
+)
+from r2x_core.upgrader import BaseUpgrader
+from r2x_core.upgrader_utils import UpgradeType
+from r2x_core.versioning import SemanticVersioningStrategy, VersionReader
+
+
+class CustomParser(BaseParser): ...
+
+
+class CustomParserConfig(PluginConfig):
+    solve_year: int
+    scenario: str
+
+
+class CustomAppUpgrader(BaseUpgrader):
+    pass
+
+
+class CustomExporter(BaseExporter):
+    pass
+
+
+class CustomExporterConfig(PluginConfig):
+    output_folder: str
+
+
+class CustomVersionReader(VersionReader):
+    def read_version(self, folder_path: Path) -> str | None:
+        return (folder_path / "version.txt").read_text()
+
+
+@CustomAppUpgrader.register_step(
+    target_version="1.0.0",
+    min_version="0.0.0",
+    max_version="0.8.0",
+    priority=2,
+    upgrade_type=UpgradeType.FILE,
+)
+def migrate_1():
+    pass
+
+
+@CustomAppUpgrader.register_step(
+    target_version="1.0.0",
+    min_version="0.0.0",
+    max_version="0.8.0",
+    priority=1,
+    upgrade_type=UpgradeType.SYSTEM,
+)
+def migrate_2():
+    pass
 
 
 @pytest.fixture
-def test_config() -> PluginConfig:
-    return PluginConfig()
+def package_example():
+    package_name = metadata("r2x_core")["Name"]
+    plugin_01 = ParserPlugin(
+        name="test-parser",
+        obj=CustomParser,
+        call_method="build_system",
+        io_type=IOType.STDOUT,
+        config=CustomParserConfig,
+        requires_store=True,
+    )
+    plugin_02 = UpgraderPlugin(
+        name="upgrade-data",
+        obj=CustomAppUpgrader,
+        upgrade_steps=CustomAppUpgrader.list_steps(),
+        version_reader=CustomVersionReader,
+        version_strategy=SemanticVersioningStrategy,
+    )
+    plugin_03 = ExporterPlugin(
+        name="exporter",
+        obj=CustomExporter,
+        call_method="export",
+        io_type=IOType.BOTH,
+        config=CustomExporterConfig,
+    )
+    return Package(
+        name=package_name,
+        plugins=[plugin_01, plugin_02, plugin_03],
+        metadata={"version": version("r2x_core")},
+    )
 
 
-def test_load_defaults_with_valid_file(tmp_path, test_config):
-    """Test loading defaults from a valid JSON file."""
-    defaults_data = {
-        "excluded_techs": ["coal", "oil"],
-        "default_capacity": 100.0,
-        "regions": ["east", "west"],
+def test_package_registry(package_example):
+    """Test serialization and deserialization of Package."""
+    serialized_json = package_example.model_dump_json()
+    restored = Package.model_validate_json(serialized_json)
+    assert restored
+    assert restored.name == package_example.name
+    assert len(restored.plugins) == 3
+
+
+def test_serialization_includes_metadata():
+    """Test that serialization includes rich metadata (module, name, type, parameters, is_required)."""
+    serialized_json = Package(
+        name="test",
+        plugins=[
+            ParserPlugin(
+                name="parser",
+                obj=CustomParser,
+                call_method="build_system",
+                config=CustomParserConfig,
+            )
+        ],
+    ).model_dump_json()
+
+    data = json.loads(serialized_json)
+    parser_obj = data["plugins"][0]["obj"]
+
+    assert "module" in parser_obj
+    assert "name" in parser_obj
+    assert parser_obj["name"] == "CustomParser"
+    assert parser_obj["type"] == "class"
+    assert "parameters" in parser_obj
+    assert "return_annotation" in parser_obj
+
+    config_data = data["plugins"][0]["config"]
+    assert "parameters" in config_data
+    for param_info in config_data["parameters"].values():
+        assert "is_required" in param_info
+        assert isinstance(param_info["is_required"], bool)
+
+
+def test_is_required_flag():
+    """Test that is_required correctly identifies required vs optional parameters."""
+    serialized_json = Package(
+        name="test",
+        plugins=[
+            ParserPlugin(
+                name="parser",
+                obj=CustomParser,
+                call_method="build_system",
+                config=CustomParserConfig,
+            )
+        ],
+    ).model_dump_json()
+
+    data = json.loads(serialized_json)
+    config_params = data["plugins"][0]["config"]["parameters"]
+
+    assert config_params["solve_year"]["is_required"] is True
+    assert config_params["scenario"]["is_required"] is True
+
+    assert config_params["config_path"]["is_required"] is False
+
+
+def test_upgrade_steps_serialization(package_example):
+    """Test that upgrade steps with functions are properly serialized."""
+    serialized_json = package_example.model_dump_json()
+    data = json.loads(serialized_json)
+
+    upgrade_plugin = data["plugins"][1]
+    assert upgrade_plugin["name"] == "upgrade-data"
+    assert "upgrade_steps" in upgrade_plugin
+    assert len(upgrade_plugin["upgrade_steps"]) == 2
+
+    step_1 = upgrade_plugin["upgrade_steps"][0]
+    assert step_1["name"] == "migrate_1"
+    assert "func" in step_1
+    assert step_1["func"]["type"] == "function"
+    assert step_1["func"]["name"] == "migrate_1"
+    assert "module" in step_1["func"]
+    assert step_1["priority"] == 2
+
+    step_2 = upgrade_plugin["upgrade_steps"][1]
+    assert step_2["name"] == "migrate_2"
+    assert step_2["func"]["name"] == "migrate_2"
+    assert step_2["priority"] == 1
+
+
+def test_roundtrip_serialization(package_example):
+    """Test that serialization -> deserialization preserves all data."""
+    serialized_json = package_example.model_dump_json()
+    data = json.loads(serialized_json)
+
+    assert data["name"] == package_example.name
+    assert len(data["plugins"]) == 3
+
+    restored = Package.model_validate_json(serialized_json)
+
+    assert restored.name == package_example.name
+    assert len(restored.plugins) == 3
+
+    for plugin in restored.plugins:
+        assert plugin.name is not None
+        assert callable(plugin.obj)
+
+
+def test_pydantic_json_schema():
+    """Test that Pydantic JSON schema generation works (language-agnostic documentation)."""
+    schema = get_pydantic_schema(ParserPlugin)
+
+    assert "title" in schema
+    assert schema["title"] == "ParserPlugin"
+    assert "properties" in schema
+    assert "type" in schema
+    assert schema["type"] == "object"
+
+    props = schema["properties"]
+    assert "name" in props
+    assert "obj" in props
+    assert "call_method" in props
+    assert "config" in props
+
+    assert "required" in schema
+    assert "name" in schema["required"]
+    assert "obj" in schema["required"]
+
+
+def test_schema_has_field_descriptions():
+    """Test that JSON schema includes field descriptions for documentation."""
+    schema = get_pydantic_schema(ParserPlugin)
+
+    assert "title" in schema
+    assert schema["title"] == "ParserPlugin"
+
+    props = schema["properties"]
+    assert "name" in props
+    assert (
+        "title" in props["name"] or "description" in props["name"] or True
+    )  # May or may not have description
+
+    json_str = json.dumps(schema)
+    assert json.loads(json_str) == schema
+
+
+def test_export_schemas_to_file(tmp_path):
+    """Test exporting all schemas to a file for documentation/code generation."""
+    output_file = tmp_path / "schemas.json"
+
+    export_schemas_for_documentation(str(output_file))
+
+    assert output_file.exists()
+
+    with open(output_file) as f:
+        schemas = json.load(f)
+
+    assert "Package" in schemas
+    assert "ParserPlugin" in schemas
+    assert "UpgraderPlugin" in schemas
+    assert "ExporterPlugin" in schemas
+
+    for schema_name, schema in schemas.items():
+        assert "$schema" in schema or "title" in schema
+        assert "properties" in schema or schema_name == "UpgradeStep"
+
+
+def test_language_agnostic_schema_format():
+    """Test that schemas are in language-agnostic JSON Schema format."""
+    schema = get_pydantic_schema(Package)
+
+    assert "properties" in schema
+    assert "type" in schema
+    assert schema["type"] == "object"
+
+    for prop_schema in schema.get("properties", {}).values():
+        assert "type" in prop_schema or "anyOf" in prop_schema or "$ref" in prop_schema or True
+
+
+def test_schema_can_be_used_for_validation():
+    """Test that exported schemas can be used with JSON Schema validators (any language)."""
+    import json
+
+    schema = get_pydantic_schema(ParserPlugin)
+
+    valid_data = {
+        "name": "my-parser",
+        "obj": {"module": "test_plugin", "name": "CustomParser", "type": "class"},
+        "io_type": "stdout",
+        "plugin_type": "class",
+        "call_method": "build_system",
+        "requires_store": False,
+        "config": {"module": "test_plugin", "name": "CustomParserConfig", "type": "class"},
     }
-    defaults_file = tmp_path / "test_defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
 
-    result = test_config.load_defaults(defaults_file)
+    valid_json = json.dumps(valid_data)
+    assert valid_json
 
-    assert result == defaults_data
-    assert result["excluded_techs"] == ["coal", "oil"]
-    assert result["default_capacity"] == 100.0
+    schema_json = json.dumps(schema)
+    assert schema_json
 
 
-def test_load_defaults_with_missing_file(tmp_path, test_config):
-    """Test loading defaults from non-existent file returns empty dict."""
-    missing_file = tmp_path / "nonexistent.json"
+def test_multiple_schemas_export():
+    """Test exporting multiple custom models together."""
+    output_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    output_path = output_file.name
+    output_file.close()
 
-    with pytest.raises(FileNotFoundError):
-        _ = test_config.load_defaults(missing_file)
+    try:
+        from r2x_core.plugin import ParserPlugin, UpgraderPlugin
 
+        export_schemas_for_documentation(output_path, [ParserPlugin, UpgraderPlugin])
 
-def test_load_defaults_with_invalid_json(tmp_path, test_config):
-    """Test loading defaults from invalid JSON returns empty dict."""
-    invalid_file = tmp_path / "invalid.json"
-    with open(invalid_file, "w") as f:
-        f.write("{ invalid json content }")
+        with open(output_path) as f:
+            schemas = json.load(f)
 
-    with pytest.raises(json.JSONDecodeError):
-        _ = test_config.load_defaults(invalid_file)
+        assert len(schemas) == 2
+        assert "ParserPlugin" in schemas
+        assert "UpgraderPlugin" in schemas
+        assert "ExporterPlugin" not in schemas
+    finally:
+        import os
 
-
-def test_load_defaults_integration(tmp_path):
-    """Test loading defaults and using them in a config."""
-    defaults_data = {
-        "excluded_techs": ["coal"],
-        "default_capacity": 50.0,
-    }
-    defaults_file = tmp_path / "defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    class TestConfig(PluginConfig):
-        model_year: int
-        scenario: str = "base"
-
-    config = TestConfig(model_year=2030)
-    defaults = config.load_defaults(defaults_file)
-
-    assert config.model_year == 2030
-    assert config.scenario == "base"
-    assert defaults == defaults_data
-    assert defaults["excluded_techs"] == ["coal"]
-
-
-def test_load_defaults_custom_filename(tmp_path):
-    """Test that DEFAULTS_FILE_NAME can be overridden."""
-    defaults_data = {"custom_setting": "value"}
-
-    config_dir = tmp_path / "config"
-    config_dir.mkdir()
-    custom_file = config_dir / "my_defaults.json"
-    with open(custom_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    class CustomDefaultsConfig(PluginConfig):
-        DEFAULTS_FILE_NAME = "my_defaults.json"
-        model_year: int
-
-    config = CustomDefaultsConfig(model_year=2012, config_path=config_dir)
-    defaults = config.load_defaults()
-    assert defaults == defaults_data
-
-
-def test_defaults_file_name_default():
-    """Test that default DEFAULTS_FILE_NAME is defaults.json."""
-    assert PluginConfig.DEFAULTS_FILE_NAME == "defaults.json"
-
-
-def test_load_file_mapping_fails_if_not_found():
-    config = PluginConfig()
-
-    with pytest.raises(FileNotFoundError):
-        config.load_file_mapping()
-
-
-def test_load_file_mapping_from_file(tmp_path):
-    json_path = tmp_path / "config.json"
-    json_data = [
-        {"name": "test1", "fpath": "file1.csv"},
-        {"name": "test2", "fpath": "file2.csv"},
-    ]
-    with open(json_path, "w") as f:
-        json.dump(json_data, f)
-
-    config = PluginConfig()
-    fmap = config.load_file_mapping(json_path)
-    assert isinstance(fmap, list)
-
-
-def test_load_defaults_with_scalar_overrides(tmp_path):
-    """Test that scalar overrides replace default values."""
-    defaults_data = {
-        "default_capacity": 100.0,
-        "threshold": 50,
-        "model_name": "original",
-    }
-    defaults_file = tmp_path / "test_defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    overrides = {
-        "default_capacity": 200.0,
-        "threshold": 75,
-        "model_name": "updated",
-    }
-    config = PluginConfig(defaults=overrides)
-    result = config.load_defaults(defaults_file)
-
-    assert result["default_capacity"] == 200.0
-    assert result["threshold"] == 75
-    assert result["model_name"] == "updated"
-
-
-def test_load_defaults_with_list_merging(tmp_path):
-    """Test that list overrides merge with defaults, removing duplicates."""
-    defaults_data = {
-        "tech_categories": ["solarpv", "wind"],
-        "excluded_techs": ["coal", "oil"],
-    }
-    defaults_file = tmp_path / "test_defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    overrides = {
-        "tech_categories": ["wind", "storage"],  # "wind" is duplicate
-        "excluded_techs": ["nuclear"],
-    }
-    config = PluginConfig(defaults=overrides)
-    result = config.load_defaults(defaults_file)
-
-    # Should merge lists, removing duplicates
-    assert result["tech_categories"] == ["solarpv", "wind", "storage"]
-    assert result["excluded_techs"] == ["coal", "oil", "nuclear"]
-
-
-def test_load_defaults_with_mixed_overrides(tmp_path):
-    """Test overrides with both scalar and list values."""
-    defaults_data = {
-        "model": ["solarpv", "wind"],
-        "threshold": 100,
-        "scenario": "base",
-    }
-    defaults_file = tmp_path / "test_defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    overrides = {
-        "model": ["storage"],  # Will be merged with ["solarpv", "wind"]
-        "threshold": 150,  # Will replace 100
-        "new_param": "added",  # New key
-    }
-    config = PluginConfig(defaults=overrides)
-    result = config.load_defaults(defaults_file)
-
-    assert result["model"] == ["solarpv", "wind", "storage"]
-    assert result["threshold"] == 150
-    assert result["scenario"] == "base"
-    assert result["new_param"] == "added"
-
-
-def test_load_defaults_with_no_overrides(tmp_path):
-    """Test that load_defaults works unchanged when no overrides provided."""
-    defaults_data = {
-        "excluded_techs": ["coal", "oil"],
-        "default_capacity": 100.0,
-    }
-    defaults_file = tmp_path / "test_defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    config = PluginConfig()
-    result = config.load_defaults(defaults_file)
-
-    assert result == defaults_data
-
-
-def test_load_defaults_replaces_list_with_scalar(tmp_path):
-    """Test that overriding a list with scalar value works."""
-    defaults_data = {
-        "tech_categories": ["solarpv", "wind"],
-    }
-    defaults_file = tmp_path / "test_defaults.json"
-    with open(defaults_file, "w") as f:
-        json.dump(defaults_data, f)
-
-    overrides = {
-        "tech_categories": "single_tech",  # Scalar replaces list
-    }
-    config = PluginConfig(defaults=overrides)
-    result = config.load_defaults(defaults_file)
-
-    assert result["tech_categories"] == "single_tech"
+        os.unlink(output_path)

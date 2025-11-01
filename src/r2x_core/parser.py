@@ -38,7 +38,7 @@ leveraging the DataStore and DataReader for file management.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 from infrasys import Component
 from infrasys.exceptions import ISAlreadyAttached
@@ -47,15 +47,9 @@ from loguru import logger
 from .exceptions import ComponentCreationError, ParserError
 from .plugin_config import PluginConfig
 from .result import Err, Ok, Result
+from .store import DataStore
+from .system import System
 from .utils import create_component, filter_valid_kwargs
-
-# Avoid importing DataStore and System at module import time to prevent
-# import cycles. They are only needed for type annotations / runtime
-# creation inside methods. Using TYPE_CHECKING keeps these imports for
-# static type checkers while avoiding runtime imports.
-if TYPE_CHECKING:
-    from .store import DataStore
-    from .system import System
 
 T = TypeVar("T", bound=Component)
 

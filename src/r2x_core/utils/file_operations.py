@@ -1,5 +1,7 @@
 """Utility functions script."""
 
+import os
+import platform
 from pathlib import Path
 
 from loguru import logger
@@ -27,3 +29,13 @@ def backup_folder(folder_path: Path | str) -> Result[None, str]:
     logger.info("Created backup at: {}", backup_folder)
     shutil.copytree(backup_folder, folder_path)
     return Ok()
+
+
+def get_r2x_cache_path() -> Path:
+    """Return the cache path."""
+    system = platform.system()
+    if system == "Windows":
+        base = Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    else:
+        base = Path.home() / ".config"
+    return base / "r2x" / "cache"

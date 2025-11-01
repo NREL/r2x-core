@@ -1,6 +1,8 @@
 """R2X Core System class - subclass of infrasys.System with R2X-specific functionality."""
 
 import csv
+import os
+import shutil
 import sys
 import tempfile
 from collections.abc import Callable
@@ -18,6 +20,9 @@ from . import units
 
 if TYPE_CHECKING:
     from .upgrader import PluginUpgrader
+
+# Environment variable for passing time series workspace location between processes
+_TIMESERIES_WORKSPACE_ENV = "R2X_TIMESERIES_WORKSPACE"
 
 
 class System(InfrasysSystem):
@@ -316,6 +321,60 @@ class System(InfrasysSystem):
             return super().to_json(filename, overwrite=overwrite, indent=indent, data=data)
 
     @classmethod
+    def _resolve_time_series_directory(cls, json_path: Path, ts_dir: str | None) -> str | None:
+        """Resolve the time series directory path, checking environment variable if needed.
+
+        Parameters
+        ----------
+        json_path : Path
+            Path to the JSON file being loaded.
+        ts_dir : str or None
+            Original time series directory path from JSON.
+
+        Returns
+        -------
+        str or None
+            Resolved time series directory path.
+        """
+        if ts_dir is None:
+            return None
+
+        ts_path = Path(ts_dir)
+
+        # If directory exists, use it as-is
+        if ts_path.exists():
+            logger.debug("Using time series directory from JSON: {}", ts_dir)
+            return ts_dir
+
+        # If directory doesn't exist, check environment variable
+        workspace_env = os.environ.get(_TIMESERIES_WORKSPACE_ENV)
+        if workspace_env:
+            workspace_path = Path(workspace_env)
+            expected_ts_dir = workspace_path / "time_series"
+            if expected_ts_dir.exists():
+                logger.debug(
+                    "Original time series directory not found at {}. Using workspace from {}: {}",
+                    ts_dir,
+                    _TIMESERIES_WORKSPACE_ENV,
+                    expected_ts_dir,
+                )
+                return str(expected_ts_dir)
+            else:
+                logger.warning(
+                    "Time series directory not found at {} or {}",
+                    ts_dir,
+                    expected_ts_dir,
+                )
+        else:
+            logger.debug(
+                "Time series directory {} not found and {} environment variable not set",
+                ts_dir,
+                _TIMESERIES_WORKSPACE_ENV,
+            )
+
+        return ts_dir
+
+    @classmethod
     def from_json(
         cls,
         filename: Path | str,
@@ -374,6 +433,10 @@ class System(InfrasysSystem):
         This method applies Phase 2 (SYSTEM) upgrades only. Phase 2 is ONLY for
         cached systems loaded from JSON, NOT for the normal parser workflow.
 
+        When loading a system serialized with to_json() to stdout, this method will
+        automatically locate the time series data using the R2X_TIMESERIES_WORKSPACE
+        environment variable if the original directory path is no longer accessible.
+
         If you're building a system from raw data:
         1. Use upgrade_data() first (Phase 1)
         2. Build system with parser
@@ -383,7 +446,49 @@ class System(InfrasysSystem):
         1. Use System.from_json(upgrader=...) (Phase 2 applies here)
         """
         logger.info("Deserializing system from {}", filename)
-        system: System = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
+
+        # First, check if we need to resolve time series directory
+        json_path = Path(filename)
+        if json_path.exists():
+            try:
+                with open(json_path, "r") as f:
+                    json_data = orjson.loads(f.read())
+
+                # Check if there's a time_series directory that needs resolution
+                ts_info = json_data.get("time_series")
+                if ts_info and isinstance(ts_info, dict):
+                    original_ts_dir = ts_info.get("directory")
+                    resolved_ts_dir = cls._resolve_time_series_directory(json_path, original_ts_dir)
+
+                    if resolved_ts_dir and resolved_ts_dir != original_ts_dir:
+                        # Update the JSON data with resolved directory
+                        json_data["time_series"]["directory"] = resolved_ts_dir
+
+                        # Write modified JSON to a temporary file for deserialization
+                        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+                            tmp.write(orjson.dumps(json_data).decode("utf-8"))
+                            tmp_path = Path(tmp.name)
+
+                        try:
+                            system: System = super().from_json(
+                                filename=tmp_path, upgrade_handler=upgrade_handler, **kwargs
+                            )  # type: ignore[assignment]
+                        finally:
+                            tmp_path.unlink()
+                    else:
+                        system = super().from_json(
+                            filename=filename, upgrade_handler=upgrade_handler, **kwargs
+                        )  # type: ignore[assignment]
+                else:
+                    system = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
+            except Exception as e:
+                logger.debug(
+                    "Error during time series directory resolution: {}. Falling back to standard deserialization.",
+                    e,
+                )
+                system = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
+        else:
+            system = super().from_json(filename=filename, upgrade_handler=upgrade_handler, **kwargs)  # type: ignore[assignment]
 
         # Note: Phase 2 (SYSTEM) upgrades are not applied to cached systems
         # as they would require proper data migration and schema handling

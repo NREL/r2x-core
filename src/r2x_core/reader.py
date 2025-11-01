@@ -1,6 +1,5 @@
 """Data Reader for loading files based on their type."""
 
-import hashlib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -13,37 +12,17 @@ from .file_readers import read_file_by_type
 from .file_types import EXTENSION_MAPPING
 from .processors import apply_transformation, register_transformation
 
-MAX_CACHE_SIZE = 100
-
 
 class DataReader:
-    """Reader class for loading data files with caching support.
+    """Reader class for loading data files.
 
-    The DataReader handles the actual file I/O operations and caching
-    strategies, while delegating file-type-specific reading logic to
+    The DataReader handles the actual file I/O operations,
+    while delegating file-type-specific reading logic to
     single dispatch methods.
-
-    Parameters
-    ----------
-    max_cache_size : int, optional
-        Maximum number of files to keep in cache. Default is 100.
-
-    Attributes
-    ----------
-    max_cache_size : int
-        Maximum cache size limit.
     """
 
-    def __init__(self, max_cache_size: int = MAX_CACHE_SIZE) -> None:
-        """Initialize the data reader with cache configuration.
-
-        Parameters
-        ----------
-        max_cache_size : int, optional
-            Maximum number of files to keep in cache. Default is 100.
-        """
-        self._cache: dict[str, Any] = {}
-        self.max_cache_size = max_cache_size
+    def __init__(self) -> None:
+        """Initialize the data reader."""
 
     def _resolve_glob_pattern(self, data_file: DataFile, folder: Path) -> Path | None:
         """Resolve a glob pattern to a single file path.
@@ -98,7 +77,7 @@ class DataReader:
         return matches[0]
 
     def _get_file_path(self, data_file: DataFile, folder: Path) -> Path | None:
-        """Get the resolved file path from either fpath or glob pattern.
+        """Get the resolved file path from fpath, relative_fpath, or glob pattern.
 
         Parameters
         ----------
@@ -112,42 +91,36 @@ class DataReader:
         Path | None
             Resolved file path, or None if optional and not found.
         """
-        assert data_file.fpath is not None or data_file.glob is not None, (
-            "DataFile must have either fpath or glob"
-        )
+        assert (
+            data_file.fpath is not None or data_file.relative_fpath is not None or data_file.glob is not None
+        ), "DataFile must have fpath, relative_fpath, or glob"
+
         if data_file.glob is not None:
             return self._resolve_glob_pattern(data_file, folder)
 
+        if data_file.relative_fpath is not None:
+            # relative_fpath is relative to the folder
+            rel_path = (
+                Path(data_file.relative_fpath)
+                if isinstance(data_file.relative_fpath, str)
+                else data_file.relative_fpath
+            )
+            fpath = folder / rel_path
+            logger.trace("Resolved relative_fpath={} for file={}", fpath, data_file.name)
+            return fpath
+
         assert data_file.fpath is not None
-        return folder / data_file.fpath
-
-    def _generate_cache_key(self, data_file: DataFile, file_path: Path) -> str:
-        """Generate a unique cache key for a file.
-
-        Parameters
-        ----------
-        data_file : DataFile
-            Data file configuration.
-        file_path : Path
-            Resolved file path.
-
-        Returns
-        -------
-        str
-            Unique cache key for the file.
-        """
-        mtime = file_path.stat().st_mtime if file_path.exists() else 0
-        key_data = f"{file_path}:{mtime}:{data_file.name}"
-        return hashlib.sha256(key_data.encode()).hexdigest()
+        # fpath is absolute or absolute-like, use as-is
+        logger.trace("Resolved absolute fpath={} for file={}", data_file.fpath, data_file.name)
+        return data_file.fpath
 
     def read_data_file(
         self,
         data_file: DataFile,
         folder: Path,
-        use_cache: bool = True,
         placeholders: dict[str, Any] | None = None,
     ) -> Any:
-        """Read a data file using cache if available.
+        """Read a data file.
 
         Parameters
         ----------
@@ -155,11 +128,10 @@ class DataReader:
             Data file configuration with metadata.
         folder : Path
             Base directory containing the data files.
-        use_cache : bool, optional
-            Whether to use cached data if available. Default is True.
-        placeholders : dict[str, Any] | None
+        placeholders : dict[str, Any] | None, optional
             Dictionary mapping placeholder variable names to their values.
             Used to substitute placeholders like {solve_year} in filter_by.
+            Default is None.
 
         Returns
         -------
@@ -174,16 +146,12 @@ class DataReader:
             If glob pattern matches zero or multiple files (for required files),
             or if placeholders are found in filter_by but no placeholders dict provided.
         """
+        logger.debug("Starting reading for data_file={}", data_file.name)
         file_path = self._get_file_path(data_file, folder)
 
         if file_path is None:
             logger.debug("Optional file {} not found, returning None", data_file.name)
             return None
-
-        cache_key = self._generate_cache_key(data_file, file_path)
-        if use_cache and cache_key in self._cache:
-            logger.debug("Loading {} from cache", data_file.name)
-            return self._cache[cache_key]
 
         if not file_path.exists() and data_file.is_optional:
             logger.debug("Optional file {} not found, returning None", file_path)
@@ -196,12 +164,17 @@ class DataReader:
         # Check for custom reader function first
         reader_kwargs = data_file.reader_kwargs or {}
         if data_file.reader_function is not None:
-            logger.debug("Using custom callable reader function for: {}", data_file.name)
+            logger.debug(
+                "Attempting to read data_file{} with reader_function={}",
+                data_file.name,
+                data_file.reader_function,
+            )
             raw_data = data_file.reader_function(file_path, **reader_kwargs)
         else:
-            # Use single dispatch to read based on file type
             file_type_instance = data_file.file_type
-            logger.debug("Reading file {} as {}", file_path, type(file_type_instance).__name__)
+            logger.trace(
+                "Attempting to read data_file={} with {}", data_file.name, type(file_type_instance).__name__
+            )
             raw_data = read_file_by_type(file_type_instance, file_path, **reader_kwargs)
 
         processed_data = apply_transformation(data_file, raw_data, placeholders)
@@ -211,57 +184,7 @@ class DataReader:
 
         processed_data = processed_data.unwrap()
 
-        if use_cache:
-            self._add_to_cache(cache_key, processed_data)
-
         return processed_data
-
-    def _add_to_cache(self, cache_key: str, data: Any) -> None:
-        """Add data to cache, managing cache size limits.
-
-        Parameters
-        ----------
-        cache_key : str
-            Unique key for the cached data.
-        data : Any
-            Data to cache.
-        """
-        # Simple FIFO cache management
-        if len(self._cache) >= self.max_cache_size:
-            # Remove oldest entry
-            oldest_key = next(iter(self._cache))
-            del self._cache[oldest_key]
-            logger.debug("Cache full, removed oldest entry: {}", oldest_key)
-
-        self._cache[cache_key] = data
-        logger.debug("Added to cache: {}", cache_key)
-
-    def clear_cache(self) -> None:
-        """Clear cached files.
-
-        Parameters
-        ----------
-        pattern : str, optional
-            If provided, only clear cache entries matching this pattern.
-            If None, clears all cached data.
-        """
-        self._cache.clear()
-        logger.debug("Cleared all cache entries")
-        return
-
-    def get_cache_info(self) -> dict[str, Any]:
-        """Get information about the current cache state.
-
-        Returns
-        -------
-        dict[str, Any]
-            Cache statistics and information.
-        """
-        return {
-            "file_count": len(self._cache),
-            "max_size": self.max_cache_size,
-            "cache_keys": list(self._cache.keys()),
-        }
 
     def get_supported_file_types(self) -> list[str]:
         """Get list of supported file extensions.
