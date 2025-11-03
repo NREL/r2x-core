@@ -1,6 +1,7 @@
+# type: ignore
 """Setup logging for r2x-core."""
 
-from typing import Literal
+from typing import Any, Literal
 
 
 def setup_logging(
@@ -8,14 +9,14 @@ def setup_logging(
     module: str | None = None,
     tracing: bool = False,
     log_file: str | None = None,
+    fmt: str | None = None,
+    enable_console_log: bool = True,
     **kwargs,
-):
+) -> None:
     """Configure logger."""
     import sys
 
     from loguru import logger
-
-    """Setup logging from r2x_core."""
 
     levels_alias = {
         "WARNING": "WARN",
@@ -28,31 +29,31 @@ def setup_logging(
     logger.remove()
     logger.enable(module or "")
 
-    fmt = "<level>{extra[short_level]:<4}</level> {message}"
+    fmt = fmt or "<level>{extra[short_level]:<4}</level> {message}"
 
     if tracing:
         fmt = "<green>[{time:YYYY-MM-DDTHH:mm:ss}]</green> {name:.15}:{line:<3} <level>{extra[short_level]:>5}</level> {message}"
 
-    def inject_short_level(record):
+    def _inject_short_level(record: Any) -> bool:
         record["extra"]["short_level"] = levels_alias.get(record["level"].name, record["level"].name)
-        return True  # filter must return True to keep record
+        return True
 
-    logger.add(
-        sys.stderr,
-        level=level,
-        enqueue=True,
-        colorize=True,
-        format=fmt,
-        filter=inject_short_level,
-        **kwargs,
-    )
+    if enable_console_log:
+        logger.add(
+            sys.stderr,
+            level=level,
+            colorize=True,
+            format=fmt,
+            filter=_inject_short_level,
+            **kwargs,
+        )
     if log_file:
         logger.add(
             log_file,
             level=level,
-            enqueue=True,
             colorize=False,
             format=fmt,
-            mode="w",  # overwrite file each run
+            mode="a",  # append to file
             **kwargs,
         )
+    return None

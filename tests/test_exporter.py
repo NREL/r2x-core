@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from r2x_core import BaseExporter, DataStore
 from r2x_core.exceptions import ExporterError
-from r2x_core.result import Ok, Result
+from r2x_core.result import Err, Ok, Result
 from r2x_core.system import System
 
 
@@ -59,6 +59,22 @@ class ExporterWithKwargs(BaseExporter):
         """Implement required prepare_export method."""
         # Simple test implementation - just return success
         return Ok(None)
+
+
+class ExporterWithErrors(BaseExporter):
+    """Exporter that uses additional kwargs.
+
+    This exporter demonstrates how to extend BaseExporter with custom
+    initialization parameters.
+    """
+
+    def setup_configuration(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        return Err(ExporterError("failed"))
+
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        return Err(ExporterError("Error"))
 
 
 def test_base_exporter_initialization(tmp_path):
@@ -128,3 +144,13 @@ def test_concrete_exporter_export_time_series_method(tmp_path):
     # Should not raise any exception
     result = exporter.export_time_series()
     assert result.is_ok()
+
+
+def test_exporter_with_errors(tmp_path):
+    config = MockConfig(output_dir=tmp_path)
+    system = System()
+    data_store = DataStore()
+    exporter = ExporterWithErrors(config, system, data_store=data_store)
+
+    result = exporter.export()
+    assert result.is_err()

@@ -18,10 +18,10 @@ class BaseUpgrader:
         cls.steps = []
 
     @classmethod
-    def register_step(cls, func: Callable[..., Any] | None = None, **kwargs):
+    def register_step(cls, func: Callable[..., Any] | None = None, **kwargs: Any) -> Callable[..., Any]:
         """Register an upgrade step."""
 
-        def decorator(f: Callable[..., Any]):
+        def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
             step_name = kwargs.get("name", f.__name__)
             step = UpgradeStep(name=step_name, func=f, **{k: v for k, v in kwargs.items() if k != "name"})
             cls.steps.append(step)

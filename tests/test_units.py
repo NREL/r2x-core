@@ -123,7 +123,7 @@ def test_display_system_base():
     """Test display in system base."""
     from r2x_core.system import System
 
-    system = System(name="TestSystem", base_power=200.0)
+    system = System(name="TestSystem", system_base=200.0)
     gen = Generator(
         name="G1",
         base_power=100.0,

@@ -186,3 +186,15 @@ def test_from_data_files_constructor_with_relative_paths(data_store_example, fol
         assert d is not None
         assert isinstance(d, pl.LazyFrame)
         assert not d.collect().is_empty()
+
+
+def test_load_data_file(tmp_path):
+    from r2x_core import DataStore
+
+    (tmp_path / "file1.csv").write_text("col1,col2\n1,2\n3,4")
+
+    result = DataStore.load_file(tmp_path / "file1.csv").collect()
+    assert result.shape == (2, 2)
+
+    with pytest.raises(FileNotFoundError):
+        DataStore.load_file(tmp_path / "nota file")

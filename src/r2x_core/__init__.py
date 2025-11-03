@@ -24,6 +24,8 @@ from loguru import logger
 
 __version__ = version("r2x_core")
 
+TIMESERIES_DIR = "R2X_TIMESERIES_DIR"
+
 # Silence the library's logger by default; application code can configure it.
 logger.disable("r2x_core")
 

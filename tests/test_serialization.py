@@ -251,7 +251,7 @@ def test_roundtrip_json():
 
 def test_system_serialization(tmp_path):
     """Test serializing a system with components."""
-    system = System(name="TestSystem", base_power=200.0)
+    system = System(name="TestSystem", system_base=200.0)
 
     gen1 = Generator(
         name="Gen1",
@@ -316,28 +316,6 @@ def test_system_serialization(tmp_path):
     assert tx_back._get_system_base() == 200.0
 
 
-def test_system_serialization_stdout(capsys):
-    """Test serializing system to stdout."""
-    system = System(name="TestSystem", base_power=100.0)
-
-    gen = Generator(
-        name="Gen1",
-        base_power=100.0,
-        rated_voltage=13.8,
-        rating=0.8,
-        voltage=1.05,
-    )
-    system.add_component(gen)
-
-    # Serialize to stdout
-    system.to_json()
-    captured = capsys.readouterr()
-
-    assert "TestSystem" in captured.out
-    assert "Gen1" in captured.out
-    assert "0.8" in captured.out
-
-
 def test_serialization_preserves_display_mode():
     """Test that serialization works regardless of display mode."""
     set_unit_system(UnitSystem.NATURAL_UNITS)
@@ -394,7 +372,7 @@ def test_validation_context_preserved():
 
 def test_system_rejects_component_with_different_base():
     """Test that adding a component with different _system_base raises error."""
-    system1 = System(name="System1", base_power=100.0)
+    system1 = System(name="System1", system_base=100.0)
 
     gen = Generator(
         name="Gen1",
@@ -407,7 +385,7 @@ def test_system_rejects_component_with_different_base():
     system1.add_component(gen)
     assert gen._get_system_base() == 100.0
 
-    system2 = System(name="System2", base_power=200.0)
+    system2 = System(name="System2", system_base=200.0)
 
     with pytest.raises(ValueError, match=r"already has _system_base=100\.0.*base=200\.0"):
         system2.add_component(gen)

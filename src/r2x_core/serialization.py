@@ -4,7 +4,7 @@ import inspect
 import json
 from typing import Any, Union, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, GetCoreSchemaHandler
 from pydantic_core import core_schema
 
 INCLUDE_FULL_METADATA = True
@@ -34,13 +34,11 @@ def export_schemas_for_documentation(
 
 
 class _ImportableAnnotation:
-    """Annotation for serializable callables/types with rich metadata.
+    """Annotation for serializable callables/types with rich metadata."""
 
-    Includes full signature metadata by default (INCLUDE_FULL_METADATA).
-    Toggle INCLUDE_FULL_METADATA = False at module level for faster serialization.
-    """
-
-    def __get_pydantic_core_schema__(self, source_type, handler):
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
         expected_type = _get_expected_type(source_type)
 
         def validator(v: Any) -> Any:
@@ -51,7 +49,9 @@ class _ImportableAnnotation:
                 and not isinstance(obj, list | tuple)
                 and (not isinstance(obj, type) or not issubclass(obj, expected_type))
             ):
-                raise TypeError(f"Expected {expected_type.__name__} subclass, got {obj!r}")
+                raise TypeError(
+                    f"Expected {expected_type.__name__} subclass, got {obj!r}"
+                )  # pragma: no cover
             return obj
 
         def serializer(v: Any) -> Any:
@@ -180,6 +180,6 @@ def _get_expected_type(source_type: Any) -> Any:
         args = [arg for arg in get_args(source_type) if arg is not type(None)]
         source_type = args[0] if args else source_type
     if get_origin(source_type) is type:
-        args = get_args(source_type)
-        return args[0] if args else None
+        _args = get_args(source_type)
+        return _args[0] if _args else None
     return None
