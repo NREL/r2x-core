@@ -202,6 +202,24 @@ class Ok(Result[T, E]):
         print_tb: bool = False,
         filter_fn: Optional[Callable[[traceback.FrameSummary], bool]] = None,
     ) -> T:
+        """Return the Ok value (never raises since this is Ok).
+
+        Parameters
+        ----------
+        exc_type : Type[BaseException], optional
+            Exception type to raise (unused, but accepted for API compatibility).
+        context : str | None, optional
+            Context message (unused for Ok).
+        print_tb : bool, optional
+            Whether to print traceback (unused for Ok).
+        filter_fn : Callable | None, optional
+            Traceback filter function (unused for Ok).
+
+        Returns
+        -------
+        T
+            The wrapped success value.
+        """
         return self.value
 
 
@@ -303,6 +321,34 @@ class Err(Result[T, E]):
         print_tb: bool = False,
         filter_fn: Optional[Callable[[traceback.FrameSummary], bool]] = None,
     ) -> T:
+        """Raise an exception containing the error value.
+
+        If the error is a BaseException, raise it with context. For non-exception
+        errors, raise exc_type with formatted error details. Optionally prints
+        traceback for exception payloads.
+
+        Parameters
+        ----------
+        exc_type : Type[BaseException], optional
+            Exception type to raise. Defaults to Exception.
+        context : str | None, optional
+            Message context. If None, uses str(error). Default is None.
+        print_tb : bool, optional
+            If True and error is BaseException, print traceback to stderr.
+            Default is False.
+        filter_fn : Callable | None, optional
+            Function to filter traceback frames. Default is None.
+
+        Returns
+        -------
+        T
+            Never returns (always raises).
+
+        Raises
+        ------
+        BaseException
+            The exc_type with error information chained from payload.
+        """
         payload = self._error_value
         msg = context if context is not None else str(payload)
 
@@ -365,6 +411,13 @@ def print_exception_traceback(
     te = traceback.TracebackException.from_exception(exc, capture_locals=False)
 
     def _print_te(te_obj: traceback.TracebackException) -> None:
+        """Print traceback and exception info for TracebackException object.
+
+        Parameters
+        ----------
+        te_obj : traceback.TracebackException
+            Exception object to print (may have chained exceptions).
+        """
         print("Traceback (most recent call last):", file=file)
         for frame in te_obj.stack:
             if filter_fn and not filter_fn(frame):

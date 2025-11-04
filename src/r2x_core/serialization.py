@@ -127,9 +127,27 @@ class _ImportableAnnotation:
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
+        """Generate Pydantic core schema for custom serialization/deserialization.
+
+        Creates a schema that validates and serializes importable callables
+        (classes/functions) with optional full metadata including signatures.
+
+        Parameters
+        ----------
+        source_type : Any
+            Type annotation being processed (e.g., `Annotated[Type, Importable]`).
+        handler : GetCoreSchemaHandler
+            Pydantic handler for generating nested schemas.
+
+        Returns
+        -------
+        core_schema.CoreSchema
+            Core schema with validator and serializer functions.
+        """
         expected_type = _get_expected_type(source_type)
 
         def validator(v: Any) -> Any:
+            """Validate and deserialize importable callables."""
             obj = _deserialize_value(v)
             if (
                 expected_type
@@ -143,6 +161,7 @@ class _ImportableAnnotation:
             return obj
 
         def serializer(v: Any) -> Any:
+            """Serialize importable callables to JSON-compatible format."""
             return _serialize_value(v, full_metadata=INCLUDE_FULL_METADATA)
 
         return core_schema.no_info_after_validator_function(

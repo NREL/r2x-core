@@ -357,6 +357,18 @@ def json_rename_keys(data_file: DataFile, json_data: JSONType, proc_spec: JSONPr
     mapping = proc_spec.key_mapping
 
     def rename_keys_recursive(obj: JSONType) -> JSONType:
+        """Recursively rename keys in nested JSON structure.
+
+        Parameters
+        ----------
+        obj : JSONType
+            JSON object (dict, list, or scalar) to process.
+
+        Returns
+        -------
+        JSONType
+            Object with renamed keys applied recursively.
+        """
         if isinstance(obj, dict):
             return {mapping.get(k, k): rename_keys_recursive(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -375,6 +387,18 @@ def json_drop_columns(data_file: DataFile, json_data: JSONType, proc_spec: JSONP
     drop_keys = proc_spec.drop_keys
 
     def drop_keys_recursive(obj: JSONType) -> JSONType:
+        """Recursively remove specified keys from nested JSON structure.
+
+        Parameters
+        ----------
+        obj : JSONType
+            JSON object (dict, list, or scalar) to process.
+
+        Returns
+        -------
+        JSONType
+            Object with specified keys removed recursively.
+        """
         if isinstance(obj, dict):
             return {k: drop_keys_recursive(v) for k, v in obj.items() if k not in drop_keys}
         elif isinstance(obj, list):
@@ -393,6 +417,18 @@ def json_select_columns(data_file: DataFile, json_data: JSONType, proc_spec: JSO
     columns_to_select = proc_spec.select_keys
 
     def select_keys_recursive(obj: JSONType) -> JSONType:
+        """Recursively select specified keys from nested JSON structure.
+
+        Parameters
+        ----------
+        obj : JSONType
+            JSON object (dict, list, or scalar) to process.
+
+        Returns
+        -------
+        JSONType
+            Object with only selected keys preserved recursively.
+        """
         if isinstance(obj, dict):
             return {k: select_keys_recursive(v) for k, v in obj.items() if k in columns_to_select}
         elif isinstance(obj, list):
@@ -415,6 +451,18 @@ def json_apply_filters(
     filters = proc_spec.filter_by
 
     def matches(obj: JSONType) -> bool:
+        """Check if object matches all filter criteria.
+
+        Parameters
+        ----------
+        obj : JSONType
+            Object to check against filters.
+
+        Returns
+        -------
+        bool
+            True if object is a dict and matches all filter conditions.
+        """
         if not isinstance(obj, dict):
             return False
         return all(_matches_filter(obj.get(k), v) for k, v in filters.items())
