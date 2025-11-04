@@ -20,21 +20,25 @@ repos:
     rev: v1.36.3
     hooks:
       - id: typos
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.2
+  - repo: local
     hooks:
       - id: ruff-format
-        args: [--verbose]
+        name: ruff format
+        entry: uv run ruff format --verbose
+        language: system
         types_or: [python, pyi]
+
       - id: ruff-check
-        args: [--fix, --config=pyproject.toml]
+        name: ruff check
+        entry: uv run ruff check --fix --config=pyproject.toml
+        language: system
         types_or: [python, pyi]
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.18.2"
+
+  - repo: local
     hooks:
       - id: mypy
-        types: [python]
-        args: [--config-file=pyproject.toml, ./src/r2x_core]
-        pass_filenames: false
+        name: mypy
+        entry: uv run mypy --config-file=pyproject.toml ./src/r2x_core
         language: system
-        entry: uv run mypy
+        types: [python]
+        pass_filenames: false
