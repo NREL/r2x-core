@@ -37,7 +37,7 @@ For detailed API documentation with examples and method signatures, see the [Com
 ```
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 :hidden:
 
 api

@@ -7,7 +7,7 @@ These guides show you how to solve specific problems with R2X Core.
 ## Configuration Management
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 configuration
 
@@ -16,7 +16,7 @@ configuration
 ## Reading Data Files
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 data-reading
 h5_readers
@@ -25,7 +25,7 @@ h5_readers
 ## Working with DataFiles
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 datafile-basics
 ```
@@ -33,7 +33,7 @@ datafile-basics
 ## Managing Data with DataStore
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 datastore-management
 ```
@@ -41,7 +41,7 @@ datastore-management
 ## File Operations and Transformations
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 file-operations
 ```
@@ -49,7 +49,7 @@ file-operations
 ## Working with Units
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 unit-operations
 ```
@@ -57,7 +57,7 @@ unit-operations
 ## Building Systems with Parsers
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 file-operations
 ```
@@ -65,7 +65,7 @@ file-operations
 ## Working with System Components
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 system-operations
 ```
@@ -73,7 +73,7 @@ system-operations
 ## Working with Time Series Files
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 timeseries-files
 ```
@@ -81,7 +81,7 @@ timeseries-files
 ## Exporting Systems
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 exporter-basics
 ```
@@ -89,7 +89,7 @@ exporter-basics
 ## Plugin System
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 plugin-standards
 plugin-registration
@@ -99,7 +99,7 @@ plugin-usage
 ## Versioning and Upgrades
 
 ```{toctree}
-:maxdepth: 1
+:maxdepth: 2
 
 version-management
 upgrade-data
