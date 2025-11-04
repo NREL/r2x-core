@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ._mixins import HasUnits
     from ._specs import UnitSpec
 
-ureg = pint.UnitRegistry()
+ureg = pint.UnitRegistry()  # type: ignore
 
 
 def _convert_to_internal(

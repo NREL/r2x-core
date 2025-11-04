@@ -1,4 +1,23 @@
-"""Simplified data transformations for different data types."""
+"""Data transformation pipeline for tabular and JSON data.
+
+This module implements a functional processing pipeline that applies transformations
+to data based on specifications in DataFile configurations. Transformations are
+organized by data type (Polars LazyFrame for tabular, dict for JSON) with a
+registration system allowing custom transformations.
+
+Pipeline architecture:
+- Tabular: lowercase → drop_columns → rename → pivot → cast → filter → select
+- JSON: rename_keys → drop_columns → select_columns → filter → select_keys
+
+All placeholder substitution in filter_by specifications uses curly braces
+(e.g., {solve_year}) and requires a placeholders dictionary at processing time.
+
+See Also
+--------
+:class:`~r2x_core.datafile.DataFile` : File configuration with processing specs.
+:class:`~r2x_core.datafile.TabularProcessing` : Tabular data transformation config.
+:class:`~r2x_core.datafile.JSONProcessing` : JSON data transformation config.
+"""
 
 import re
 from collections.abc import Callable
@@ -21,7 +40,35 @@ _PLACEHOLDER_PATTERN = re.compile(r"\{([^}]+)\}")
 def substitute_placeholders(
     value: Any, placeholders: dict[str, Any] | None = None
 ) -> Result[Any, ValueError]:
-    """Substitute {var} placeholders and return a Result."""
+    """Replace {variable} placeholders in values using provided mapping.
+
+    Recursively substitutes placeholders in strings, lists, and dictionaries.
+    Placeholders must be complete values (e.g., {year}, not prefix_{year}).
+
+    Parameters
+    ----------
+    value : Any
+        String, list, dict, or scalar value potentially containing placeholders.
+    placeholders : dict[str, Any] | None
+        Mapping from placeholder names to replacement values. Required if
+        placeholders are found in value.
+
+    Returns
+    -------
+    Result[Any, ValueError]
+        Ok(substituted_value) on success, Err(ValueError) if placeholders found
+        without mapping or placeholder name not in mapping dictionary.
+
+    Examples
+    --------
+    >>> result = substitute_placeholders("{year}", {"year": 2030})
+    >>> result.unwrap()
+    2030
+
+    >>> result = substitute_placeholders({"year": "{y}"}, {"y": 2030})
+    >>> result.unwrap()
+    {'year': 2030}
+    """
     if not isinstance(value, str | list | dict):
         return Ok(value)
 
@@ -90,7 +137,31 @@ def substitute_placeholders(
 def process_tabular_data(
     data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
-    """Process tabular data to LazyFrame with applied transformations."""
+    """Apply tabular data transformations sequentially.
+
+    Executes a pipeline of transformations (lowercase, drop, rename, pivot, cast,
+    filter, select) on a Polars LazyFrame according to TabularProcessing configuration.
+
+    Parameters
+    ----------
+    data_file : DataFile
+        File configuration providing context for logging and validation.
+    data_frame : pl.LazyFrame
+        Input tabular data in lazy evaluation mode.
+    proc_spec : TabularProcessing
+        Processing specification defining transformations to apply.
+
+    Returns
+    -------
+    pl.LazyFrame
+        Transformed LazyFrame with all operations applied in sequence.
+
+    See Also
+    --------
+    :func:`pl_lowercase` : Lowercase string columns and column names.
+    :func:`pl_drop_columns` : Remove specified columns.
+    :func:`pl_rename_columns` : Apply column name mapping.
+    """
     pipeline = [
         pl_lowercase,
         pl_drop_columns,
@@ -109,7 +180,32 @@ def process_tabular_data(
 
 
 def process_json_data(data_file: DataFile, json_data: JSONType, proc_spec: JSONProcessing) -> JSONType:
-    """Process JSON/dict data using functional pipeline."""
+    """Apply JSON data transformations sequentially.
+
+    Executes a pipeline of transformations (rename_keys, drop_columns, select_columns,
+    filter, select_keys) on nested dict/list structures per JSONProcessing configuration.
+    Transformations work recursively on nested structures.
+
+    Parameters
+    ----------
+    data_file : DataFile
+        File configuration providing context for logging and validation.
+    json_data : JSONType
+        Input JSON data (dict, list of dicts, or nested structures).
+    proc_spec : JSONProcessing
+        Processing specification defining transformations to apply.
+
+    Returns
+    -------
+    JSONType
+        Transformed JSON data with all operations applied in sequence.
+
+    See Also
+    --------
+    :func:`json_rename_keys` : Apply key name mapping recursively.
+    :func:`json_drop_columns` : Remove specified keys recursively.
+    :func:`json_apply_filters` : Filter dicts by key-value criteria.
+    """
     pipeline = [
         json_rename_keys,
         json_drop_columns,
@@ -447,14 +543,50 @@ def register_transformation(data_types: type | tuple[type, ...], func: Callable[
 
 
 def _matches_filter(value: Any, filter_value: Any) -> bool:
-    """Check if value matches filter criteria."""
+    """Check if value matches filter criteria.
+
+    Supports both single value and list comparisons. For lists, checks membership.
+    Used internally by JSON and tabular filter operations.
+
+    Parameters
+    ----------
+    value : Any
+        Actual value from data to test.
+    filter_value : Any or list
+        Target value or list of values to match against.
+
+    Returns
+    -------
+    bool
+        True if value equals filter_value (single) or is in filter_value (list).
+    """
     if isinstance(filter_value, list):
         return bool(value in filter_value)
     return bool(value == filter_value)
 
 
 def _get_polars_type(type_str: str) -> DataTypeClass:
-    """Convert string to polars DataType."""
+    """Convert type name string to Polars DataType class.
+
+    Maps common type names to Polars type objects. Supports aliases
+    (e.g., 'string', 'str'; 'int', 'integer'; 'float', 'double').
+
+    Parameters
+    ----------
+    type_str : str
+        Type name (case-insensitive): string, str, int, int32, integer, float,
+        double, bool, boolean, date, datetime.
+
+    Returns
+    -------
+    DataTypeClass
+        Corresponding Polars data type.
+
+    Raises
+    ------
+    ValueError
+        If type_str is not recognized in the type mapping.
+    """
     mapping = {
         "string": pl.String,
         "str": pl.String,
