@@ -249,3 +249,35 @@ def test_datafile_with_reader_config(tmp_path):
 
     assert data_file.reader.kwargs == {"param1": "value1"}
     assert data_file.reader.function == custom_reader
+
+
+def test_create_data_files_from_records_success(tmp_path):
+    from r2x_core.datafile import create_data_files_from_records
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("col1,col2\n1,2\n")
+
+    records = [
+        {"name": "test1", "fpath": "data.csv"},
+        {"name": "test2", "fpath": "data.csv"},
+    ]
+
+    result = create_data_files_from_records(records, tmp_path)
+    assert result.is_ok()
+    assert len(result.unwrap()) == 2
+
+
+def test_create_data_files_from_records_validation_error(tmp_path):
+    from r2x_core.datafile import create_data_files_from_records
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("col1,col2\n1,2\n")
+
+    records = [
+        {"fpath": "data.csv"},
+    ]
+
+    result = create_data_files_from_records(records, tmp_path)
+    assert result.is_err()
+    errors = result.err()
+    assert len(errors) > 0

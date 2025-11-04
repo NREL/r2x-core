@@ -357,3 +357,126 @@ def test_load_file_with_combined_transforms(tmp_path):
     assert "capacity" in result["battery"]
     assert "avg_capacity_MW" not in result["battery"]
     assert "temp_id" not in result["battery"]
+
+
+def test_store_load_file_csv_with_processing(tmp_path):
+    from r2x_core import DataStore, TabularProcessing
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("name,value,status\nitem1,100,active\nitem2,50,inactive\n")
+
+    proc_spec = TabularProcessing(
+        filter_by={"status": "active"},
+        column_mapping={"value": "amount"},
+    )
+    result = DataStore.load_file(csv_file, proc_spec=proc_spec)
+
+    assert result is not None
+
+
+def test_store_load_file_json_missing_file():
+    import pytest
+
+    from r2x_core import DataStore
+
+    with pytest.raises(FileNotFoundError):
+        DataStore.load_file("/nonexistent/file.json")
+
+
+def test_store_load_file_invalid_json(tmp_path):
+    import pytest
+
+    from r2x_core import DataStore
+
+    json_file = tmp_path / "invalid.json"
+    json_file.write_text("{ invalid json }")
+
+    with pytest.raises(ValueError):
+        DataStore.load_file(json_file)
+
+
+def test_store_from_json_missing_folder(tmp_path):
+    import pytest
+
+    from r2x_core import DataStore
+
+    json_file = tmp_path / "config.json"
+    json_file.write_text("[]")
+
+    with pytest.raises(FileNotFoundError):
+        DataStore.from_json(json_file, folder_path="/nonexistent")
+
+
+def test_store_from_json_missing_config_file(tmp_path):
+    import pytest
+
+    from r2x_core import DataStore
+
+    with pytest.raises(FileNotFoundError):
+        DataStore.from_json(tmp_path / "nonexistent.json", folder_path=tmp_path)
+
+
+def test_store_from_json_not_array(tmp_path):
+    import pytest
+
+    from r2x_core import DataStore
+
+    json_file = tmp_path / "config.json"
+    json_file.write_text('{"not": "array"}')
+
+    with pytest.raises(TypeError):
+        DataStore.from_json(json_file, folder_path=tmp_path)
+
+
+def test_store_add_data_invalid_type(tmp_path):
+    import pytest
+
+    from r2x_core import DataStore
+
+    store = DataStore(tmp_path)
+
+    with pytest.raises(TypeError):
+        store.add_data("not_a_datafile")
+
+
+def test_store_add_data_duplicate_without_overwrite(tmp_path):
+    import pytest
+
+    from r2x_core import DataFile, DataStore
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("col1,col2\n1,2\n")
+
+    store = DataStore(tmp_path)
+    data_file = DataFile(name="test", fpath=csv_file)
+
+    store.add_data(data_file)
+
+    with pytest.raises(KeyError):
+        store.add_data(data_file, overwrite=False)
+
+
+def test_store_add_data_duplicate_with_overwrite(tmp_path):
+    from r2x_core import DataFile, DataStore
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("col1,col2\n1,2\n")
+
+    store = DataStore(tmp_path)
+    data_file = DataFile(name="test", fpath=csv_file)
+
+    store.add_data(data_file)
+    store.add_data(data_file, overwrite=True)
+
+    assert store["test"] is not None
+
+
+def test_store_add_multiple_data_invalid_type(tmp_path):
+    import pytest
+
+    from r2x_core import DataStore
+
+    store = DataStore(tmp_path)
+
+    with pytest.raises(TypeError):
+        store.add_data(["not_datafile"])

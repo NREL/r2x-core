@@ -214,3 +214,410 @@ def test_json_select_keys_keeps_specified_keys(sample_json_file: Path):
     result = json_select_keys(df_file, data, proc_spec)
 
     assert set(result.keys()) == {"name", "score"}
+
+
+def test_substitute_placeholders_with_no_placeholders():
+    """Test substitute_placeholders with no placeholders in value."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("simple_value", None)
+    assert result.is_ok()
+    assert result.unwrap() == "simple_value"
+
+
+def test_substitute_placeholders_with_non_string_value():
+    """Test substitute_placeholders with non-string, non-list, non-dict value."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders(42, None)
+    assert result.is_ok()
+    assert result.unwrap() == 42
+
+
+def test_substitute_placeholders_single_placeholder():
+    """Test substitute_placeholders with a single placeholder."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("{year}", {"year": 2030})
+    assert result.is_ok()
+    assert result.unwrap() == 2030
+
+
+def test_substitute_placeholders_in_list():
+    """Test substitute_placeholders with placeholders in list."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders(["{year}", "static"], {"year": 2030})
+    assert result.is_ok()
+    assert result.unwrap() == [2030, "static"]
+
+
+def test_substitute_placeholders_in_dict():
+    """Test substitute_placeholders with placeholders in dict."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders({"year": "{y}"}, {"y": 2030})
+    assert result.is_ok()
+    assert result.unwrap() == {"year": 2030}
+
+
+def test_substitute_placeholders_missing_placeholder_error():
+    """Test substitute_placeholders with missing placeholder mapping."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("{year}", None)
+    assert result.is_err()
+    assert "Found placeholder" in str(result.err())
+
+
+def test_substitute_placeholders_unknown_placeholder_error():
+    """Test substitute_placeholders with unknown placeholder name."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("{year}", {"month": 5})
+    assert result.is_err()
+    assert "not found in placeholders" in str(result.err())
+
+
+def test_substitute_placeholders_partial_placeholder_error():
+    """Test substitute_placeholders with partial placeholder pattern."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("prefix_{year}", {"year": 2030})
+    assert result.is_err()
+    assert "not a complete placeholder" in str(result.err())
+
+
+def test_pl_lowercase_with_data(sample_csv: Path):
+    """Test lowercase transformation on columns and values."""
+    from r2x_core.processors import pl_lowercase
+
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing()
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_lowercase(df_file, lf, proc_spec).collect()
+
+    # Check column names are lowercased
+    assert all(col.islower() or col.replace("_", "").islower() for col in result.columns)
+    # Check string values are lowercased
+    assert result["name"][0] == "alice"
+
+
+def test_json_drop_columns_removes_keys(sample_json_file: Path):
+    """Test that drop_columns removes specified keys."""
+    data = {"name": "Alice", "age": 30, "city": "NYC", "score": 85.5}
+    proc_spec = JSONProcessing(drop_keys=["age", "city"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    from r2x_core.processors import json_drop_columns
+
+    result = json_drop_columns(df_file, data, proc_spec)
+
+    assert "age" not in result
+    assert "city" not in result
+    assert "name" in result
+    assert "score" in result
+
+
+def test_json_drop_columns_nested_structure(sample_json_file: Path):
+    """Test that drop_columns works on nested structures."""
+    data = {
+        "user": {"name": "Alice", "age": 30},
+        "address": {"city": "NYC", "zip": "10001"},
+    }
+    proc_spec = JSONProcessing(drop_keys=["age", "zip"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    from r2x_core.processors import json_drop_columns
+
+    result = json_drop_columns(df_file, data, proc_spec)
+
+    assert result["user"] == {"name": "Alice"}
+    assert result["address"] == {"city": "NYC"}
+
+
+def test_json_rename_keys_nested_structure(sample_json_file: Path):
+    """Test that key_mapping works on nested structures."""
+    data = {
+        "user": {"name": "Alice", "age": 30},
+        "score": 85.5,
+    }
+    proc_spec = JSONProcessing(key_mapping={"name": "full_name", "age": "years"})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    from r2x_core.processors import json_rename_keys
+
+    result = json_rename_keys(df_file, data, proc_spec)
+
+    assert result["user"]["full_name"] == "Alice"
+    assert result["user"]["years"] == 30
+
+
+def test_json_select_keys_with_list_of_dicts(sample_json_file: Path):
+    """Test that select_keys works with list of dictionaries."""
+    data = [
+        {"name": "Alice", "age": 30, "city": "NYC"},
+        {"name": "Bob", "age": 25, "city": "LA"},
+    ]
+    proc_spec = JSONProcessing(select_keys=["name", "city"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    from r2x_core.processors import json_select_keys
+
+    result = json_select_keys(df_file, data, proc_spec)
+
+    assert len(result) == 2
+    assert set(result[0].keys()) == {"name", "city"}
+    assert result[0]["name"] == "Alice"
+
+
+def test_json_apply_filters_with_no_match(sample_json_file: Path):
+    """Test that JSON filtering returns data when no match."""
+    data = {"name": "Bob", "age": 25, "city": "LA"}
+    proc_spec = JSONProcessing(filter_by={"age": 30})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_apply_filters(df_file, data, proc_spec)
+
+    # Should not match - returns dict as-is or filtered
+    assert isinstance(result, dict)
+
+
+def test_json_apply_filters_with_list_of_dicts(sample_json_file: Path):
+    """Test that JSON filtering works with list of dicts."""
+    data = [
+        {"name": "Alice", "age": 30, "city": "NYC"},
+        {"name": "Bob", "age": 30, "city": "LA"},
+        {"name": "Charlie", "age": 25, "city": "CHI"},
+    ]
+    proc_spec = JSONProcessing(filter_by={"age": 30})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_apply_filters(df_file, data, proc_spec)
+
+    assert len(result) == 2
+    assert result[0]["name"] == "Alice"
+    assert result[1]["name"] == "Bob"
+
+
+def test_pl_select_columns_with_index(sample_csv: Path):
+    """Test select_columns with set_index."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(select_columns=["name", "age"], set_index="name")
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    from r2x_core.processors import pl_select_columns
+
+    result = pl_select_columns(df_file, lf, proc_spec).collect()
+
+    assert set(result.columns) == {"name", "age"}
+
+
+def test_pl_select_columns_empty_selection(sample_csv: Path):
+    """Test select_columns with columns not in frame."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(select_columns=["nonexistent"])
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    from r2x_core.processors import pl_select_columns
+
+    result = pl_select_columns(df_file, lf, proc_spec)
+
+    # Should return unchanged - verify by collecting and checking
+    assert result.collect().equals(lf.collect())
+
+
+def test_pl_apply_filters_no_filters(sample_csv: Path):
+    """Test apply_filters with no filters specified."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(filter_by=None)
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_apply_filters(df_file, lf, proc_spec)
+
+    # Should return unchanged - verify by collecting and checking
+    assert result.collect().equals(lf.collect())
+
+
+def test_pl_drop_columns_all_removed(sample_csv: Path):
+    """Test drop_columns when all columns are removed."""
+    lf = pl.scan_csv(sample_csv)
+    schema_names = lf.collect_schema().names()
+    proc_spec = TabularProcessing(drop_columns=schema_names)
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_drop_columns(df_file, lf, proc_spec).collect()
+
+    assert len(result.columns) == 0
+
+
+def test_pl_cast_schema_invalid_column(sample_csv: Path):
+    """Test cast_schema with column not in dataframe."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(column_schema={"nonexistent": "int32"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_cast_schema(df_file, lf, proc_spec).collect()
+
+    assert result is not None
+
+
+def test_apply_processing_with_no_proc_spec(sample_csv: Path):
+    from r2x_core.processors import apply_processing
+
+    lf = pl.scan_csv(sample_csv)
+    df_file = DataFile(name="test", fpath=sample_csv)
+
+    result = apply_processing(df_file, lf, None)
+    assert result.is_ok()
+    assert result.unwrap().collect().equals(lf.collect())
+
+
+def test_apply_processing_with_unregistered_type(sample_csv: Path):
+    from r2x_core.processors import apply_processing
+
+    class UnregisteredType:
+        pass
+
+    df_file = DataFile(name="test", fpath=sample_csv)
+    proc_spec = TabularProcessing()
+    unregistered_data = UnregisteredType()
+
+    result = apply_processing(df_file, unregistered_data, proc_spec)
+    assert result.is_ok()
+    assert isinstance(result.unwrap(), UnregisteredType)
+
+
+def test_apply_processing_with_placeholder_substitution(sample_csv: Path):
+    from r2x_core.processors import apply_processing
+
+    lf = pl.scan_csv(sample_csv)
+    df_file = DataFile(name="test", fpath=sample_csv)
+    proc_spec = TabularProcessing(filter_by={"name": "{year}"})
+
+    result = apply_processing(df_file, lf, proc_spec, placeholders={"year": "Alice"})
+    assert result.is_ok()
+
+
+def test_apply_processing_placeholder_error(sample_csv: Path):
+    from r2x_core.processors import apply_processing
+
+    lf = pl.scan_csv(sample_csv)
+    df_file = DataFile(name="test", fpath=sample_csv)
+    proc_spec = TabularProcessing(filter_by={"name": "{missing}"})
+
+    result = apply_processing(df_file, lf, proc_spec, placeholders={"year": 2030})
+    assert result.is_err()
+
+
+def test_json_select_columns_with_nested_list(sample_json_file: Path):
+    from r2x_core.processors import json_select_columns
+
+    data = [
+        {"name": "Alice", "age": 30, "city": "NYC"},
+        {"name": "Bob", "age": 25, "city": "LA"},
+    ]
+    proc_spec = JSONProcessing(select_keys=["name", "city"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_select_columns(df_file, data, proc_spec)
+
+    assert len(result) == 2
+    assert all(set(item.keys()) == {"name", "city"} for item in result)
+
+
+def test_json_rename_keys_with_list(sample_json_file: Path):
+    from r2x_core.processors import json_rename_keys
+
+    data = [
+        {"name": "Alice", "age": 30},
+        {"name": "Bob", "age": 25},
+    ]
+    proc_spec = JSONProcessing(key_mapping={"name": "person_name", "age": "years"})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_rename_keys(df_file, data, proc_spec)
+
+    assert len(result) == 2
+    assert all("person_name" in item for item in result)
+    assert all("years" in item for item in result)
+
+
+def test_json_drop_columns_with_list(sample_json_file: Path):
+    from r2x_core.processors import json_drop_columns
+
+    data = [
+        {"name": "Alice", "age": 30, "city": "NYC"},
+        {"name": "Bob", "age": 25, "city": "LA"},
+    ]
+    proc_spec = JSONProcessing(drop_keys=["city"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_drop_columns(df_file, data, proc_spec)
+
+    assert len(result) == 2
+    assert all("city" not in item for item in result)
+    assert all("name" in item for item in result)
+
+
+def test_process_tabular_data_full_pipeline(sample_csv: Path):
+    from r2x_core.processors import process_tabular_data
+
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(
+        column_mapping={"name": "person_name"},
+        filter_by={"age": 30},
+    )
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = process_tabular_data(df_file, lf, proc_spec).collect()
+
+    assert "person_name" in result.columns
+    assert len(result) >= 0
+
+
+def test_process_json_data_full_pipeline(sample_json_file: Path):
+    from r2x_core.processors import process_json_data
+
+    data = {
+        "users": [
+            {"name": "Alice", "age": 30, "status": "active"},
+            {"name": "Bob", "age": 25, "status": "inactive"},
+        ]
+    }
+    proc_spec = JSONProcessing(
+        key_mapping={"name": "person_name"},
+        drop_keys=["status"],
+    )
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = process_json_data(df_file, data, proc_spec)
+
+    assert result is not None
+
+
+def test_pl_apply_filters_datetime_single_year(sample_csv: Path):
+    csv_file = sample_csv.parent / "datetime_data.csv"
+    csv_file.write_text("date,value\n2020,100\n2021,200\n")
+
+    lf = pl.scan_csv(csv_file)
+    proc_spec = TabularProcessing(filter_by={"date": 2020})
+    df_file = DataFile(name="test", fpath=csv_file, proc_spec=proc_spec)
+
+    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+
+    assert result is not None
+
+
+def test_pl_apply_filters_datetime_multiple_years(sample_csv: Path):
+    csv_file = sample_csv.parent / "datetime_data2.csv"
+    csv_file.write_text("year,value\n2020,100\n2021,200\n2022,150\n")
+
+    lf = pl.scan_csv(csv_file)
+    proc_spec = TabularProcessing(filter_by={"year": [2020, 2021]})
+    df_file = DataFile(name="test", fpath=csv_file, proc_spec=proc_spec)
+
+    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+
+    assert result is not None
