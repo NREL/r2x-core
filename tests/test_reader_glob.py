@@ -76,7 +76,7 @@ def test_glob_multiple_matches_raises_error(data_reader, multi_xml_dir):
 def test_glob_no_matches_raises_error(data_reader, empty_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
-    with pytest.raises(ValueError, match="No files found"):
+    with pytest.raises(FileNotFoundError, match="No files found"):
         data_reader.read_data_file(data_file, empty_dir)
 
 
@@ -122,7 +122,7 @@ def test_glob_ignores_directories(tmp_path, data_reader):
 
     data_file = DataFile(name="test_xml", glob="*.xml")
 
-    with pytest.raises(ValueError, match="No files found"):
+    with pytest.raises(FileNotFoundError, match="No files found"):
         data_reader.read_data_file(data_file, test_dir)
 
 
@@ -148,7 +148,7 @@ def test_glob_character_wildcard(data_reader, tmp_path):
 def test_glob_error_message_includes_suggestions(data_reader, empty_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(FileNotFoundError) as exc_info:
         data_reader.read_data_file(data_file, empty_dir)
 
     error_msg = str(exc_info.value)
@@ -259,10 +259,10 @@ def test_glob_timeseries_validation():
 
 
 def test_glob_required_file_not_found(data_reader, empty_dir):
-    """Test that missing required files raise ValueError."""
+    """Test that missing required files raise FileNotFoundError."""
     data_file = DataFile(name="test", glob="*.xml", info=FileInfo(is_optional=False))
 
-    with pytest.raises(ValueError, match="No files found matching pattern"):
+    with pytest.raises(FileNotFoundError, match="No files found matching pattern"):
         data_reader.read_data_file(data_file, empty_dir)
 
 

@@ -29,6 +29,10 @@ class ReaderError(R2XCoreError):
     """Exception raised for data reading related errors."""
 
 
+class MultipleFileError(ValueError):
+    """Exception raised when a glob pattern matches multiple files."""
+
+
 class CLIError(R2XCoreError):
     """Error raised during CLI plugin execution."""
 

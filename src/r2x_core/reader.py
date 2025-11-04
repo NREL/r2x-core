@@ -53,23 +53,25 @@ class DataReader:
         Raises
         ------
         FileNotFoundError
-            If the file does not exist and is not optional.
+            If a required file does not exist or if a glob pattern matches no files.
         ValueError
-            If glob pattern matches zero or multiple files (for required files),
-            or if placeholders are found in filter_by but no placeholders dict provided.
+            If glob pattern is malformed (no wildcards) or if placeholders are found
+            in filter_by but no placeholders dict provided.
+        MultipleFileError
+            If a glob pattern matches multiple files (subclass of ValueError).
         """
         logger.debug("Starting reading for data_file={}", data_file.name)
+        is_optional = data_file.info.is_optional if data_file.info else False  # By default files are no-opt
+
         fpath_result = get_file_path(data_file, folder_path, info=data_file.info)
         if fpath_result.is_err():
             error = fpath_result.err()
-            if isinstance(error, ValueError):
-                raise error
-            raise FileNotFoundError(str(error)) from error
-        fpath = fpath_result.unwrap()
+            if isinstance(error, FileNotFoundError) and is_optional:
+                logger.info("Skipping optional file: {}", data_file.name)
+                return None
+            raise error
 
-        if fpath is None:
-            logger.info("Skipping optional file: {}", data_file.name)
-            return None
+        fpath = fpath_result.unwrap()
 
         reader = data_file.reader
         reader_kwargs = reader.kwargs if reader else {}
