@@ -242,6 +242,6 @@ python main.py
 
 ## Learn More
 
-- [How-To: Create Parsers](../how-tos/parser-basics.md)
-- [How-To: Create Exporters](../how-tos/exporter-basics.md)
+- [How-To: Create Parsers](../how-tos/system-operations/parser-basics.md)
+- [How-To: Create Exporters](../how-tos/system-operations/exporter-basics.md)
 - [API Reference](../references/index.md)

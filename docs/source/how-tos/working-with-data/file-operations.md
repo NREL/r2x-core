@@ -1,4 +1,4 @@
-# ... perform column operations
+# Perform Column Operations
 
 ```python
 from r2x_core import DataFile
@@ -18,7 +18,7 @@ data_file = DataFile(
 )
 ```
 
-# ... filter data during loading
+# Filter Data During Loading
 
 ```python
 # Filter by single value

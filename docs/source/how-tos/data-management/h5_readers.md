@@ -1,4 +1,4 @@
-# ... read tabular HDF5 data with column names
+# Read Tabular HDF5 Data with Column Names
 
 ```python
 from r2x_core import DataFile
@@ -15,7 +15,7 @@ datafile = DataFile(
 )
 ```
 
-# ... read HDF5 time series data
+# Read HDF5 Time Series Data
 
 ```python
 datafile = DataFile(
@@ -31,7 +31,7 @@ datafile = DataFile(
 )
 ```
 
-# ... process HDF5 data with datetime filtering
+# Process HDF5 Data With Datetime Filtering
 
 ```python
 from r2x_core import DataFile, DataStore

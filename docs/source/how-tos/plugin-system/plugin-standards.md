@@ -1,4 +1,4 @@
-# ... follow plugin standards
+# Follow Plugin Standards
 
 r2x-core defines standards for plugin structure and configuration.
 

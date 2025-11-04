@@ -1,4 +1,4 @@
-# ... create JSON configurations
+# Create JSON configurations
 
 ```python
 import json
@@ -23,7 +23,7 @@ with open("data_config.json", "w") as f:
     json.dump(config, f, indent=2)
 ```
 
-# ... load DataStore from configuration
+## Load DataStore from configuration
 
 ```python
 from r2x_core import DataStore

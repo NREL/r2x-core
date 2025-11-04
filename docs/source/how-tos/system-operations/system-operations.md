@@ -1,4 +1,4 @@
-# ... get all components as records
+# Get All Components as Records
 
 ```python
 from infrasys import Component
@@ -15,7 +15,7 @@ all_records = system.components_to_records()
 print(f"Total components: {len(all_records)}")
 ```
 
-# ... filter components by type
+# Filter Components By Type
 
 ```python
 from infrasys import Component
@@ -44,7 +44,7 @@ bus_records = system.components_to_records(
 )
 ```
 
-# ... select specific fields
+# Select Specific Fields
 
 ```python
 from infrasys import Component
@@ -68,7 +68,7 @@ bus_records = system.components_to_records(
 )
 ```
 
-# ... rename fields with key mapping
+# Rename Fields With Key Mapping
 
 ```python
 from infrasys import Component
@@ -95,7 +95,7 @@ gen_records = system.components_to_records(
 )
 ```
 
-# ... export components to CSV
+# Export Components To CSV
 
 ```python
 from infrasys import Component

@@ -165,5 +165,5 @@ strategy.compare(None, "1.0.0")  # -1 (upgrade needed)
 ## See Also
 
 - {doc}`upgrader` - Upgrade system using versioning strategies
-- {doc}`../how-tos/version-management` - Version management guide
+- {doc}`../how-tos/versioning/version-management` - Version management guide
 - {doc}`api` - Complete API documentation

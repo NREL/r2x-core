@@ -117,6 +117,6 @@ upgraded_system = run_system_upgrades(system, steps)
 
 - {doc}`versioning` - Versioning strategies
 - {doc}`plugins` - Plugin system integration
-- {doc}`../how-tos/upgrade-data` - Upgrade data guide
-- {doc}`../how-tos/upgrade-systems` - Upgrade systems guide
+- {doc}`../how-tos/versioning/upgrade-data` - Upgrade data guide
+- {doc}`../how-tos/versioning/upgrade-systems` - Upgrade systems guide
 - {doc}`api` - Complete API documentation

@@ -1,4 +1,4 @@
-# ... create a basic exporter
+# Create a Basic Exporter
 
 ```python
 from r2x_core.exporter import BaseExporter
@@ -35,7 +35,7 @@ exporter = MyModelExporter(config, system, data_store)
 exporter.export()
 ```
 
-# ... export components to CSV
+# Export Components To CSV
 
 ```python
 from r2x_core.exporter import BaseExporter
@@ -52,7 +52,7 @@ class MyModelExporter(BaseExporter):
         )
 ```
 
-# ... export time series
+# Export Time Series
 
 ```python
 from r2x_core.exporter import BaseExporter
