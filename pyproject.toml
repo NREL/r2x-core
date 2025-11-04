@@ -20,7 +20,7 @@ maintainers = [
 description = "Extensible framework for building power system model translators with plugin architecture"
 readme = "README.md"
 license = {file = "LICENSE.txt"}
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 keywords = [
     "power-systems",
     "energy-modeling",
@@ -81,7 +81,7 @@ docs = [
     "furo>=2025.9.25,<2026.0.0",
     "ghp-import>=2.1.0,<3.0.0",
     "myst-parser>=3.0.0,<4.0.0",
-    "sphinx>=8.0.0,<9.0.0",
+    "sphinx>=7.2.0,<8.0.0",
     "sphinx-copybutton>=0.5.2,<1.0.0",
     "sphinx-reports>=0.1.0,<1.0.0",
     "sphinx-tabs>=3.4.5,<4.0.0",
