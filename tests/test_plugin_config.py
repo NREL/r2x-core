@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-from loguru import logger
 
 from r2x_core.plugin_config import PluginConfig
 
@@ -318,7 +317,7 @@ def test_merge_dicts_empty_overrides():
 def test_merge_dicts_preserves_base():
     """Test _merge_dicts doesn't modify original base deeply."""
     base = {"a": 1, "b": [1, 2]}
-    base_copy = base.copy()
+    base.copy()
     overrides = {"a": 2, "c": [3, 4]}
     result = PluginConfig._merge_dicts(base, overrides)
     # Base scalar should still have original value
@@ -371,9 +370,8 @@ def test_load_defaults_error_logging(tmp_path, caplog):
     defaults_file = tmp_path / "defaults.json"
     defaults_file.write_text("{ invalid json }")
 
-    with caplog.at_level("ERROR"):
-        with pytest.raises(json.JSONDecodeError):
-            SampleConfig.load_defaults(config_path=tmp_path)
+    with caplog.at_level("ERROR"), pytest.raises(json.JSONDecodeError):
+        SampleConfig.load_defaults(config_path=tmp_path)
     assert "Failed to parse defaults JSON" in caplog.text
 
 
@@ -382,9 +380,8 @@ def test_load_file_mapping_error_logging(tmp_path, caplog):
     mapping_file = tmp_path / "file_mapping.json"
     mapping_file.write_text("{ invalid json }")
 
-    with caplog.at_level("ERROR"):
-        with pytest.raises(json.JSONDecodeError):
-            SampleConfig.load_file_mapping(config_path=tmp_path)
+    with caplog.at_level("ERROR"), pytest.raises(json.JSONDecodeError):
+        SampleConfig.load_file_mapping(config_path=tmp_path)
     assert "Failed to parse file mapping JSON" in caplog.text
 
 

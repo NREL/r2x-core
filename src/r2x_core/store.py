@@ -1,24 +1,7 @@
 """Data Storage for managing R2X data files and their metadata.
 
-Example usage of :class:`DataStore`:
-
-Initialize a DataStore from a folder containing data files:
-
->>> from pathlib import Path
->>> from r2x_core.store import DataStore
->>> store = DataStore(folder_path="./data")
->>> store.list_data()
-['file1', 'file2']
-
-Add data files and read them:
-
->>> data = store.read_data("file1")
->>> "file1" in store
-True
-
-Export store configuration to JSON:
-
->>> store.to_json("config.json")
+Provides a high-level interface for managing data file configurations,
+loading data, caching, and executing version upgrades.
 """
 
 import json
@@ -28,7 +11,12 @@ from typing import Any
 from loguru import logger
 from pydantic import ValidationError
 
-from .datafile import DataFile, create_data_files_from_records
+from .datafile import (
+    DataFile,
+    FileProcessing,
+    TabularProcessing,
+    create_data_files_from_records,
+)
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .utils import filter_valid_kwargs
@@ -82,24 +70,6 @@ class DataStore:
     :class:`DataFile` : Individual data file configuration.
     :class:`DataReader` : Reader for loading data files.
     :class:`PluginConfig` : Plugin configuration source.
-
-    Examples
-    --------
-    Create a DataStore from a folder:
-
-    >>> store = DataStore(folder_path="./data")
-    >>> files = store.list_data()
-
-    Load data:
-
-    >>> data = store.read_data("file1")
-
-    Add data files and export configuration:
-
-    >>> from r2x_core.datafile import DataFile
-    >>> df = DataFile(name="new_file", path="data.csv")
-    >>> store.add_data(df)
-    >>> store.to_json("config.json")
 
     Notes
     -----
@@ -254,7 +224,9 @@ class DataStore:
         return cls.from_json(json_fpath=json_fpath, folder_path=folder_path)
 
     @classmethod
-    def load_file(cls, fpath: str | Path, name: str | None = None) -> Any:
+    def load_file(
+        cls, fpath: str | Path, name: str | None = None, proc_spec: FileProcessing | None = None
+    ) -> Any:
         """Load a single data file conveniently without creating a full DataStore.
 
         This is a convenience method for loading a single file with minimal setup.
@@ -267,6 +239,9 @@ class DataStore:
         name : str | None, optional
             Name identifier for the file. If None, uses the file stem (name without extension).
             Default is None.
+        proc_spec : FileProcessing | None, optional
+            Process to apply to the file data. Can be a TabularProcessing or JSONProcessing
+            instance, or a dictionary with transformation parameters. Default is None.
 
         Returns
         -------
@@ -279,13 +254,6 @@ class DataStore:
             If the file does not exist.
         Exception
             If the file cannot be read.
-
-        Examples
-        --------
-        >>> # Load a CSV file
-        >>> data = DataStore.load_file("data/inputs.csv")
-        >>> # Load with custom name
-        >>> data = DataStore.load_file("data/inputs.csv", name="input_data")
         """
         fpath = Path(fpath)
 
@@ -297,10 +265,13 @@ class DataStore:
 
         store = cls(folder_path=fpath.parent)
 
+        if proc_spec and isinstance(proc_spec, dict):
+            proc_spec = TabularProcessing.model_validate(proc_spec)
+
         data_file = DataFile(
             name=name,
             fpath=fpath,
-            description=f"Loaded from {fpath.name}",
+            proc_spec=proc_spec,
         )
         store.add_data(data_file)
 

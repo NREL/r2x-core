@@ -1,8 +1,5 @@
 import pytest
 
-from r2x_core.datafile import DataFile
-from r2x_core.reader import DataReader
-
 
 @pytest.fixture
 def sample_csv(tmp_path):
@@ -20,10 +17,14 @@ def sample_json(tmp_path):
 
 @pytest.fixture
 def reader_example():
+    from r2x_core.reader import DataReader
+
     return DataReader()
 
 
 def test_read_data_file_basic(reader_example, sample_csv, tmp_path):
+    from r2x_core.datafile import DataFile
+
     data_file = DataFile(name="test", fpath=sample_csv)
 
     result = reader_example.read_data_file(data_file, tmp_path)
@@ -34,11 +35,12 @@ def test_read_data_file_basic(reader_example, sample_csv, tmp_path):
 
 
 def test_read_optional_missing_file(reader_example, tmp_path):
+    from r2x_core.datafile import DataFile, FileInfo
+
     dummy_file = tmp_path / "dummy.csv"
     dummy_file.write_text("col1,col2\n1,2\n")
 
-    data_file = DataFile(name="test", fpath=dummy_file, is_optional=True)
-
+    data_file = DataFile(name="test", fpath=dummy_file, info=FileInfo(is_optional=True))
     dummy_file.unlink()
 
     result = reader_example.read_data_file(data_file, tmp_path)
@@ -47,10 +49,12 @@ def test_read_optional_missing_file(reader_example, tmp_path):
 
 
 def test_read_required_missing_file(reader_example, tmp_path):
+    from r2x_core.datafile import DataFile, FileInfo
+
     dummy_file = tmp_path / "dummy.csv"
     dummy_file.write_text("col1,col2\n1,2\n")
 
-    data_file = DataFile(name="test", fpath=dummy_file, is_optional=False)
+    data_file = DataFile(name="test", fpath=dummy_file, info=FileInfo(is_optional=False))
 
     dummy_file.unlink()
 
@@ -59,13 +63,16 @@ def test_read_required_missing_file(reader_example, tmp_path):
 
 
 def test_custom_reader_function(reader_example, tmp_path):
+    from r2x_core import DataFile
+    from r2x_core.datafile import ReaderConfig
+
     test_file = tmp_path / "custom.csv"
     test_file.write_text("custom content")
 
     def custom_reader(path):
         return path.read_text().upper()
 
-    data_file = DataFile(name="custom", fpath=test_file, reader_function=custom_reader)
+    data_file = DataFile(name="custom", fpath=test_file, reader=ReaderConfig(function=custom_reader))
     result = reader_example.read_data_file(data_file, tmp_path)
 
     assert result == "CUSTOM CONTENT"
@@ -88,7 +95,10 @@ def test_register_custom_transformation(reader_example):
 
 
 def test_read_with_reader_kwargs(reader_example, sample_csv, tmp_path):
-    data_file = DataFile(name="test", fpath=sample_csv, reader_kwargs={"skip_rows": 1})
+    from r2x_core import DataFile
+    from r2x_core.datafile import ReaderConfig
+
+    data_file = DataFile(name="test", fpath=sample_csv, reader=ReaderConfig(kwargs={"skip_rows": 1}))
 
     result = reader_example.read_data_file(data_file, tmp_path)
     collected = result.collect()
@@ -97,6 +107,8 @@ def test_read_with_reader_kwargs(reader_example, sample_csv, tmp_path):
 
 
 def test_read_json_file(reader_example, sample_json, tmp_path):
+    from r2x_core import DataFile
+
     data_file = DataFile(name="json_test", fpath=sample_json)
 
     result = reader_example.read_data_file(data_file, tmp_path)

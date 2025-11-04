@@ -1,7 +1,5 @@
 """Tests for BaseUpgrader class and upgrade registration."""
 
-import pytest
-
 from r2x_core.upgrader import BaseUpgrader
 from r2x_core.upgrader_utils import UpgradeStep, UpgradeType
 
@@ -233,7 +231,7 @@ class TestUpgraderDecoratorForm:
         # Test with lambda (unusual but valid)
         lambda_func = lambda data: data  # noqa: E731
 
-        result = MyUpgrader.register_step(
+        MyUpgrader.register_step(
             lambda_func,
             name="lambda_step",
             target_version="1.0",

@@ -198,3 +198,162 @@ def test_load_data_file(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         DataStore.load_file(tmp_path / "nota file")
+
+
+def test_load_file_with_json_transform_rename_keys(tmp_path):
+    """Test load_file with JSONProcessing to rename keys in JSON."""
+    from r2x_core import DataStore
+    from r2x_core.datafile import JSONProcessing
+
+    json_file = tmp_path / "generators.json"
+    json_file.write_text(
+        json.dumps(
+            {
+                "battery": {"avg_capacity_MW": 200.0, "forced_outage_rate": 2.0},
+                "solar": {"avg_capacity_MW": 100.0, "forced_outage_rate": 0.5},
+            }
+        )
+    )
+
+    proc_spec = JSONProcessing(key_mapping={"forced_outage_rate": "outage_rate"})
+    result = DataStore.load_file(json_file, proc_spec=proc_spec)
+
+    assert "battery" in result
+    assert "outage_rate" in result["battery"]
+    assert result["battery"]["outage_rate"] == 2.0
+    assert "forced_outage_rate" not in result["battery"]
+
+
+def test_load_file_with_json_transform_drop_columns(tmp_path):
+    """Test load_file with JSONProcessing to drop keys in JSON."""
+    from r2x_core import DataStore
+    from r2x_core.datafile import JSONProcessing
+
+    json_file = tmp_path / "generators.json"
+    json_file.write_text(
+        json.dumps(
+            {
+                "battery": {
+                    "avg_capacity_MW": 200.0,
+                    "forced_outage_rate": 2.0,
+                    "internal_id": 123,
+                },
+                "solar": {
+                    "avg_capacity_MW": 100.0,
+                    "forced_outage_rate": 0.5,
+                    "internal_id": 456,
+                },
+            }
+        )
+    )
+
+    proc_spec = JSONProcessing(drop_keys=["internal_id"])
+    result = DataStore.load_file(json_file, proc_spec=proc_spec)
+
+    assert "battery" in result
+    assert "internal_id" not in result["battery"]
+    assert "avg_capacity_MW" in result["battery"]
+
+
+def test_load_file_with_json_transform_filter_by(tmp_path):
+    """Test load_file with JSONProcessing to filter JSON dict."""
+    from r2x_core import DataStore
+    from r2x_core.datafile import JSONProcessing
+
+    json_file = tmp_path / "generators.json"
+    json_file.write_text(
+        json.dumps(
+            {
+                "battery": {"avg_capacity_MW": 200.0, "status": "active"},
+                "solar": {"avg_capacity_MW": 100.0, "status": "inactive"},
+                "wind": {"avg_capacity_MW": 150.0, "status": "active"},
+            }
+        )
+    )
+
+    proc_spec = JSONProcessing(filter_by={"status": "active"})
+    result = DataStore.load_file(json_file, proc_spec=proc_spec)
+
+    assert "battery" in result
+    assert "wind" in result
+    assert "solar" not in result
+
+
+def test_load_file_with_csv_transform_rename_and_select(tmp_path):
+    """Test load_file with TabularProcessing on CSV file."""
+    from r2x_core import DataStore
+    from r2x_core.datafile import TabularProcessing
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("old_name,col2,col3\nvalue1,value2,value3\nvalue4,value5,value6")
+
+    proc_spec = TabularProcessing(
+        column_mapping={"old_name": "new_name"}, select_columns=["new_name", "col2"]
+    )
+    result = DataStore.load_file(csv_file, proc_spec=proc_spec).collect()
+
+    assert "new_name" in result.columns
+    assert "old_name" not in result.columns
+    assert "col3" not in result.columns
+    assert len(result.columns) == 2
+
+
+def test_load_file_with_transform_dict(tmp_path):
+    """Test load_file with transform as dictionary instead of FileTransform object."""
+    from r2x_core import DataStore
+    from r2x_core.datafile import JSONProcessing
+
+    json_file = tmp_path / "generators.json"
+    json_file.write_text(
+        json.dumps(
+            {
+                "battery": {"avg_capacity_MW": 200.0, "old_key": "drop_me"},
+                "solar": {"avg_capacity_MW": 100.0, "old_key": "drop_me"},
+            }
+        )
+    )
+
+    result = DataStore.load_file(json_file, proc_spec=JSONProcessing(drop_keys=["old_key"]))
+
+    assert "battery" in result
+    assert "old_key" not in result["battery"]
+    assert "avg_capacity_MW" in result["battery"]
+
+
+def test_load_file_with_combined_transforms(tmp_path):
+    """Test load_file with multiple transformations chained together."""
+    from r2x_core import DataStore
+    from r2x_core.datafile import JSONProcessing
+
+    json_file = tmp_path / "generators.json"
+    json_file.write_text(
+        json.dumps(
+            {
+                "battery": {
+                    "avg_capacity_MW": 200.0,
+                    "outage_rate": 2.0,
+                    "status": "active",
+                    "temp_id": 1,
+                },
+                "solar": {
+                    "avg_capacity_MW": 100.0,
+                    "outage_rate": 0.5,
+                    "status": "inactive",
+                    "temp_id": 2,
+                },
+            }
+        )
+    )
+
+    proc_spec = JSONProcessing(
+        key_mapping={"avg_capacity_MW": "capacity"},
+        drop_keys=["temp_id"],
+        filter_by={"status": "active"},
+    )
+    result = DataStore.load_file(json_file, proc_spec=proc_spec)
+
+    assert "battery" in result
+    assert "solar" not in result
+    assert "capacity" in result["battery"]
+    assert "avg_capacity_MW" not in result["battery"]
+    assert "temp_id" not in result["battery"]

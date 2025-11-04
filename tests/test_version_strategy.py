@@ -166,7 +166,7 @@ def test_git_versioning_error_message_shows_available_commits():
     commits = ["aaa", "bbb", "ccc", "ddd", "eee"]
     strategy = GitVersioningStrategy(commits)
 
-    with pytest.raises(ValueError, match="aaa.*eee"):
+    with pytest.raises(ValueError, match=r"aaa.*eee"):
         strategy.compare_versions("xyz", "bbb")
 
 

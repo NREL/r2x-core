@@ -272,8 +272,8 @@ def test_language_agnostic_schema_format():
     assert "type" in schema
     assert schema["type"] == "object"
 
-    for prop_schema in schema.get("properties", {}).values():
-        assert "type" in prop_schema or "anyOf" in prop_schema or "$ref" in prop_schema or True
+    for _prop_schema in schema.get("properties", {}).values():
+        assert True
 
 
 def test_schema_can_be_used_for_validation():
@@ -301,9 +301,8 @@ def test_schema_can_be_used_for_validation():
 
 def test_multiple_schemas_export():
     """Test exporting multiple custom models together."""
-    output_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    output_path = output_file.name
-    output_file.close()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as output_file:
+        output_path = output_file.name
 
     try:
         from r2x_core.plugin import ParserPlugin, UpgraderPlugin

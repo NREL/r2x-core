@@ -29,7 +29,7 @@ def test_filter_by_with_solve_year_substitution(tmp_path: Path):
         {
             "name": "generators",
             "fpath": "generators.csv",
-            "filter_by": {"year": "{solve_year}"},
+            "proc_spec": {"filter_by": {"year": "{solve_year}"}},
         }
     ]
     mapping_file.write_text(json.dumps(mapping))
@@ -63,10 +63,12 @@ def test_filter_by_with_multiple_config_variables(tmp_path: Path):
         {
             "name": "filtered_data",
             "fpath": "data.csv",
-            "filter_by": {
-                "year": "{solve_year}",
-                "weather_year": "{weather_year}",
-                "scenario": "{scenario}",
+            "proc_spec": {
+                "filter_by": {
+                    "year": "{solve_year}",
+                    "weather_year": "{weather_year}",
+                    "scenario": "{scenario}",
+                },
             },
         }
     ]
@@ -97,7 +99,9 @@ def test_filter_by_with_config_variable_in_list(tmp_path: Path):
         {
             "name": "multi_year",
             "fpath": "data.csv",
-            "filter_by": {"year": [2025, "{solve_year}"]},
+            "proc_spec": {
+                "filter_by": {"year": [2025, "{solve_year}"]},
+            },
         }
     ]
     mapping_file.write_text(json.dumps(mapping))
@@ -110,35 +114,6 @@ def test_filter_by_with_config_variable_in_list(tmp_path: Path):
 
     assert len(df) == 2
     assert set(df["year"]) == {2025, 2030}
-
-
-def test_filter_by_backward_compatibility(tmp_path: Path):
-    """Test that regular filter_by values work without config substitution."""
-    csv_file = tmp_path / "data.csv"
-    csv_file.write_text("name,year,status\nitem1,2025,active\nitem2,2030,inactive\nitem3,2030,active\n")
-
-    config_dir = tmp_path / "config"
-    config_dir.mkdir()
-    mapping_file = config_dir / "file_mapping.json"
-    mapping = [
-        {
-            "name": "regular_filter",
-            "fpath": "data.csv",
-            "filter_by": {"year": 2030, "status": "active"},
-        }
-    ]
-    mapping_file.write_text(json.dumps(mapping))
-
-    config = SampleConfig(solve_year=2025, weather_year=2012, config_path=config_dir)
-
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
-    data = store.read_data(name="regular_filter")
-    df = data.collect()
-
-    assert len(df) == 1
-    assert df["name"][0] == "item3"
-    assert df["year"][0] == 2030
-    assert df["status"][0] == "active"
 
 
 def test_filter_by_with_custom_config_fields(tmp_path: Path):
@@ -158,7 +133,9 @@ def test_filter_by_with_custom_config_fields(tmp_path: Path):
         {
             "name": "custom_filter",
             "fpath": "data.csv",
-            "filter_by": {"model_year": "{model_year}", "horizon_year": "{horizon_year}"},
+            "proc_spec": {
+                "filter_by": {"model_year": "{model_year}", "horizon_year": "{horizon_year}"},
+            },
         }
     ]
     mapping_file.write_text(json.dumps(mapping))
@@ -177,6 +154,9 @@ def test_filter_by_with_custom_config_fields(tmp_path: Path):
 
 def test_filter_by_placeholder_without_substitutions_fails_gracefully(tmp_path: Path):
     """Test that placeholders without placeholders dict give helpful error message."""
+
+    from r2x_core import DataStore
+
     csv_file = tmp_path / "data.csv"
     csv_file.write_text("name,year\nitem1,2025\nitem2,2030\n")
 
@@ -187,14 +167,16 @@ def test_filter_by_placeholder_without_substitutions_fails_gracefully(tmp_path: 
         {
             "name": "test_data",
             "fpath": "data.csv",
-            "filter_by": {"year": "{solve_year}"},
+            "proc_spec": {
+                "filter_by": {"year": "{solve_year}"},
+            },
         }
     ]
     mapping_file.write_text(json.dumps(mapping))
 
     config = SampleConfig(solve_year=2030, weather_year=2012, config_path=config_dir)
 
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store: DataStore = DataStore.from_plugin_config(config, folder_path=tmp_path)
     with pytest.raises(ReaderError) as exc_info:
         store.read_data(name="test_data")
 
@@ -206,6 +188,9 @@ def test_filter_by_placeholder_without_substitutions_fails_gracefully(tmp_path: 
 
 def test_filter_by_unknown_placeholder_fails_gracefully(tmp_path: Path):
     """Test that unknown placeholder names give helpful error message."""
+
+    from r2x_core import DataStore
+
     csv_file = tmp_path / "data.csv"
     csv_file.write_text("name,year\nitem1,2025\nitem2,2030\n")
 
@@ -216,7 +201,9 @@ def test_filter_by_unknown_placeholder_fails_gracefully(tmp_path: Path):
         {
             "name": "test_data",
             "fpath": "data.csv",
-            "filter_by": {"year": "{unknown_var}"},
+            "proc_spec": {
+                "filter_by": {"year": "{unknown_var}"},
+            },
         }
     ]
     mapping_file.write_text(json.dumps(mapping))

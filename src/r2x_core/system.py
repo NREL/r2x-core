@@ -19,20 +19,19 @@ from .utils.file_operations import get_r2x_cache_path
 class System(InfrasysSystem):
     """R2X Core System class extending infrasys.System.
 
-    This class extends infrasys.System to provide R2X-specific functionality
-    for data model translation and system construction. It maintains compatibility
-    with infrasys while adding convenience methods for component export and
-    system manipulation.
+    Extends infrasys.System to provide R2X-specific functionality for data
+    model translation and system construction. Adds convenience methods for
+    component export and system manipulation.
 
     Parameters
     ----------
-    name : str
-        Unique identifier for the system.
-    description : str, optional
-        Human-readable description of the system.
-    auto_add_composed_components : bool, default True
-        If True, automatically add composed components (e.g., when adding a Generator
-        with a Bus, automatically add the Bus to the system if not already present).
+    system_base : float | None, optional
+        System base power in MVA for per-unit calculations. Default is None.
+    name : str | None, optional
+        Unique identifier for the system. Default is None.
+    **kwargs
+        Additional keyword arguments passed to infrasys.System (e.g.,
+        description, auto_add_composed_components).
 
     Attributes
     ----------
@@ -40,39 +39,13 @@ class System(InfrasysSystem):
         System identifier.
     description : str
         System description.
-
-    Examples
-    --------
-    Create a basic system:
-
-    >>> from r2x_core import System
-    >>> system = System(name="MySystem", description="Test system")
-
-    Create a system with auto-add for composed components:
-
-    >>> system = System(name="MySystem", auto_add_composed_components=True)
-
-    Create a system with base_power of 100.0 MVA
-
-    >>> from r2x_core import System
-    >>> system = System(100.0)
-
-    Add components to the system:
-
-    >>> from infrasys import Component
-    >>> # Assuming you have component classes defined
-    >>> bus = ACBus(name="Bus1", voltage=230.0)
-    >>> system.add_component(bus)
-
-    Serialize and deserialize:
-
-    >>> system.to_json("system.json")
-    >>> loaded_system = System.from_json("system.json")
+    base_power : float | None
+        System base power in MVA.
 
     See Also
     --------
-    infrasys.system.System : Parent class providing core system functionality
-    r2x_core.parser.BaseParser : Parser framework for building systems
+    :class:`infrasys.system.System` : Parent class with core system functionality.
+    :class:`BaseParser` : Parser framework for building systems.
     """
 
     def __init__(
@@ -211,14 +184,9 @@ class System(InfrasysSystem):
         FileExistsError
             If file exists and overwrite=False.
 
-        Examples
-        --------
-        >>> system.to_json("output/system.json", overwrite=True, indent=2)
-        >>> system.to_json()  # Print to stdout
-
         See Also
         --------
-        from_json : Load system from JSON file
+        :meth:`from_json` : Load system from JSON file
         """
         if fname:
             return super().to_json(fname, overwrite=overwrite, indent=indent, data=data)
@@ -289,27 +257,10 @@ class System(InfrasysSystem):
         ValueError
             If JSON format is invalid.
 
-        Examples
-        --------
-        Reading a system from a file path.
-        >>> system = System.from_json("input/system.json")
-
-
-        Reading a system from bytes:
-        >>> json_bytes = Path("system.json").read_bytes()
-        >>> system = System.from_json(json_bytes)
-
-        With version upgrade handling:
-        >>> def upgrade_v1_to_v2(data):
-        ...     # Custom upgrade logic
-        ...     return data
-        >>> system = System.from_json("old_system.json", upgrade_handler=upgrade_v1_to_v2)
-
-
         See Also
         --------
-        to_json : Serialize system to JSON file
-        upgrade_data : Phase 1 upgrades (for parser workflow)
+        :meth:`to_json` : Serialize system to JSON file.
+        :func:`upgrade_data` : Phase 1 upgrades for parser workflow.
         """
         match source:
             case Path() | str():

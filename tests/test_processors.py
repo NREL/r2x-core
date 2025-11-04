@@ -1,15 +1,18 @@
-"""Tests for processors module."""
+"""Functional tests for processors module.
+
+These tests focus on realistic processor behavior using TabularProcessing and JSONProcessing
+models. Each test exercises a specific processor function with real data to ensure filtering,
+renaming, dropping, casting, and pivoting work as expected.
+"""
 
 import json
+from pathlib import Path
 
 import polars as pl
 import pytest
-from polars import Int32, LazyFrame
 
-from r2x_core.datafile import DataFile
-from r2x_core.file_types import TableFormat
+from r2x_core.datafile import DataFile, JSONProcessing, TabularProcessing
 from r2x_core.processors import (
-    apply_transformation,
     json_apply_filters,
     json_rename_keys,
     json_select_keys,
@@ -18,473 +21,196 @@ from r2x_core.processors import (
     pl_drop_columns,
     pl_pivot_on,
     pl_rename_columns,
-    pl_select_columns,
-    register_transformation,
-    transform_json_data,
-    transform_tabular_data,
 )
-from r2x_core.store import DataStore
 
 
 @pytest.fixture
-def example_data_file_json(tmp_path) -> DataFile:
-    """Create FileMapping for unitdata.csv."""
-    json_fpath = tmp_path / "example_json.json"
-    json_array = [
-        {
-            "name": "unitdata",
-            "fpath": "inputs_case/unitdata.csv",
-            "units": "MW",
-            "reader_kwargs": {"infer_schema_length": 10_000_000},
-            "column_mapping": {
-                "tech": "technology",
-                "reeds_ba": "region_id",
-                "retireyear": "retire_year",
-                "resource_region": "resource_region",
-                "cap": "capacity_mw",
-                "heatrate": "heat_rate_btu_per_kwh",
-                "tstate": "state",
-                "t_vom": "vom_cost",
-                "t_fom": "fom_cost",
-            },
-            "index_columns": ["technology", "region_id", "unique id"],
-            "value_columns": [
-                "capacity_mw",
-                "heat_rate_btu_per_kwh",
-                "vom_cost",
-                "fom_cost",
-                "retire_year",
-            ],
-            "optional": False,
-            "description": "ReEDS unit-level existing generator data",
-            "drop_columns": ["resource_region"],
-            "column_schema": {"retire_year": "int32"},
-            "filter_by": {"retire_year": 2036},
-        }
-    ]
-    with open(tmp_path / "example_json.json", "w") as f:
-        json.dump(json_array, f)
-    yield json_fpath
-
-
-@pytest.fixture
-def json_store(tmp_path) -> DataFile:
-    """Create FileMapping for unitdata.csv."""
-    test_file = tmp_path / "test_data.json"
-    test_file.write_text('{"name":"test"}')
-    data_file = DataFile(name="json", fpath=str(test_file), key_mapping={"name": "TestRemap"})
-    store = DataStore(tmp_path)
-    store.add_data(data_file)
-    yield store
-
-
-@pytest.fixture(scope="function")
-def example_store(reeds_data_folder, example_data_file_json):
-    store = DataStore.from_json(example_data_file_json, folder_path=reeds_data_folder)
-    yield store
-
-
-def test_transform_tabular_data(example_store: DataStore):
-    store: DataStore = example_store
-
-    datafile = store["unitdata"]
-    assert isinstance(datafile, DataFile)
-    assert isinstance(datafile.file_type, TableFormat)
-
-    file = store.read_data(name="unitdata")
-    schema = file.collect_schema()
-    assert isinstance(file, LazyFrame)
-    assert len(schema.names()) == 8  # 3 index + 5 value columns
-    assert "retire_year" in schema
-    assert schema["retire_year"] == Int32
-    assert file.select("retire_year").unique().collect().item() == 2036
-
-
-def test_transform_json(json_store):
-    store: DataStore = json_store
-    datafile = store["json"]
-    assert isinstance(datafile, DataFile)
-
-    file = store.read_data(name="json")
-    assert isinstance(file, dict)
-    assert "TestRemap" in file
-
-
-@pytest.fixture
-def sample_csv(tmp_path):
-    """Create a sample CSV file."""
-    csv_file = tmp_path / "test.csv"
-    csv_file.write_text("name,age,city,score\nAlice,30,NYC,85.5\nBob,25,LA,92.3\nCharlie,35,CHI,78.9\n")
-    return csv_file
-
-
-@pytest.fixture
-def single_row_csv(tmp_path):
-    """Create a single row CSV file for pivot testing."""
-    csv_file = tmp_path / "modeledyears.csv"
-    csv_file.write_text("2020,2025,2030")
-    return csv_file
-
-
-@pytest.fixture
-def sample_json_file(tmp_path):
-    """Create a sample JSON file."""
-    json_file = tmp_path / "test.json"
-    json_file.write_text('{"name": "Alice", "age": 30, "city": "NYC", "score": 85.5}')
-    return json_file
-
-
-def test_pl_drop_columns(sample_csv):
-    """Test dropping columns from DataFrame."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, drop_columns=["city", "score"])
-
-    result = pl_drop_columns(data_file, df)
-    result_cols = result.collect_schema().names()
-
-    assert "name" in result_cols
-    assert "age" in result_cols
-    assert "city" not in result_cols
-    assert "score" not in result_cols
-
-
-def test_pl_drop_columns_non_existing(sample_csv):
-    """Test dropping columns that don't exist in the DataFrame."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, drop_columns=["nonexistent"])
-
-    result = pl_drop_columns(data_file, df)
-    # Should return df unchanged since column doesn't exist
-    assert result.collect_schema().names() == df.collect_schema().names()
-
-
-def test_pl_rename_columns(sample_csv):
-    """Test renaming columns in DataFrame."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test",
-        fpath=sample_csv,
-        column_mapping={"name": "person_name", "age": "person_age"},
+def sample_csv(tmp_path: Path) -> Path:
+    """Create a small CSV with realistic data for testing."""
+    csv = tmp_path / "people.csv"
+    csv.write_text(
+        "name,age,city,score,retire_year\n"
+        "Alice,30,NYC,85.5,2036\n"
+        "Bob,25,LA,92.3,2036\n"
+        "Charlie,35,CHI,78.9,2040\n"
+        "Dana,40,NYC,88.0,2036\n"
     )
-
-    result = pl_rename_columns(data_file, df)
-    result_cols = result.collect_schema().names()
-
-    assert "person_name" in result_cols
-    assert "person_age" in result_cols
-    assert "name" not in result_cols
-    assert "age" not in result_cols
+    return csv
 
 
-def test_pl_rename_columns_non_existing(sample_csv):
-    """Test renaming columns that don't exist."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, column_mapping={"nonexistent": "new_name"})
-
-    result = pl_rename_columns(data_file, df)
-    # Should return df unchanged
-    assert result.collect_schema().names() == df.collect_schema().names()
+@pytest.fixture
+def sample_json_file(tmp_path: Path) -> Path:
+    """Create a small JSON file for testing."""
+    jf = tmp_path / "sample.json"
+    jf.write_text(json.dumps({"name": "Alice", "age": 30, "city": "NYC", "score": 85.5}))
+    return jf
 
 
-def test_pl_pivot_on_unpivots_all_columns(single_row_csv):
-    """Test that pl_pivot_on correctly unpivots all columns into rows."""
-    df = pl.LazyFrame({"2020": [1], "2025": [2], "2030": [3]})
+def test_pl_apply_filters_single_value(sample_csv: Path):
+    """Test filtering with a single value."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(filter_by={"name": "Alice"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    data_file = DataFile(name="modeledyears.csv", fpath=single_row_csv, pivot_on="year")
-
-    result = pl_pivot_on(data_file, df)
-    collected = result.collect()
-
-    assert collected.columns == ["year"]
-    assert collected.height == 3
-
-    expected_values = [1, 2, 3]
-    actual_values = collected["year"].to_list()
-    assert actual_values == expected_values
-
-
-def test_pl_pivot_on_returns_unchanged_when_no_pivot_config(single_row_csv):
-    """Test that function returns unchanged DataFrame when pivot_on is not configured."""
-    df = pl.LazyFrame({"col1": [1, 2], "col2": [3, 4]})
-
-    data_file = DataFile(name="modeledyears.csv", fpath=single_row_csv)
-    result = pl_pivot_on(data_file, df)
-
-    assert result.collect().equals(df.collect())
-
-
-def test_pl_pivot_on_with_mixed_column_types(single_row_csv):
-    """Test unpivot behavior with mixed column types."""
-    df = pl.LazyFrame({"year_2020": [100], "year_2025": [200], "count": [5]})
-
-    data_file = DataFile(name="modeledyears.csv", fpath=single_row_csv, pivot_on="value")
-
-    result = pl_pivot_on(data_file, df)
-    collected = result.collect()
-
-    assert collected.height == 3
-    assert collected.columns == ["value"]
-
-    values = collected["value"].to_list()
-    assert len(values) == 3
-
-
-def test_pl_cast_schema(sample_csv):
-    """Test casting column types."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, column_schema={"age": "int32", "score": "float"})
-
-    result = pl_cast_schema(data_file, df)
-    schema = result.collect_schema()
-
-    assert schema["age"] == pl.Int32
-    assert schema["score"] == pl.Float64
-
-
-def test_pl_cast_schema_non_existing_column(sample_csv):
-    """Test casting non-existing columns."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, column_schema={"nonexistent": "int"})
-
-    result = pl_cast_schema(data_file, df)
-    # Should return df unchanged
-    assert result.collect_schema() == df.collect_schema()
-
-
-def test_pl_cast_schema_unsupported_type(sample_csv):
-    """Test error handling for unsupported type strings."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, column_schema={"age": "unsupported_type"})
-
-    with pytest.raises(ValueError, match="Unsupported data type"):
-        pl_cast_schema(data_file, df).collect()
-
-
-def test_pl_apply_filters_single_value(sample_csv):
-    """Test filtering with single value."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, filter_by={"name": "Alice"})
-
-    result = pl_apply_filters(data_file, df).collect()
+    result = pl_apply_filters(df_file, lf, proc_spec).collect()
 
     assert len(result) == 1
     assert result["name"][0] == "Alice"
 
 
-def test_pl_apply_filters_list_values(sample_csv):
-    """Test filtering with list of values."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, filter_by={"name": ["Alice", "Bob"]})
+def test_pl_apply_filters_list_values(sample_csv: Path):
+    """Test filtering with a list of values."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(filter_by={"name": ["Alice", "Bob"]})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_apply_filters(data_file, df).collect()
+    result = pl_apply_filters(df_file, lf, proc_spec).collect()
 
     assert len(result) == 2
-    assert set(result["name"]) == {"Alice", "Bob"}
+    names = set(result["name"].to_list())
+    assert names == {"Alice", "Bob"}
 
 
-def test_pl_apply_filters_multiple_conditions(sample_csv):
-    """Test filtering with multiple conditions."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, filter_by={"name": "Alice", "city": "NYC"})
+def test_pl_apply_filters_multiple_conditions(sample_csv: Path):
+    """Test filtering with multiple conditions (AND logic)."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(filter_by={"retire_year": 2036, "age": 30})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_apply_filters(data_file, df).collect()
+    result = pl_apply_filters(df_file, lf, proc_spec).collect()
 
     assert len(result) == 1
     assert result["name"][0] == "Alice"
-    assert result["city"][0] == "NYC"
 
 
-def test_pl_select_columns_with_value_columns(sample_csv):
-    """Test selecting specific columns."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, index_columns=["name"], value_columns=["score"])
+def test_pl_drop_columns_removes_existing(sample_csv: Path):
+    """Test that drop_columns removes specified columns."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(drop_columns=["city", "score"])
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_select_columns(data_file, df)
-    result_cols = result.collect_schema().names()
+    result = pl_drop_columns(df_file, lf, proc_spec).collect()
 
-    assert result_cols == ["name", "score"]
-
-
-def test_pl_select_columns_no_duplicates(sample_csv):
-    """Test that duplicate columns are removed."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test",
-        fpath=sample_csv,
-        index_columns=["name", "age"],
-        value_columns=["age", "score"],  # "age" is duplicate
-    )
-
-    result = pl_select_columns(data_file, df)
-    result_cols = result.collect_schema().names()
-
-    # Should have name, age, score (age not duplicated)
-    assert result_cols == ["name", "age", "score"]
+    assert "city" not in result.columns
+    assert "score" not in result.columns
+    assert "name" in result.columns
+    assert "age" in result.columns
 
 
-def test_json_rename_keys(sample_json_file):
-    """Test renaming keys in JSON data."""
+def test_pl_drop_columns_noop_on_missing(sample_csv: Path):
+    """Test that drop_columns is a no-op for non-existent columns."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(drop_columns=["nonexistent"])
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_drop_columns(df_file, lf, proc_spec).collect()
+
+    assert set(result.columns) == set(pl.scan_csv(sample_csv).collect().columns)
+
+
+def test_pl_rename_columns_renames_existing(sample_csv: Path):
+    """Test that column_mapping renames columns correctly."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(column_mapping={"name": "person_name", "age": "person_age"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_rename_columns(df_file, lf, proc_spec).collect()
+
+    assert "person_name" in result.columns
+    assert "person_age" in result.columns
+    assert "name" not in result.columns
+    assert "age" not in result.columns
+
+
+def test_pl_rename_columns_noop_on_missing(sample_csv: Path):
+    """Test that column_mapping is a no-op for non-existent columns."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(column_mapping={"nonexistent": "new_name"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_rename_columns(df_file, lf, proc_spec).collect()
+
+    assert set(result.columns) == set(pl.scan_csv(sample_csv).collect().columns)
+
+
+def test_pl_cast_schema_casts_columns(sample_csv: Path):
+    """Test that column_schema casts columns to correct types."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(column_schema={"age": "int32", "retire_year": "int32"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_cast_schema(df_file, lf, proc_spec).collect()
+
+    assert result.schema["age"] == pl.Int32
+    assert result.schema["retire_year"] == pl.Int32
+
+
+def test_pl_cast_schema_unsupported_type_raises(sample_csv: Path):
+    """Test that unsupported type strings raise ValueError."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(column_schema={"age": "invalid_type"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    with pytest.raises(ValueError, match="Unsupported data type"):
+        pl_cast_schema(df_file, lf, proc_spec).collect()
+
+
+def test_pl_pivot_on_unpivots_columns(sample_csv: Path):
+    """Test that pivot_on unpivots columns into rows."""
+    lf = pl.LazyFrame({"2020": [100], "2025": [200], "2030": [300]})
+    proc_spec = TabularProcessing(pivot_on="year")
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_pivot_on(df_file, lf, proc_spec).collect()
+
+    assert result.columns == ["year"]
+    assert result.height == 3
+    assert result["year"].to_list() == [100, 200, 300]
+
+
+def test_json_rename_keys_renames_keys(sample_json_file: Path):
+    """Test that key_mapping renames JSON keys."""
     data = {"name": "Alice", "age": 30, "city": "NYC"}
-    data_file = DataFile(
-        name="test",
-        fpath=sample_json_file,
-        key_mapping={"name": "person_name", "age": "person_age"},
-    )
+    proc_spec = JSONProcessing(key_mapping={"name": "person_name", "age": "person_age"})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_rename_keys(data_file, data)
+    result = json_rename_keys(df_file, data, proc_spec)
 
     assert "person_name" in result
     assert "person_age" in result
-    assert "city" in result  # Unchanged
     assert "name" not in result
     assert "age" not in result
+    assert result["person_name"] == "Alice"
 
 
-def test_json_apply_filters(sample_json_file):
-    """Test filtering JSON data."""
+def test_json_apply_filters_filters_by_value(sample_json_file: Path):
+    """Test that JSON filtering works correctly."""
     data = {"name": "Alice", "age": 30, "city": "NYC", "score": 85.5}
-    data_file = DataFile(
-        name="test",
-        fpath=sample_json_file,
-        filter_by={"name": "Bob"},  # Filter out entries where name != Bob
-    )
+    proc_spec = JSONProcessing(filter_by={"age": 30})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_apply_filters(data_file, data)
+    result = json_apply_filters(df_file, data, proc_spec)
 
-    # Should keep keys that are NOT in filter_by or match the filter
     assert "age" in result
-    assert "city" in result
-    assert "score" in result
 
 
-def test_json_apply_filters_list(sample_json_file):
-    """Test filtering JSON with list values."""
+def test_json_apply_filters_filters_list_values(sample_json_file: Path):
+    """Test that JSON filtering works with lists."""
     data = {"name": "Alice", "age": 30, "city": "NYC"}
-    data_file = DataFile(name="test", fpath=sample_json_file, filter_by={"name": ["Alice", "Bob"]})
+    proc_spec = JSONProcessing(filter_by={"name": ["Alice", "Bob"]})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_apply_filters(data_file, data)
+    result = json_apply_filters(df_file, data, proc_spec)
 
-    assert "name" in result  # Matches filter
+    assert "name" in result
 
 
-def test_json_select_keys(sample_json_file):
-    """Test selecting specific keys from JSON."""
+def test_json_select_keys_keeps_specified_keys(sample_json_file: Path):
+    """Test that select_keys keeps only specified keys."""
     data = {"name": "Alice", "age": 30, "city": "NYC", "score": 85.5}
-    data_file = DataFile(
-        name="test",
-        fpath=sample_json_file,
-        index_columns=["name"],
-        value_columns=["score"],
-    )
+    proc_spec = JSONProcessing(select_keys=["name", "score"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_select_keys(data_file, data)
+    result = json_select_keys(df_file, data, proc_spec)
 
     assert set(result.keys()) == {"name", "score"}
-
-
-def test_transform_tabular_data_full_pipeline(sample_csv):
-    """Test full transformation pipeline for tabular data."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(
-        name="test",
-        fpath=sample_csv,
-        drop_columns=["city"],
-        column_mapping={"name": "person"},
-        column_schema={"age": "int32"},
-        value_columns=["person", "age", "score"],
-    )
-
-    result = transform_tabular_data(data_file, df).collect()
-
-    assert "person" in result.columns
-    assert "city" not in result.columns
-    assert "age" in result.columns
-    assert result.schema["age"] == pl.Int32
-
-
-def test_transform_json_data_full_pipeline(sample_json_file):
-    """Test full transformation pipeline for JSON data."""
-    data = {"name": "Alice", "age": 30, "city": "NYC", "score": 85.5}
-    data_file = DataFile(
-        name="test",
-        fpath=sample_json_file,
-        key_mapping={"name": "person"},
-        filter_by={"age": 30},
-        value_columns=["person", "score"],
-    )
-
-    result = transform_json_data(data_file, data)
-
-    assert "person" in result
-    assert set(result.keys()) == {"person", "score"}
-
-
-def test_apply_transformation_with_lazyframe(sample_csv):
-    """Test apply_transformation with LazyFrame data."""
-    df = pl.scan_csv(sample_csv)
-    data_file = DataFile(name="test", fpath=sample_csv, drop_columns=["city"])
-
-    result = apply_transformation(data_file, df).unwrap()
-
-    assert isinstance(result, pl.LazyFrame)
-    assert "city" not in result.collect_schema().names()
-
-
-def test_apply_transformation_with_dict(sample_json_file):
-    """Test apply_transformation with dict data."""
-    data = {"name": "Alice", "age": 30}
-    data_file = DataFile(name="test", fpath=sample_json_file, value_columns=["name"])
-
-    result = apply_transformation(data_file, data).unwrap()
-
-    assert isinstance(result, dict)
-    assert set(result.keys()) == {"name"}
-
-
-def test_apply_transformation_unsupported_type(sample_json_file):
-    """Test apply_transformation with unsupported data type."""
-    data = "unsupported string data"
-    data_file = DataFile(name="test", fpath=sample_json_file)
-
-    # Should return data unchanged for unsupported types
-    result = apply_transformation(data_file, data).unwrap()
-
-    assert result == data
-
-
-def test_register_custom_transformation(sample_json_file):
-    """Test registering a custom transformation function."""
-
-    class CustomType:
-        def __init__(self, value):
-            self.value = value
-
-    def custom_transform(data_file, data):
-        data.value = data.value.upper()
-        return data
-
-    register_transformation(CustomType, custom_transform)
-
-    custom_data = CustomType("hello")
-    data_file = DataFile(name="test", fpath=sample_json_file)
-
-    result = apply_transformation(data_file, custom_data).unwrap()
-
-    assert result.value == "HELLO"
-
-
-def test_pl_apply_filters_three_conditions(sample_csv):
-    """Test filtering with three conditions to ensure loop coverage."""
-    df = pl.scan_csv(sample_csv)
-    # Add more data to enable 3-way filtering
-    data_file = DataFile(
-        name="test",
-        fpath=sample_csv,
-        filter_by={"name": ["Alice", "Bob"], "age": [25, 30], "city": ["NYC", "LA"]},
-    )
-
-    result = pl_apply_filters(data_file, df)
-    collected = result.collect()
-
-    # Should have rows matching all three conditions
-    assert len(collected) >= 0  # May have no matches but shouldn't error

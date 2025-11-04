@@ -453,7 +453,7 @@ def test_result_unwrap_ok():
 def test_result_unwrap_err():
     """Test unwrapping Err result raises."""
     result = Err("error")
-    with pytest.raises(Exception):
+    with pytest.raises(UnwrapError):
         result.unwrap()
 
 
