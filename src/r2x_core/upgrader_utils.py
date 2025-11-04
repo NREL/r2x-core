@@ -9,7 +9,7 @@ This module provides the upgrade execution infrastructure including:
 - **run_system_upgrades()**: Execute system data upgrades in priority order
 
 The upgrade system uses a priority queue where lower numbers execute first.
-Version comparison is delegated to configurable VersioningModel strategies.
+Version comparison is delegated to configurable VersionStrategy implementations.
 """
 
 from collections.abc import Callable
@@ -87,8 +87,8 @@ def shall_we_upgrade(
         Upgrade step to evaluate
     current_version : str
         Current data version
-    strategy : VersioningModel | None
-        Version comparison strategy; if None, always upgrade
+    strategy : VersionStrategy | None
+        Version comparison strategy; if None, always skip upgrade
 
     Returns
     -------
@@ -133,7 +133,43 @@ def shall_we_upgrade(
 
 
 def run_upgrade_step(step: UpgradeStep, data: Any, upgrader_context: Any | None = None) -> Result[Any, str]:
-    """Apply a single upgrade step to data if needed (internal function)."""
+    """Execute a single upgrade transformation on data.
+
+    Applies the upgrade function defined in the step, automatically detecting
+    whether the function accepts an upgrader_context parameter using introspection.
+    This allows flexibility in step function signatures.
+
+    Parameters
+    ----------
+    step : UpgradeStep
+        The upgrade step to execute with func, name, and target_version.
+    data : Any
+        Input data to be upgraded by the step function.
+    upgrader_context : Any | None
+        Optional context object passed to the upgrade function if it accepts
+        upgrader_context as a parameter (detected via inspect.signature).
+        Allows steps to access global upgrader state. Default is None.
+
+    Returns
+    -------
+    Result[Any, str]
+        Ok(upgraded_data) on success, Err(error_message) on failure.
+
+    Raises
+    ------
+    (via Result)
+        ValueError if step function signature detection fails (wrapped in Err)
+        Other exceptions from step.func are caught and wrapped as Err with message
+
+    Notes
+    -----
+    Introspection behavior:
+    - If function has upgrader_context parameter: called with upgrader_context kwarg
+    - If function accepts **kwargs: called with upgrader_context kwarg
+    - Otherwise: called with only data argument
+
+    This allows upgrade steps to optionally use context without explicit interface.
+    """
     logger.debug("Applying upgrade step: {}", step.name)
     try:
         # Try to pass upgrader_context if the function accepts it
