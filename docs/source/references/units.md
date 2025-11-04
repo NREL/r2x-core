@@ -14,6 +14,6 @@ For complete API documentation of the units module, see {doc}`api`.
 
 ```{seealso}
 - {doc}`../tutorials/working-with-units` for a step-by-step introduction
-- {doc}`../how-tos/unit-operations` for practical recipes
+- {doc}`../how-tos/working-with-data/unit-operations` for practical recipes
 - {doc}`../explanations/unit-system` for design rationale
 ```

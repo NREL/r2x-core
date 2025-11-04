@@ -147,5 +147,5 @@ for comp in system.get_components(Generator):
 
 ## Learn More
 
-- [How-To: Unit Operations](../how-tos/unit-operations.md)
+- [How-To: Unit Operations](../how-tos/working-with-data/unit-operations.md)
 - [API Reference](../references/units.md)

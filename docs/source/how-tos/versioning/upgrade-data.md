@@ -1,4 +1,4 @@
-# ... create a basic upgrader class
+# Create a Basic Upgrader Class
 
 ```python
 from pathlib import Path
@@ -19,7 +19,7 @@ class MyModelUpgrader(DataUpgrader):
         return None
 ```
 
-# ... register FILE upgrade steps
+# Register FILE Upgrade Steps
 
 ```python
 @MyModelUpgrader.upgrade_step(
@@ -35,7 +35,7 @@ def upgrade_to_v2(folder: Path) -> Path:
     return folder
 ```
 
-# ... rename files during upgrade
+# Rename Files During Upgrade
 
 ```python
 @MyModelUpgrader.upgrade_step(
@@ -53,7 +53,7 @@ def rename_input_files(folder: Path) -> Path:
     return folder
 ```
 
-# ... transform CSV data during upgrade
+# Transform CSV Data During Upgrade
 
 ```python
 @MyModelUpgrader.upgrade_step(
@@ -76,7 +76,7 @@ def update_csv_format(folder: Path) -> Path:
     return folder
 ```
 
-# ... update JSON schema during upgrade
+# Update JSON Schema During Upgrade
 
 ```python
 @MyModelUpgrader.upgrade_step(

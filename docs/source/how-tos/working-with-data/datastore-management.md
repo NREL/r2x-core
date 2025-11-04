@@ -1,4 +1,4 @@
-# ... create a DataStore
+# Create a DataStore
 
 ```python
 from r2x_core import DataStore
@@ -6,7 +6,7 @@ from r2x_core import DataStore
 store = DataStore(folder_path="/path/to/data")
 ```
 
-# ... add files to a DataStore
+# Add Files To A Datastore
 
 ```python
 from r2x_core import DataFile
@@ -23,7 +23,7 @@ files = [
 store.add_data(*files)
 ```
 
-# ... read data from a DataStore
+# Read Data From A Datastore
 
 ```python
 data = store.read_data("generators")

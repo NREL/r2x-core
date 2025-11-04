@@ -1,4 +1,4 @@
-# ... create a basic parser
+# Create a Basic Parser
 
 ```python
 from r2x_core.parser import BaseParser
@@ -39,7 +39,7 @@ parser = MyModelParser(config, data_store)
 system = parser.build_system()
 ```
 
-# ... validate inputs before building
+# Validate Inputs Before Building
 
 ```python
 class MyModelParser(BaseParser):
@@ -52,7 +52,7 @@ class MyModelParser(BaseParser):
                 raise ValueError(f"Required file '{file_name}' not found")
 ```
 
-# ... create components from data
+# Create Components From Data
 
 ```python
 class MyModelParser(BaseParser):
@@ -69,7 +69,7 @@ class MyModelParser(BaseParser):
             self.add_component(bus)
 ```
 
-# ... attach time series to components
+# Attach Time Series To Components
 
 ```python
 from infrasys.time_series_models import SingleTimeSeries

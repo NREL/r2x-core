@@ -117,6 +117,18 @@ class BaseUpgrader:
         """
 
         def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
+            """Register a function as an upgrade step when used as decorator.
+
+            Parameters
+            ----------
+            f : Callable
+                Function to register as an upgrade step.
+
+            Returns
+            -------
+            Callable
+                The original function unchanged (for chaining).
+            """
             step_name = kwargs.get("name", f.__name__)
             step = UpgradeStep(name=step_name, func=f, **{k: v for k, v in kwargs.items() if k != "name"})
             cls.steps.append(step)

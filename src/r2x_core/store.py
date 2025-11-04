@@ -1,7 +1,7 @@
 """Data Storage for managing R2X data files and their metadata.
 
 Provides a high-level interface for managing data file configurations,
-loading data, caching, and executing version upgrades.
+loading data, caching.
 """
 
 import json
@@ -41,7 +41,7 @@ class DataStore:
 
     Attributes
     ----------
-    folder : Path
+    folder_path : Path
         The resolved folder path containing the data files.
     reader : DataReader
         The data reader instance used to load data.
@@ -186,9 +186,6 @@ class DataStore:
         if not isinstance(data_files_json, list):
             msg = f"JSON file `{json_fpath}` is not a JSON array."
             raise TypeError(msg)
-
-        if upgrader:
-            upgrader.upgrade_data_files(folder_path=folder_path)
 
         result = create_data_files_from_records(data_files_json, folder_path=folder_path)
         if result.is_err():

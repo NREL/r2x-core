@@ -1,5 +1,5 @@
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 3
 :hidden:
 
 install
@@ -72,7 +72,7 @@ Plugins can be registered programmatically or discovered from entry points. Exte
 my_model = "my_package.plugins:my_plugin_component"
 ```
 
-See {doc}`references/plugins` for detailed examples and {doc}`how-tos/plugin-registration` for advanced patterns.
+See {doc}`references/plugins` for detailed examples and {doc}`how-tos/plugin-system/plugin-registration` for advanced patterns.
 
 ## Indices and Tables
 

@@ -1,4 +1,4 @@
-# ... mark a file as time series
+# Mark a File as Time Series
 
 ```python
 from r2x_core import DataFile
@@ -16,7 +16,7 @@ component_file = DataFile(
 )
 ```
 
-# ... configure time series files in DataStore
+# Configure Time Series Files In Datastore
 
 ```python
 from r2x_core import DataFile, DataStore
@@ -37,7 +37,7 @@ data_store = DataStore(
 )
 ```
 
-# ... filter time series files in parser
+# Filter Time Series Files In Parser
 
 ```python
 from r2x_core import BaseParser

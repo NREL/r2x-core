@@ -1,4 +1,4 @@
-# ... create a component with per-unit fields
+# Create Components with Per-Unit Fields
 
 ```python
 from typing import Annotated
@@ -22,7 +22,7 @@ gen = Generator(
 )
 ```
 
-# ... input values in natural units
+# Input Values In Natural Units
 
 ```python
 gen = Generator(
@@ -36,7 +36,7 @@ gen = Generator(
 print(gen.active_power)  # 0.8 pu (auto-converted)
 ```
 
-# ... switch between display modes
+# Switch Between Display Modes
 
 ```python
 from r2x_core.units import UnitSystem, set_unit_system
@@ -65,7 +65,7 @@ set_unit_system(UnitSystem.SYSTEM_BASE)
 print(gen.active_power)  # 1.35 pu
 ```
 
-# ... use context manager for temporary mode
+# Use Context Manager For Temporary Mode
 
 ```python
 from r2x_core.units import unit_system, UnitSystem
@@ -84,7 +84,7 @@ with unit_system(UnitSystem.NATURAL_UNITS):
 print(f"After context: {gen.active_power}")  # 0.75 pu
 ```
 
-# ... add components to system
+# Add Components To SYSTEM
 
 ```python
 system = System(100.0, name="MyGrid")

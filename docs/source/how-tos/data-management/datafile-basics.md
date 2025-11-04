@@ -1,4 +1,4 @@
-# ... create a basic DataFile
+# Create a Basic DataFile
 
 ```python
 from r2x_core import DataFile
@@ -10,7 +10,7 @@ data_file = DataFile(
 )
 ```
 
-# ... map column names during loading
+# Map Column Names During Loading
 
 ```python
 data_file = DataFile(
@@ -20,7 +20,7 @@ data_file = DataFile(
 )
 ```
 
-# ... filter data during loading
+# Filter Data During Loading
 
 ```python
 data_file = DataFile(

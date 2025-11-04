@@ -4,14 +4,14 @@ For complete API documentation of versioning classes, see {doc}`api`.
 
 ## Quick Reference
 
-- {py:class}`~r2x_core.VersioningStrategy` - Versioning strategy protocol
 - {py:class}`~r2x_core.SemanticVersioningStrategy` - Semantic versioning (e.g., "1.2.3")
 - {py:class}`~r2x_core.GitVersioningStrategy` - Git-based versioning
-- {py:class}`~r2x_core.FileModTimeStrategy` - File modification time versioning
+- {py:class}`~r2x_core.VersionDetector` - Detect current version from data
+- {py:class}`~r2x_core.VersioningModel` - Versioning configuration model
 
 ## Overview
 
-The versioning system provides flexible strategies for managing version information in data structures and system objects. Each strategy implements the `VersioningStrategy` protocol with methods to get, set, and compare versions.
+The versioning system provides flexible strategies for managing version information in data structures and system objects. Supported strategies include semantic versioning and git-based versioning.
 
 ## Usage Examples
 
@@ -82,59 +82,6 @@ comparison = strategy.compare(
 )  # -1 (earlier < later)
 ```
 
-### File Modification Time
-
-Track versions based on file modification timestamps:
-
-```python
-from r2x_core import FileModTimeStrategy
-from pathlib import Path
-
-strategy = FileModTimeStrategy()
-
-# Get version from file path
-file_path = Path("/data/config.json")
-version = strategy.get_version(file_path)  # "1234567890.123"
-
-# Compare file modification times
-older = strategy.get_version("/data/old_config.json")
-newer = strategy.get_version("/data/new_config.json")
-comparison = strategy.compare(older, newer)  # -1 (older < newer)
-```
-
-## Creating Custom Versioning Strategies
-
-Implement the `VersioningStrategy` protocol for custom version management:
-
-```python
-from typing import Any, Protocol
-from r2x_core.versioning import VersioningStrategy
-
-class DatabaseVersionStrategy(VersioningStrategy):
-    """Custom strategy for database-backed versioning."""
-
-    def __init__(self, db_connection):
-        self.db = db_connection
-
-    def get_version(self, data: Any) -> str | None:
-        """Retrieve version from database."""
-        if isinstance(data, dict) and "id" in data:
-            return self.db.get_version(data["id"])
-        return None
-
-    def set_version(self, data: Any, version: str) -> Any:
-        """Store version in database."""
-        if isinstance(data, dict) and "id" in data:
-            self.db.set_version(data["id"], version)
-        return data
-
-    def compare(self, current: str | None, target: str) -> int:
-        """Compare versions using database logic."""
-        if current is None:
-            return -1
-        # Custom comparison logic
-        return self.db.compare_versions(current, target)
-```
 
 ## Version Comparison
 
@@ -185,8 +132,7 @@ assert config.version == "2.0.0"
 ### Choose the Right Strategy
 
 - **SemanticVersioningStrategy**: For human-readable versions with clear upgrade paths
-- **GitVersioningStrategy**: For tracking changes tied to git commits
-- **FileModTimeStrategy**: For simple file-based version tracking
+- **GitVersioningStrategy**: For tracking changes tied to git commits or timestamps
 
 ### Version Field Naming
 
@@ -219,5 +165,5 @@ strategy.compare(None, "1.0.0")  # -1 (upgrade needed)
 ## See Also
 
 - {doc}`upgrader` - Upgrade system using versioning strategies
-- {doc}`../how-tos/version-management` - Version management guide
+- {doc}`../how-tos/versioning/version-management` - Version management guide
 - {doc}`api` - Complete API documentation

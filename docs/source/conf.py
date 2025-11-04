@@ -34,9 +34,15 @@ html_theme = "furo"
 html_title = "r2x-core"
 html_theme_options = {
     "navigation_with_keys": True,
-    "source_repository": "https://github.com/NREL/r2x-core/",
+    "source_repository": "https://github.com/NREL/r2x-core",
     "source_branch": "main",
-    "source_directory": "docs/",
+    "source_directory": "docs/source/",
+    "top_of_page_buttons": ["view", "edit"],
+    "announcement": """
+        <strong>🎉 R2X Core v0.1.0 is now available!</strong>
+        This is our first Long-Term Support (LTS) release.
+        <a href="https://github.com/NREL/r2x-core/releases/tag/v0.1.0" target="_blank">View release notes</a>
+    """,
     "footer_icons": [
         {
             "name": "GitHub",
@@ -51,6 +57,8 @@ html_theme_options = {
     ],
 }
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_js_files = ["custom.js"]
 
 # Additional autodoc settings
 autosummary_generate = True
@@ -75,4 +83,7 @@ report_doccov_packages = {
         "fail_below": 90,
         "levels": "default",
     }
+}
+intersphinx_mapping = {
+    "infrasys": ("https://nrel.github.io/infrasys/", None),
 }

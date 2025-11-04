@@ -1,4 +1,4 @@
-# ... create a SYSTEM upgrader
+# Create a SYSTEM Upgrader
 
 ```python
 from pathlib import Path
@@ -16,7 +16,7 @@ class MyModelUpgrader(DataUpgrader):
         return None
 ```
 
-# ... register SYSTEM upgrade steps
+# Register SYSTEM Upgrade Steps
 
 ```python
 @MyModelUpgrader.upgrade_step(
@@ -34,7 +34,7 @@ def upgrade_system_to_v2(system: System) -> System:
     return system
 ```
 
-# ... modify component properties
+# Modify Component Properties
 
 ```python
 from infrasys import ACBus, Generator
@@ -57,7 +57,7 @@ def upgrade_components(system: System) -> System:
     return system
 ```
 
-# ... combine FILE and SYSTEM upgrades
+# Combine FILE And SYSTEM Upgrades
 
 ```python
 from pathlib import Path

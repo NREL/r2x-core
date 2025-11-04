@@ -1,4 +1,4 @@
-# ... read data files with DataReader
+# Read Data Files with DataReader
 
 ```python
 from r2x_core import DataReader, DataFile
@@ -9,7 +9,7 @@ data_file = DataFile(name="data", fpath="data.csv")
 data = reader.read_data_file(Path("."), data_file)
 ```
 
-# ... configure data caching
+# Configure Data Caching
 
 ```python
 reader = DataReader(max_cache_size=50)

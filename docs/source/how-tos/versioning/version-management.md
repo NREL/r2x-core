@@ -1,4 +1,4 @@
-# ... manage versions in data
+# Manage Versions in Data
 
 ```python
 from r2x_core import SemanticVersioningStrategy
@@ -13,7 +13,7 @@ if strategy.compare(current, "2.0.0") < 0:
     print("Upgrade required")
 ```
 
-# ... compare versions
+# Compare Versions
 
 ```python
 from r2x_core import SemanticVersioningStrategy
@@ -25,7 +25,7 @@ strategy.compare("2.0.0", "1.0.0")  # 1 (downgrade)
 strategy.compare("1.0.0", "1.0.0")  # 0 (equal)
 ```
 
-# ... use custom version fields
+# Use Custom Version Fields
 
 ```python
 from r2x_core import SemanticVersioningStrategy

@@ -351,5 +351,5 @@ That's it! The validation and type checking will work automatically.
 ## See Also
 
 - [DataFile Reference](models.md) - Complete DataFile API
-- [Working with Time Series Files](../how-tos/timeseries-files.md) - Time series guide
-- [Parser Basics](../how-tos/parser-basics.md) - Using file types in parsers
+- [Working with Time Series Files](../how-tos/system-operations/timeseries-files.md) - Time series guide
+- [Parser Basics](../how-tos/system-operations/parser-basics.md) - Using file types in parsers

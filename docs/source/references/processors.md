@@ -1,80 +1,6 @@
 # Data Processors
 
-## Transform Functions
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.apply_transformation
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.register_transformation
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.transform_tabular_data
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.transform_json_data
-   :noindex:
-```
-
-## Tabular Processors
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_lowercase
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_drop_columns
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_rename_columns
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_cast_schema
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_apply_filters
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_select_columns
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.pl_build_filter_expr
-   :noindex:
-```
-
-## JSON Processors
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.json_rename_keys
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.json_apply_filters
-   :noindex:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.processors.json_select_keys
-   :noindex:
-```
+Data processors are used internally by the DataReader to apply transformations to data files based on specifications in DataFile configurations. These transformations are applied automatically and do not need to be called directly.
 
 ## Usage Examples
 
@@ -106,14 +32,14 @@ data = reader.read_data_file(folder=".", data_file=data_file)
 ### Manual Transformation
 
 ```python
-from r2x_core.processors import transform_tabular_data
+from r2x_core.processors import process_tabular_data
 import polars as pl
 
 # Load raw data
 df = pl.scan_csv("data/generators.csv")
 
 # Apply transformations manually
-transformed = transform_tabular_data(data_file, df)
+transformed = process_tabular_data(data_file, df)
 
 # Collect results
 result = transformed.collect()
@@ -140,11 +66,11 @@ def transform_my_data(data_file: DataFile, data: MyDataType) -> MyDataType:
 # Register the transformation
 register_transformation(MyDataType, transform_my_data)
 
-# Now apply_transformation will use it automatically
-from r2x_core.processors import apply_transformation
+# Now apply_processing will use it automatically
+from r2x_core.processors import apply_processing
 
 my_data = MyDataType("hello")
-transformed = apply_transformation(data_file, my_data)
+transformed = apply_processing(data_file, my_data)
 ```
 
 ### Polars Filter Expressions
