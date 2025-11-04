@@ -32,14 +32,14 @@ def test_system_name_only():
 
 def test_system_both_keywords():
     """Test System(name='Test', system_base_power=200)."""
-    system = System(name="TestSystem", base_power=200.0)
+    system = System(name="TestSystem", system_base=200.0)
     assert system.base_power == 200.0
     assert system.name == "TestSystem"
 
 
 def test_system_keywords_reversed_order():
     """Test System(system_base_power=200, name='Test')."""
-    system = System(base_power=200.0, name="TestSystem")
+    system = System(system_base=200.0, name="TestSystem")
     assert system.base_power == 200.0
     assert system.name == "TestSystem"
 

@@ -1,154 +1,66 @@
-"""Data Reader for loading files based on their type."""
+"""Data reading and processing pipeline for multiple file formats.
 
-import hashlib
+The DataReader is the main entry point for loading data files. It handles:
+- Path resolution (absolute, relative, and glob patterns)
+- File type detection based on extension
+- Optional file handling (returns None instead of raising errors)
+- Custom reader function delegation
+- Automatic data processing and transformations (filtering, type casting, etc.)
+- Placeholder substitution in filter specifications
+
+File type support is determined by EXTENSION_MAPPING, with custom readers
+available via the reader parameter in DataFile configurations.
+
+See Also
+--------
+:class:`~r2x_core.datafile.DataFile` : File configuration with metadata and processing specs.
+:class:`~r2x_core.file_readers.read_file_by_type` : Singledispatch file readers by type.
+:func:`~r2x_core.processors.apply_processing` : Data transformation pipeline.
+:func:`~r2x_core.datafile_utils.get_file_path` : Path resolution and validation.
+"""
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
-from r2x_core.exceptions import ReaderError
+from r2x_core.datafile_utils import get_file_path
 
 from .datafile import DataFile
+from .exceptions import ReaderError
 from .file_readers import read_file_by_type
 from .file_types import EXTENSION_MAPPING
-from .processors import apply_transformation, register_transformation
-
-MAX_CACHE_SIZE = 100
+from .processors import apply_processing, register_transformation
 
 
 class DataReader:
-    """Reader class for loading data files with caching support.
+    """Reader class for loading data files with automatic processing.
 
-    The DataReader handles the actual file I/O operations and caching
-    strategies, while delegating file-type-specific reading logic to
-    single dispatch methods.
+    The DataReader handles the complete reading pipeline: file discovery,
+    format detection, reading, and transformations. File-type-specific
+    reading logic is delegated via singledispatch based on file extension.
 
-    Parameters
-    ----------
-    max_cache_size : int, optional
-        Maximum number of files to keep in cache. Default is 100.
-
-    Attributes
-    ----------
-    max_cache_size : int
-        Maximum cache size limit.
+    See Also
+    --------
+    :class:`~r2x_core.datafile.DataFile` : File configuration with specs.
+    :func:`read_data_file` : Main method for reading data with processing.
     """
 
-    def __init__(self, max_cache_size: int = MAX_CACHE_SIZE) -> None:
-        """Initialize the data reader with cache configuration.
+    def __init__(self) -> None:
+        """Initialize the data reader.
 
-        Parameters
-        ----------
-        max_cache_size : int, optional
-            Maximum number of files to keep in cache. Default is 100.
+        No configuration needed; the reader is stateless and uses configuration
+        from DataFile objects and optional placeholders at read time.
         """
-        self._cache: dict[str, Any] = {}
-        self.max_cache_size = max_cache_size
-
-    def _resolve_glob_pattern(self, data_file: DataFile, folder: Path) -> Path | None:
-        """Resolve a glob pattern to a single file path.
-
-        Parameters
-        ----------
-        folder : Path
-            Base directory to search in.
-        data_file : DataFile
-            Data file configuration with glob pattern.
-
-        Returns
-        -------
-        Path | None
-            Resolved file path, or None if optional and no matches found.
-
-        Raises
-        ------
-        ValueError
-            If glob pattern matches zero or multiple files (for required files).
-        """
-        pattern = data_file.glob
-        assert pattern is not None, "DataFile must have a glob pattern"
-        if data_file.is_optional:
-            logger.debug("Optional glob pattern '{}' matched no files, returning None", pattern)
-            return None
-
-        matches = [p for p in folder.glob(pattern) if p.is_file()]
-        if len(matches) == 0:
-            msg = (
-                f"No files found matching pattern '{pattern}' in {folder}\n"
-                f"Suggestions:\n"
-                f"  - Verify the pattern syntax (e.g., '*.xml' for any XML file)\n"
-                f"  - Check that the directory contains files with the expected extension\n"
-                f"  - Verify the base directory is correct"
-            )
-            raise ValueError(msg)
-
-        if len(matches) > 1:
-            file_list = "\n".join(f"  - {m.name}" for m in sorted(matches))
-            msg = (
-                f"Multiple files matched pattern '{pattern}' in {folder}:\n"
-                f"{file_list}\n"
-                f"Suggestions:\n"
-                f"  - Use a more specific pattern (e.g., 'model_*.xml' instead of '*.xml')\n"
-                f"  - Use the exact filename in 'fpath' instead of a glob pattern\n"
-                f"  - Remove extra files from the directory"
-            )
-            raise ValueError(msg)
-
-        logger.debug("Glob pattern '{}' resolved to: {}", pattern, matches[0].name)
-        return matches[0]
-
-    def _get_file_path(self, data_file: DataFile, folder: Path) -> Path | None:
-        """Get the resolved file path from either fpath or glob pattern.
-
-        Parameters
-        ----------
-        data_file : DataFile
-            Data file configuration.
-        folder : Path
-            Base directory containing the data files.
-
-        Returns
-        -------
-        Path | None
-            Resolved file path, or None if optional and not found.
-        """
-        assert data_file.fpath is not None or data_file.glob is not None, (
-            "DataFile must have either fpath or glob"
-        )
-        if data_file.glob is not None:
-            return self._resolve_glob_pattern(data_file, folder)
-
-        assert data_file.fpath is not None
-        return folder / data_file.fpath
-
-    def _generate_cache_key(self, data_file: DataFile, file_path: Path) -> str:
-        """Generate a unique cache key for a file.
-
-        Parameters
-        ----------
-        data_file : DataFile
-            Data file configuration.
-        file_path : Path
-            Resolved file path.
-
-        Returns
-        -------
-        str
-            Unique cache key for the file.
-        """
-        mtime = file_path.stat().st_mtime if file_path.exists() else 0
-        key_data = f"{file_path}:{mtime}:{data_file.name}"
-        return hashlib.sha256(key_data.encode()).hexdigest()
 
     def read_data_file(
         self,
         data_file: DataFile,
-        folder: Path,
-        use_cache: bool = True,
+        folder_path: Path,
         placeholders: dict[str, Any] | None = None,
     ) -> Any:
-        """Read a data file using cache if available.
+        """Read a data file.
 
         Parameters
         ----------
@@ -156,11 +68,10 @@ class DataReader:
             Data file configuration with metadata.
         folder : Path
             Base directory containing the data files.
-        use_cache : bool, optional
-            Whether to use cached data if available. Default is True.
-        placeholders : dict[str, Any] | None
+        placeholders : dict[str, Any] | None, optional
             Dictionary mapping placeholder variable names to their values.
             Used to substitute placeholders like {solve_year} in filter_by.
+            Default is None.
 
         Returns
         -------
@@ -170,99 +81,74 @@ class DataReader:
         Raises
         ------
         FileNotFoundError
-            If the file does not exist and is not optional.
+            If a required file does not exist or if a glob pattern matches no files.
         ValueError
-            If glob pattern matches zero or multiple files (for required files),
-            or if placeholders are found in filter_by but no placeholders dict provided.
+            If glob pattern is malformed (no wildcards) or if placeholders are found
+            in filter_by but no placeholders dict provided.
+        MultipleFileError
+            If a glob pattern matches multiple files (subclass of ValueError).
+
+        See Also
+        --------
+        :func:`~r2x_core.file_readers.read_file_by_type` : File-type-specific reading.
+        :func:`~r2x_core.processors.apply_processing` : Transformation pipeline.
+        :func:`~r2x_core.datafile_utils.get_file_path` : Path resolution.
         """
-        file_path = self._get_file_path(data_file, folder)
+        logger.debug("Starting reading for data_file={}", data_file.name)
+        is_optional = data_file.info.is_optional if data_file.info else False  # By default files are no-opt
 
-        if file_path is None:
-            logger.debug("Optional file {} not found, returning None", data_file.name)
-            return None
+        fpath_result = get_file_path(data_file, folder_path, info=data_file.info)
+        if fpath_result.is_err():
+            error = fpath_result.err()
+            if isinstance(error, FileNotFoundError) and is_optional:
+                logger.info("Skipping optional file: {}", data_file.name)
+                return None
+            raise error
 
-        cache_key = self._generate_cache_key(data_file, file_path)
-        if use_cache and cache_key in self._cache:
-            logger.debug("Loading {} from cache", data_file.name)
-            return self._cache[cache_key]
+        fpath = fpath_result.unwrap()
 
-        if not file_path.exists() and data_file.is_optional:
-            logger.debug("Optional file {} not found, returning None", file_path)
-            return None
+        reader = data_file.reader
+        reader_kwargs = reader.kwargs if reader else {}
+        if reader and reader.function:
+            logger.debug(
+                "Attempting to read data_file{} with reader_function={}",
+                data_file.name,
+                data_file.reader,
+            )
+            raw_data = reader.function(fpath, **reader_kwargs)
+            if data_file.proc_spec is not None:
+                processed_data = apply_processing(
+                    data_file=data_file,
+                    data=raw_data,
+                    proc_spec=data_file.proc_spec,
+                    placeholders=placeholders,
+                )
 
-        if not file_path.exists() and not data_file.is_optional:
-            msg = f"Missing required file: {file_path}"
-            raise FileNotFoundError(msg)
+                if processed_data.is_err():
+                    raise ReaderError(processed_data.error)
 
-        # Check for custom reader function first
-        reader_kwargs = data_file.reader_kwargs or {}
-        if data_file.reader_function is not None:
-            logger.debug("Using custom callable reader function for: {}", data_file.name)
-            raw_data = data_file.reader_function(file_path, **reader_kwargs)
+                processed_data = processed_data.unwrap()
+            else:
+                processed_data = raw_data
+
+            return processed_data
+
+        file_type_instance = data_file.file_type
+        logger.trace(
+            "Attempting to read data_file={} with {}", data_file.name, type(file_type_instance).__name__
+        )
+        raw_data = read_file_by_type(file_type_instance, fpath, **reader_kwargs)
+        if data_file.proc_spec is not None:
+            processed_data = apply_processing(
+                data_file=data_file, data=raw_data, proc_spec=data_file.proc_spec, placeholders=placeholders
+            )
+            if processed_data.is_err():
+                raise ReaderError(processed_data.error)
+
+            processed_data = processed_data.unwrap()
         else:
-            # Use single dispatch to read based on file type
-            file_type_instance = data_file.file_type
-            logger.debug("Reading file {} as {}", file_path, type(file_type_instance).__name__)
-            raw_data = read_file_by_type(file_type_instance, file_path, **reader_kwargs)
-
-        processed_data = apply_transformation(data_file, raw_data, placeholders)
-
-        if processed_data.is_err():
-            raise ReaderError(processed_data.error)
-
-        processed_data = processed_data.unwrap()
-
-        if use_cache:
-            self._add_to_cache(cache_key, processed_data)
-
+            processed_data = raw_data
         return processed_data
-
-    def _add_to_cache(self, cache_key: str, data: Any) -> None:
-        """Add data to cache, managing cache size limits.
-
-        Parameters
-        ----------
-        cache_key : str
-            Unique key for the cached data.
-        data : Any
-            Data to cache.
-        """
-        # Simple FIFO cache management
-        if len(self._cache) >= self.max_cache_size:
-            # Remove oldest entry
-            oldest_key = next(iter(self._cache))
-            del self._cache[oldest_key]
-            logger.debug("Cache full, removed oldest entry: {}", oldest_key)
-
-        self._cache[cache_key] = data
-        logger.debug("Added to cache: {}", cache_key)
-
-    def clear_cache(self) -> None:
-        """Clear cached files.
-
-        Parameters
-        ----------
-        pattern : str, optional
-            If provided, only clear cache entries matching this pattern.
-            If None, clears all cached data.
-        """
-        self._cache.clear()
-        logger.debug("Cleared all cache entries")
-        return
-
-    def get_cache_info(self) -> dict[str, Any]:
-        """Get information about the current cache state.
-
-        Returns
-        -------
-        dict[str, Any]
-            Cache statistics and information.
-        """
-        return {
-            "file_count": len(self._cache),
-            "max_size": self.max_cache_size,
-            "cache_keys": list(self._cache.keys()),
-        }
 
     def get_supported_file_types(self) -> list[str]:
         """Get list of supported file extensions.

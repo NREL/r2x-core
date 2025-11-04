@@ -291,7 +291,7 @@ def test_unwrap_error_exception():
     """Test that UnwrapError is raised and can be caught."""
     err = Err("test error")
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(UnwrapError):
         err.unwrap()
 
     assert err.error == err.unwrap_err()
@@ -353,3 +353,117 @@ def test_bool_with_truthiness_patterns():
     # Filter failures
     failures = [r for r in results if not r]
     assert len(failures) == 2
+
+
+def test_unwrap_or_raise_ok_returns_value():
+    ok = Ok(5)
+    assert ok.unwrap_or_raise(ValueError, "should not raise") == 5
+
+
+def test_unwrap_or_raise_err_non_exception_payload():
+    err = Err("boom")
+    with pytest.raises(RuntimeError) as exc_info:
+        err.unwrap_or_raise(RuntimeError, "failed")
+    assert "failed: 'boom'" in str(exc_info.value)
+
+
+def test_unwrap_or_raise_err_exception_payload_chains():
+    inner = ValueError("inner")
+    err = Err(inner)
+    with pytest.raises(RuntimeError) as exc_info:
+        err.unwrap_or_raise(RuntimeError, "failed")
+
+    # preserve chaining
+    assert isinstance(exc_info.value.__cause__, ValueError)
+    assert str(exc_info.value.__cause__) == "inner"
+
+
+def test_unwrap_or_raise_prints_traceback_when_requested(capfd):
+    inner = ValueError("inner")
+    err = Err(inner)
+    with pytest.raises(RuntimeError):
+        err.unwrap_or_raise(RuntimeError, "failed", print_tb=True)
+
+    captured = capfd.readouterr()
+    # traceback printing goes to stderr
+    assert "Traceback (most recent call last):" in captured.err
+    assert "ValueError" in captured.err
+    assert "inner" in captured.err
+
+
+def test_ok_with_value():
+    """Test Ok result with value."""
+    result = Ok(42)
+
+    assert result.is_ok()
+    assert not result.is_err()
+    assert result.value == 42
+
+
+def test_ok_without_value():
+    """Test Ok result without value."""
+    result = Ok()
+
+    assert result.is_ok()
+    assert result.value is None
+
+
+def test_err_with_error():
+    """Test Err result with error."""
+    result = Err("error message")
+
+    assert result.is_err()
+    assert not result.is_ok()
+    assert result.error == "error message"
+
+
+def test_err_with_exception():
+    """Test Err result with exception."""
+    exc = ValueError("test error")
+    result = Err(exc)
+
+    assert result.is_err()
+    assert result.error == exc
+
+
+def test_result_map_ok():
+    """Test mapping over Ok result."""
+    result = Ok(5)
+    mapped = result.map(lambda x: x * 2)
+
+    assert mapped.is_ok()
+    assert mapped.value == 10
+
+
+def test_result_map_err():
+    """Test mapping over Err result."""
+    result = Err("error")
+    mapped = result.map(lambda x: x * 2)
+
+    assert mapped.is_err()
+    assert mapped.error == "error"
+
+
+def test_result_unwrap_ok():
+    """Test unwrapping Ok result."""
+    result = Ok(42)
+    assert result.unwrap() == 42
+
+
+def test_result_unwrap_err():
+    """Test unwrapping Err result raises."""
+    result = Err("error")
+    with pytest.raises(UnwrapError):
+        result.unwrap()
+
+
+def test_result_unwrap_or_ok():
+    """Test unwrap_or with Ok result."""
+    result = Ok(42)
+    assert result.unwrap_or(0) == 42
+
+
+def test_result_unwrap_or_err():
+    """Test unwrap_or with Err result."""
+    result = Err("error")
+    assert result.unwrap_or(0) == 0

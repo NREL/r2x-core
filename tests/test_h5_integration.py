@@ -7,6 +7,8 @@ from pathlib import Path
 import h5py
 import numpy as np
 
+from r2x_core.datafile import ReaderConfig
+
 
 def test_datastore_from_json_with_reader_kwargs():
     """Test complete DataStore.from_json() workflow with reader_kwargs."""
@@ -39,11 +41,13 @@ def test_datastore_from_json_with_reader_kwargs():
                 "name": "load",
                 "fpath": str(h5_file),
                 "file_type": "H5Format",
-                "reader_kwargs": {
-                    "data_key": "data",
-                    "columns_key": "columns",
-                    "datetime_key": "index_datetime",
-                    "additional_keys": ["index_year"],
+                "reader": {
+                    "kwargs": {
+                        "data_key": "data",
+                        "columns_key": "columns",
+                        "datetime_key": "index_datetime",
+                        "additional_keys": ["index_year"],
+                    }
                 },
                 "description": "Hourly load data",
             }
@@ -64,8 +68,8 @@ def test_datastore_from_json_with_reader_kwargs():
         assert "load" in files
 
         data_file = store["load"]
-        assert data_file.reader_kwargs["data_key"] == "data"
-        assert data_file.reader_kwargs["columns_key"] == "columns"
+        assert data_file.reader.kwargs["data_key"] == "data"
+        assert data_file.reader.kwargs["columns_key"] == "columns"
 
         # Read the file using the store's reader
         from r2x_core.reader import DataReader
@@ -120,20 +124,24 @@ def test_datastore_from_json_with_multiple_h5_files():
                 "name": "load",
                 "fpath": str(load_file),
                 "file_type": "H5Format",
-                "reader_kwargs": {
-                    "data_key": "data",
-                    "columns_key": "columns",
-                    "datetime_key": "index_datetime",
+                "reader": {
+                    "kwargs": {
+                        "data_key": "data",
+                        "columns_key": "columns",
+                        "datetime_key": "index_datetime",
+                    }
                 },
             },
             {
                 "name": "cf",
                 "fpath": str(custom_file),
                 "file_type": "H5Format",
-                "reader_kwargs": {
-                    "data_key": "cf_values",
-                    "columns_key": "technologies",
-                    "index_key": "year",
+                "reader": {
+                    "kwargs": {
+                        "data_key": "cf_values",
+                        "columns_key": "technologies",
+                        "index_key": "year",
+                    }
                 },
             },
             {
@@ -196,11 +204,13 @@ def test_datastore_roundtrip_with_reader_kwargs():
         data_file = DataFile(
             name="test",
             fpath=h5_file,
-            reader_kwargs={
-                "data_key": "data",
-                "columns_key": "columns",
-                "datetime_key": "index_datetime",
-            },
+            reader=ReaderConfig(
+                kwargs={
+                    "data_key": "data",
+                    "columns_key": "columns",
+                    "datetime_key": "index_datetime",
+                }
+            ),
         )
         store = DataStore(tmpdir_path)
         store.add_data(data_file)
@@ -218,5 +228,5 @@ def test_datastore_roundtrip_with_reader_kwargs():
         assert "test" in files
 
         loaded_file = store_loaded["test"]
-        assert loaded_file.reader_kwargs is not None
-        assert loaded_file.reader_kwargs["data_key"] == "data"
+        assert loaded_file.reader.kwargs is not None
+        assert loaded_file.reader.kwargs["data_key"] == "data"

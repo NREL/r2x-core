@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 from loguru import logger
 
+from r2x_core.logger import setup_logging
+
 DATA_FOLDER = "tests/data"
 REEDS_SCENARIO = "test_Pacific"
 
@@ -17,7 +19,7 @@ def empty_file(tmp_path) -> Path:
 
 @pytest.fixture
 def caplog(caplog):
-    logger.enable("r2x_core")
+    setup_logging(module="r2x_core", level="TRACE", tracing=True)
     handler_id = logger.add(caplog.handler, format="{message}")
     yield caplog
     logger.remove(handler_id)

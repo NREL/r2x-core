@@ -9,18 +9,21 @@ This module provides the upgrade execution infrastructure including:
 - **run_system_upgrades()**: Execute system data upgrades in priority order
 
 The upgrade system uses a priority queue where lower numbers execute first.
-Version comparison is delegated to configurable VersioningModel strategies.
+Version comparison is delegated to configurable VersionStrategy implementations.
 """
 
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, NamedTuple
+from typing import Annotated, Any
 
 from loguru import logger
+from pydantic import BaseModel
+
+from r2x_core.serialization import Importable
 
 from .exceptions import UpgradeError
 from .result import Err, Ok, Result
-from .versioning import VersioningModel
+from .versioning import VersionStrategy
 
 
 class UpgradeType(str, Enum):
@@ -42,7 +45,7 @@ class UpgradeType(str, Enum):
     SYSTEM = "SYSTEM"
 
 
-class UpgradeStep(NamedTuple):
+class UpgradeStep(BaseModel):
     """Definition of a single upgrade step.
 
     Attributes
@@ -65,7 +68,7 @@ class UpgradeStep(NamedTuple):
     """
 
     name: str
-    func: Callable[..., Any]
+    func: Annotated[Callable[..., Any], Importable]
     target_version: str
     upgrade_type: UpgradeType
     priority: int = 100
@@ -74,7 +77,7 @@ class UpgradeStep(NamedTuple):
 
 
 def shall_we_upgrade(
-    step: UpgradeStep, current_version: str, strategy: VersioningModel | None = None
+    step: UpgradeStep, current_version: str, strategy: VersionStrategy | None = None
 ) -> Result[bool, UpgradeError]:
     """Determine if upgrade step should execute based on version constraints.
 
@@ -84,8 +87,8 @@ def shall_we_upgrade(
         Upgrade step to evaluate
     current_version : str
         Current data version
-    strategy : VersioningModel | None
-        Version comparison strategy; if None, always upgrade
+    strategy : VersionStrategy | None
+        Version comparison strategy; if None, always skip upgrade
 
     Returns
     -------
@@ -129,150 +132,44 @@ def shall_we_upgrade(
     return Ok(True)
 
 
-def run_system_upgrades(
-    steps: list[UpgradeStep],
-    data: dict[str, Any],
-    current_version: str | None,
-    upgrader_context: Any | None = None,
-    strategy: VersioningModel | None = None,
-) -> Result[dict[str, Any], str]:
-    """Apply upgrade steps in priority order to system data.
-
-    Parameters
-    ----------
-    steps : list[UpgradeStep]
-        Upgrade steps to execute (filtered to UpgradeType.SYSTEM)
-    data : dict[str, Any]
-        System data dictionary to upgrade in-place
-    current_version : str | None
-        Current system version
-    upgrader_context : Any | None
-        Optional context passed to upgrade functions
-    strategy : VersioningModel | None
-        Version comparison strategy; skips if None
-
-    Returns
-    -------
-    Result[dict[str, Any], str]
-        Ok(data) on success, Err(message) on failure
-
-    Notes
-    -----
-    Executes steps in priority order (lower numbers first).
-    Skips if no strategy provided (cannot determine upgrade necessity).
-    """
-    if not steps:
-        logger.debug("No upgrade steps received. Skipping.")
-        return Ok(data)
-
-    if not strategy or not current_version:
-        logger.debug("No strategy provided. Cannot determine upgrade necessity. Skipping.")
-        return Ok(data)
-
-    upgrade_steps_by_priority = sorted(steps, key=lambda s: s.priority)
-    applied_steps: list[str] = []
-    failed_steps: list[tuple[str, UpgradeError]] = []
-
-    logger.info("Applying {} upgrade steps", len(upgrade_steps_by_priority))
-    for step in upgrade_steps_by_priority:
-        upgrade_decision = shall_we_upgrade(step=step, current_version=current_version, strategy=strategy)
-
-        if upgrade_decision.is_err():
-            error = upgrade_decision.err()
-            logger.error("Error evaluating upgrade decision for {}: {}", step.name, error)
-            failed_steps.append((step.name, error))
-            continue
-
-        if not upgrade_decision.unwrap():
-            continue
-
-        result = run_upgrade_step(step, data, upgrader_context=upgrader_context)
-        if result.is_err():
-            error_str = result.err()
-            logger.error("{}", error_str)
-            # Convert string error to UpgradeError
-            failed_steps.append((step.name, UpgradeError(error_str)))
-        else:
-            logger.debug("Applied {} to data.", step.name)
-            applied_steps.append(step.name)
-    if failed_steps:
-        return Err(f"Failed steps: {failed_steps}")
-    return Ok(data)
-
-
-def run_datafile_upgrades(
-    steps: list[UpgradeStep],
-    folder_path: Any,
-    current_version: str | None,
-    upgrader_context: Any | None = None,
-    strategy: "VersioningModel | None" = None,
-) -> Result[None, str]:
-    """Apply upgrade steps in priority order to data files.
-
-    Parameters
-    ----------
-    steps : list[UpgradeStep]
-        Upgrade steps to execute (filtered to UpgradeType.FILE)
-    folder_path : Any
-        Path to data folder containing files to upgrade
-    current_version : str | None
-        Current data version
-    upgrader_context : Any | None
-        Optional context passed to upgrade functions
-    strategy : VersioningModel | None
-        Version comparison strategy; skips if None
-
-    Returns
-    -------
-    Result[None, str]
-        Ok() on success, Err(message) on failure
-
-    Notes
-    -----
-    Executes steps in priority order (lower numbers first).
-    Skips if no strategy provided (cannot determine upgrade necessity).
-    """
-    if not steps:
-        logger.debug("No upgrade steps received. Skipping.")
-        return Ok()
-
-    if not strategy or not current_version:
-        logger.debug("No strategy provided. Cannot determine upgrade necessity. Skipping.")
-        return Ok()
-
-    upgrade_steps_by_priority = sorted(steps, key=lambda s: s.priority)
-    applied_steps: list[str] = []
-    failed_steps: list[tuple[str, UpgradeError]] = []
-
-    logger.info("Applying {} upgrade steps ", len(upgrade_steps_by_priority))
-    for step in upgrade_steps_by_priority:
-        upgrade_decision = shall_we_upgrade(step=step, current_version=current_version, strategy=strategy)
-
-        if upgrade_decision.is_err():
-            error = upgrade_decision.err()
-            logger.error("Error evaluating upgrade decision for {}: {}", step.name, error)
-            failed_steps.append((step.name, error))
-            continue
-
-        if not upgrade_decision.unwrap():
-            continue
-
-        result = run_upgrade_step(step, folder_path, upgrader_context=upgrader_context)
-        if result.is_err():
-            error_msg = result.err()
-            logger.error("{}", error_msg)
-            # Convert string error to UpgradeError
-            failed_steps.append((step.name, UpgradeError(error_msg)))
-        else:
-            logger.debug("Applied {} to data.", step.name)
-            applied_steps.append(step.name)
-    if failed_steps:
-        return Err(f"Failed steps = {failed_steps}")
-    return Ok()
-
-
 def run_upgrade_step(step: UpgradeStep, data: Any, upgrader_context: Any | None = None) -> Result[Any, str]:
-    """Apply a single upgrade step to data if needed (internal function)."""
+    """Execute a single upgrade transformation on data.
+
+    Applies the upgrade function defined in the step, automatically detecting
+    whether the function accepts an upgrader_context parameter using introspection.
+    This allows flexibility in step function signatures.
+
+    Parameters
+    ----------
+    step : UpgradeStep
+        The upgrade step to execute with func, name, and target_version.
+    data : Any
+        Input data to be upgraded by the step function.
+    upgrader_context : Any | None
+        Optional context object passed to the upgrade function if it accepts
+        upgrader_context as a parameter (detected via inspect.signature).
+        Allows steps to access global upgrader state. Default is None.
+
+    Returns
+    -------
+    Result[Any, str]
+        Ok(upgraded_data) on success, Err(error_message) on failure.
+
+    Raises
+    ------
+    (via Result)
+        ValueError if step function signature detection fails (wrapped in Err)
+        Other exceptions from step.func are caught and wrapped as Err with message
+
+    Notes
+    -----
+    Introspection behavior:
+    - If function has upgrader_context parameter: called with upgrader_context kwarg
+    - If function accepts **kwargs: called with upgrader_context kwarg
+    - Otherwise: called with only data argument
+
+    This allows upgrade steps to optionally use context without explicit interface.
+    """
     logger.debug("Applying upgrade step: {}", step.name)
     try:
         # Try to pass upgrader_context if the function accepts it

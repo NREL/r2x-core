@@ -2,20 +2,15 @@
 
 # ruff: noqa D101
 from __future__ import annotations
-from typing import Callable, Generic, Literal, Optional, TypeVar, cast, overload, Any, TypeGuard
+from typing import Callable, Generic, Literal, Optional, TypeVar, cast, overload, Any, TypeGuard, Type, TextIO
+import sys
+from .exceptions import IsNotError, UnwrapError
+import traceback
 
 T = TypeVar("T")
 E = TypeVar("E")
 U = TypeVar("U")
 F = TypeVar("F")
-
-
-class UnwrapError(Exception):
-    """Exception raised when unwrapping an Err result."""
-
-
-class IsNotError(Exception):
-    """Exception raised when accessing .err if Ok()"""
 
 
 class Result(Generic[T, E]):
@@ -25,60 +20,78 @@ class Result(Generic[T, E]):
 
     def unwrap(self) -> T:
         """Return the contained value if successful, else raise in subclass."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def unwrap_err(self) -> E:
         """Return the contained error if Err, else raise in subclass."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def unwrap_or(self, default: T) -> T:
         """Return the contained value if Ok, otherwise return the default."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def unwrap_or_else(self, func: Callable[[E], T]) -> T:
         """Return the contained value if Ok, otherwise compute a default with func."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def expect(self, msg: str) -> T:
         """Return the contained value if Ok, otherwise raise with custom message."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
-    def is_ok(self) -> bool:
+    def is_ok(self) -> bool:  # pragma: no cover
         """Return true if Ok"""
         return isinstance(self, Ok)
 
-    def is_err(self) -> bool:
+    def is_err(self) -> bool:  # pragma: no cover
         """Return true if Err"""
         return isinstance(self, Err)
 
     def map(self, func: Callable[[T], U]) -> Result[U, E]:
         """Apply func to the contained value if Ok, returning a new Result."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def map_err(self, func: Callable[[E], F]) -> Result[T, F]:
         """Apply func to the error if Err, returning a new Result."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def and_then(self, func: Callable[[T], Result[U, E]]) -> Result[U, E]:
         """Chain another computation on the contained value if Ok."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def or_else(self, func: Callable[[E], Result[T, F]]) -> Result[T, F]:
         """Handle the error by calling func if Err, returning a new Result."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def ok(self) -> T | None:
         """Return the success value if Ok, otherwise None."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def err(self) -> E:
         """Return the error value if Err, otherwise None."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @property
     def error(self) -> E | None:
         """Return the error value if Err, otherwise None."""
         return self.err()
+
+    # new API: return value or raise an exception (boundary helper)
+    def unwrap_or_raise(
+        self,
+        exc_type: Type[BaseException] = Exception,
+        context: Optional[str] = None,
+        *,
+        print_tb: bool = False,
+        filter_fn: Optional[Callable[[traceback.FrameSummary], bool]] = None,
+    ) -> T:
+        """
+        Return the Ok value or raise `exc_type`.
+
+        - On Err with a BaseException payload, raise `exc_type(context)` from payload.
+        - On Err with non-exception payload, raise `exc_type(f"{context}: {payload!r}")`.
+        - `print_tb` is opt-in and prints the original payload traceback if it's an exception.
+        """
+        raise NotImplementedError  # pragma: no cover
 
 
 class Ok(Result[T, E]):
@@ -181,6 +194,16 @@ class Ok(Result[T, E]):
         """Return None as this is not an error."""
         raise IsNotError
 
+    def unwrap_or_raise(
+        self,
+        exc_type: Type[BaseException] = Exception,
+        context: str | None = None,
+        *,
+        print_tb: bool = False,
+        filter_fn: Optional[Callable[[traceback.FrameSummary], bool]] = None,
+    ) -> T:
+        return self.value
+
 
 class Err(Result[T, E]):
     """Error result containing an error value."""
@@ -219,6 +242,10 @@ class Err(Result[T, E]):
     def __bool__(self) -> bool:
         """Return False (Err results are falsy)."""
         return False
+
+    def unwrap(self) -> T:
+        """Raise UnwrapError when called on Err."""
+        raise UnwrapError(f"Called unwrap on Err: {self._error_value}")
 
     def unwrap_err(self) -> E:
         """Called on Err return error value"""
@@ -268,6 +295,24 @@ class Err(Result[T, E]):
         """Return the error value."""
         return self._error_value
 
+    def unwrap_or_raise(
+        self,
+        exc_type: Type[BaseException] = Exception,
+        context: Optional[str] = None,
+        *,
+        print_tb: bool = False,
+        filter_fn: Optional[Callable[[traceback.FrameSummary], bool]] = None,
+    ) -> T:
+        payload = self._error_value
+        msg = context if context is not None else str(payload)
+
+        if isinstance(payload, BaseException):
+            if print_tb:
+                print_exception_traceback(payload, filter_fn=filter_fn)
+            raise exc_type(msg) from payload
+
+        raise exc_type(f"{msg}: {payload!r}")
+
 
 def is_ok(result: Result[T, E]) -> TypeGuard[Ok[T, E]]:
     """Check if result is Ok.
@@ -299,3 +344,42 @@ def is_err(result: Result[T, E]) -> TypeGuard[Err[T, E]]:
         True if Err, False if Ok
     """
     return isinstance(result, Err)
+
+
+def print_exception_traceback(
+    exc: BaseException,
+    file: Optional[TextIO] = None,
+    filter_fn: Optional[Callable[[traceback.FrameSummary], bool]] = None,
+) -> None:
+    """Print a readable traceback for `exc` including chained exceptions.
+
+    This uses traceback.TracebackException so chained exceptions are preserved.
+    Printing is opt-in from `unwrap_or_raise`.
+    """
+    if exc is None:
+        return
+
+    if file is None:
+        file = sys.stderr
+
+    te = traceback.TracebackException.from_exception(exc, capture_locals=False)
+
+    def _print_te(te_obj: traceback.TracebackException) -> None:
+        print("Traceback (most recent call last):", file=file)
+        for frame in te_obj.stack:
+            if filter_fn and not filter_fn(frame):
+                continue  # pragma: no cover
+            print(f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}', file=file)
+            if frame.line:
+                print(f"    {frame.line.strip()}", file=file)
+        for line in te_obj.format_exception_only():
+            print(line.rstrip("\n"), file=file)
+
+        if te_obj.__cause__:
+            print("The above exception was the direct cause of the following exception:", file=file)
+            _print_te(te_obj.__cause__)
+        elif te_obj.__context__ and not te_obj.__suppress_context__:
+            print("During handling of the above exception, another exception occurred:", file=file)
+            _print_te(te_obj.__context__)
+
+    _print_te(te)

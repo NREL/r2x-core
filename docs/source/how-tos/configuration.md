@@ -2,9 +2,8 @@
 
 ```python
 import json
-from r2x_core import DataFile, DataStore
+from r2x_core import DataFile
 
-# Define file configurations
 config = [
     {
         "name": "generators",
@@ -20,7 +19,6 @@ config = [
     }
 ]
 
-# Save configuration
 with open("data_config.json", "w") as f:
     json.dump(config, f, indent=2)
 ```
@@ -28,60 +26,8 @@ with open("data_config.json", "w") as f:
 # ... load DataStore from configuration
 
 ```python
-# Load DataStore from JSON
+from r2x_core import DataStore
+
 store = DataStore.from_json("data_config.json", folder_path="/path/to/data")
-
-# List loaded files
 print(store.list_data())
-```
-
-# ... export existing configurations
-
-```python
-# Create store and add files
-store = DataStore(folder_path="/path/to/data")
-files = [
-    DataFile(name="gen", fpath="generators.csv"),
-    DataFile(name="load", fpath="loads.csv")
-]
-store.add_data(*files)
-
-# Export to JSON
-store.to_json("exported_config.json")
-
-# Export with custom options
-store.to_json("config.json", exclude_none=True)
-```
-
-# ... validate configurations
-
-```python
-from pydantic import ValidationError
-
-try:
-    data_file = DataFile(
-        name="test",
-        fpath="nonexistent.xyz"  # Unsupported extension
-    )
-except ValidationError as e:
-    print(f"Configuration error: {e}")
-```
-
-# ... manage environment-specific configurations
-
-```python
-# Development configuration
-dev_config = [
-    {"name": "test_data", "fpath": "test_small.csv", "is_optional": True}
-]
-
-# Production configuration
-prod_config = [
-    {"name": "prod_data", "fpath": "production_large.csv", "is_optional": False}
-]
-
-# Load based on environment
-import os
-config_file = "dev_config.json" if os.getenv("ENV") == "dev" else "prod_config.json"
-store = DataStore.from_json(config_file, folder="/data")
 ```

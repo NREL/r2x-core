@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from r2x_core.file_types import EXTENSION_MAPPING
+from ..file_types import EXTENSION_MAPPING
 
 if TYPE_CHECKING:
     from pydantic import ValidationInfo
