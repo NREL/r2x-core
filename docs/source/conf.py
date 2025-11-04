@@ -76,3 +76,6 @@ report_doccov_packages = {
         "levels": "default",
     }
 }
+intersphinx_mapping = {
+    "infrasys": ("https://nrel.github.io/infrasys/", None),
+}

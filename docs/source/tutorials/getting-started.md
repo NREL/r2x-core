@@ -52,10 +52,11 @@ G3,Gas Plant 1,3,300,natural_gas,7500
 Create `simplegrid/config.py`:
 
 ```python
-from pydantic import BaseModel, Field
+from pydantic import Field
 from pathlib import Path
+from r2x_core import PluginConfig
 
-class SimpleGridConfig(BaseModel):
+class SimpleGridConfig(PluginConfig):
     """Configuration for SimpleGrid model."""
     input_folder: Path
     output_folder: Path
@@ -69,60 +70,61 @@ Create `simplegrid/parser.py`:
 
 ```python
 from infrasys.components import ACBus, ThermalStandard, RenewableDispatch
-from r2x_core.parser import BaseParser
+from r2x_core import BaseParser, Ok, Err, ParserError
+from r2x_core.result import Result
 
 class SimpleGridParser(BaseParser):
     """Parser for SimpleGrid model data."""
 
-    def validate_inputs(self) -> None:
-        """Validate required data files exist."""
-        for file_name in ["buses", "generators"]:
-            if file_name not in self.data_store.data_files:
-                raise ValueError(f"Missing required file: {file_name}")
-
-    def build_system_components(self) -> None:
+    def build_system_components(self) -> Result[None, ParserError]:
         """Create power system components from data files."""
-        # Create buses
-        bus_data = self.read_data_file("buses")
-        for row in bus_data.iter_rows(named=True):
-            bus = self.create_component(
-                ACBus,
-                name=row["bus_name"],
-                voltage=row["voltage_kv"],
-                base_voltage=row["voltage_kv"],
-            )
-            self.add_component(bus)
+        try:
+            # Read bus data
+            bus_data = self.store.read_data("buses")
+            if bus_data is None:
+                return Err(ParserError("Bus data file not found"))
 
-        # Create generators
-        gen_data = self.read_data_file("generators")
-        for row in gen_data.iter_rows(named=True):
-            bus = self.system.get_component(
-                ACBus, self._get_bus_name(row["bus_id"])
-            )
-            gen_class = (
-                RenewableDispatch
-                if row["fuel_type"] in ["wind", "solar"]
-                else ThermalStandard
-            )
-            gen = self.create_component(
-                gen_class,
-                name=row["gen_name"],
-                rating=row["capacity_mw"],
-                prime_mover_type=row["fuel_type"],
-                bus=bus,
-            )
-            self.add_component(gen)
+            # Create buses
+            for row in bus_data.iter_rows(named=True):
+                bus = self.create_component(
+                    ACBus,
+                    name=row["bus_name"],
+                    voltage=row["voltage_kv"],
+                    base_voltage=row["voltage_kv"],
+                )
+                self.add_component(bus)
 
-    def _get_bus_name(self, bus_id: int) -> str:
-        """Get bus name from bus_id."""
-        for row in self.read_data_file("buses").iter_rows(named=True):
-            if row["bus_id"] == bus_id:
-                return row["bus_name"]
-        raise ValueError(f"Bus {bus_id} not found")
+            # Read generator data
+            gen_data = self.store.read_data("generators")
+            if gen_data is None:
+                return Err(ParserError("Generator data file not found"))
 
-    def build_time_series(self) -> None:
+            # Create generators
+            for row in gen_data.iter_rows(named=True):
+                bus = self.system.get_component(
+                    ACBus, row["bus_name"]
+                )
+                gen_class = (
+                    RenewableDispatch
+                    if row["fuel_type"] in ["wind", "solar"]
+                    else ThermalStandard
+                )
+                gen = self.create_component(
+                    gen_class,
+                    name=row["gen_name"],
+                    rating=row["capacity_mw"],
+                    prime_mover_type=row["fuel_type"],
+                    bus=bus,
+                )
+                self.add_component(gen)
+
+            return Ok(None)
+        except Exception as e:
+            return Err(ParserError(f"Failed to build components: {e}"))
+
+    def build_time_series(self) -> Result[None, ParserError]:
         """Build time series (not needed for this example)."""
-        pass
+        return Ok(None)
 ```
 
 ## Exporter
@@ -132,63 +134,48 @@ Create `simplegrid/exporter.py`:
 ```python
 from pathlib import Path
 from infrasys.components import ACBus, ThermalStandard, RenewableDispatch
-from r2x_core.exporter import BaseExporter
+from r2x_core import BaseExporter, Ok, Err, ExporterError
+from r2x_core.result import Result
 import polars as pl
 
 class SimpleGridExporter(BaseExporter):
     """Exporter for SimpleGrid model data."""
 
-    def export(self) -> None:
+    def prepare_export(self) -> Result[None, ExporterError]:
         """Export system components to CSV files."""
-        output_folder = Path(self.config.output_folder)
+        try:
+            output_folder = Path(self.config.output_folder)
+            output_folder.mkdir(parents=True, exist_ok=True)
 
-        # Export buses
-        buses = list(self.system.get_components(ACBus))
-        bus_data = [
-            {
-                "bus_id": i,
-                "bus_name": bus.name,
-                "voltage_kv": bus.voltage,
-            }
-            for i, bus in enumerate(buses, start=1)
-        ]
-        pl.DataFrame(bus_data).write_csv(output_folder / "buses_output.csv")
+            # Export buses
+            buses = list(self.system.get_components(ACBus))
+            bus_data = [
+                {
+                    "bus_id": i,
+                    "bus_name": bus.name,
+                    "voltage_kv": bus.voltage,
+                }
+                for i, bus in enumerate(buses, start=1)
+            ]
+            pl.DataFrame(bus_data).write_csv(output_folder / "buses_output.csv")
 
-        # Export generators
-        gens = list(self.system.get_components(ThermalStandard)) + list(
-            self.system.get_components(RenewableDispatch)
-        )
-        gen_data = [
-            {
-                "gen_name": gen.name,
-                "capacity_mw": gen.rating,
-                "fuel_type": gen.prime_mover_type,
-            }
-            for gen in gens
-        ]
-        pl.DataFrame(gen_data).write_csv(output_folder / "generators_output.csv")
+            # Export generators
+            gens = list(self.system.get_components(ThermalStandard)) + list(
+                self.system.get_components(RenewableDispatch)
+            )
+            gen_data = [
+                {
+                    "gen_name": gen.name,
+                    "capacity_mw": gen.rating,
+                    "fuel_type": gen.prime_mover_type,
+                }
+                for gen in gens
+            ]
+            pl.DataFrame(gen_data).write_csv(output_folder / "generators_output.csv")
 
-    def export_time_series(self) -> None:
-        """Not needed for this example."""
-        pass
-```
-
-## Plugin Registration
-
-Create `simplegrid/__init__.py`:
-
-```python
-from r2x_core import PluginManager
-from .config import SimpleGridConfig
-from .parser import SimpleGridParser
-from .exporter import SimpleGridExporter
-
-PluginManager.register_model_plugin(
-    name="simplegrid",
-    config=SimpleGridConfig,
-    parser=SimpleGridParser,
-    exporter=SimpleGridExporter,
-)
+            return Ok(None)
+        except Exception as e:
+            return Err(ExporterError(f"Export failed: {e}"))
 ```
 
 ## Run the Translator
@@ -197,35 +184,44 @@ Create `main.py`:
 
 ```python
 from pathlib import Path
-from r2x_core import PluginManager, DataStore
+from r2x_core import DataStore
 from r2x_core.datafile import DataFile
-import simplegrid
+from simplegrid.config import SimpleGridConfig
+from simplegrid.parser import SimpleGridParser
+from simplegrid.exporter import SimpleGridExporter
 
 def main():
     input_folder = Path("data")
     output_folder = Path("output")
     output_folder.mkdir(exist_ok=True)
 
+    # Configure the data store
     data_store = DataStore(folder_path=input_folder)
     data_store.add_data(DataFile(name="buses", fpath="buses.csv"))
     data_store.add_data(DataFile(name="generators", fpath="generators.csv"))
 
-    manager = PluginManager()
-    config = manager.load_config_class("simplegrid")(
+    # Create configuration
+    config = SimpleGridConfig(
         input_folder=input_folder,
         output_folder=output_folder,
         base_year=2030,
     )
 
+    # Parse the model
     print("Parsing SimpleGrid model...")
-    parser = manager.load_parser("simplegrid")
-    system = parser(config, data_store).build_system()
+    parser = SimpleGridParser(config, data_store=data_store)
+    system = parser.build_system()
     print(f"Created system with {len(list(system.get_components()))} components")
 
+    # Export the system
     print("Exporting system...")
-    exporter = manager.load_exporter("simplegrid")
-    exporter(config, system, data_store).export()
-    print(f"Export complete! Check {output_folder}")
+    exporter = SimpleGridExporter(config, system=system)
+    result = exporter.export()
+
+    if result.is_ok():
+        print(f"Export complete! Check {output_folder}")
+    else:
+        print(f"Export failed: {result.unwrap_err()}")
 
 if __name__ == "__main__":
     main()
