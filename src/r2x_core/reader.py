@@ -1,4 +1,23 @@
-"""Data Reader for loading files based on their type."""
+"""Data reading and processing pipeline for multiple file formats.
+
+The DataReader is the main entry point for loading data files. It handles:
+- Path resolution (absolute, relative, and glob patterns)
+- File type detection based on extension
+- Optional file handling (returns None instead of raising errors)
+- Custom reader function delegation
+- Automatic data processing and transformations (filtering, type casting, etc.)
+- Placeholder substitution in filter specifications
+
+File type support is determined by EXTENSION_MAPPING, with custom readers
+available via the reader parameter in DataFile configurations.
+
+See Also
+--------
+:class:`~r2x_core.datafile.DataFile` : File configuration with metadata and processing specs.
+:class:`~r2x_core.file_readers.read_file_by_type` : Singledispatch file readers by type.
+:func:`~r2x_core.processors.apply_processing` : Data transformation pipeline.
+:func:`~r2x_core.datafile_utils.get_file_path` : Path resolution and validation.
+"""
 
 from collections.abc import Callable
 from pathlib import Path
@@ -16,15 +35,24 @@ from .processors import apply_processing, register_transformation
 
 
 class DataReader:
-    """Reader class for loading data files.
+    """Reader class for loading data files with automatic processing.
 
-    The DataReader handles the actual file I/O operations,
-    while delegating file-type-specific reading logic to
-    single dispatch methods.
+    The DataReader handles the complete reading pipeline: file discovery,
+    format detection, reading, and transformations. File-type-specific
+    reading logic is delegated via singledispatch based on file extension.
+
+    See Also
+    --------
+    :class:`~r2x_core.datafile.DataFile` : File configuration with specs.
+    :func:`read_data_file` : Main method for reading data with processing.
     """
 
     def __init__(self) -> None:
-        """Initialize the data reader."""
+        """Initialize the data reader.
+
+        No configuration needed; the reader is stateless and uses configuration
+        from DataFile objects and optional placeholders at read time.
+        """
 
     def read_data_file(
         self,
@@ -59,6 +87,12 @@ class DataReader:
             in filter_by but no placeholders dict provided.
         MultipleFileError
             If a glob pattern matches multiple files (subclass of ValueError).
+
+        See Also
+        --------
+        :func:`~r2x_core.file_readers.read_file_by_type` : File-type-specific reading.
+        :func:`~r2x_core.processors.apply_processing` : Transformation pipeline.
+        :func:`~r2x_core.datafile_utils.get_file_path` : Path resolution.
         """
         logger.debug("Starting reading for data_file={}", data_file.name)
         is_optional = data_file.info.is_optional if data_file.info else False  # By default files are no-opt
