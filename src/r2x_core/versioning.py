@@ -1,4 +1,19 @@
-"""Versioning strategies for R2X Core."""
+"""Version detection and comparison strategies.
+
+Provides protocols and implementations for:
+- Comparing versions across different schemes (semantic, git-based)
+- Detecting current version from data folders or files
+- Supporting custom version detection strategies
+
+Key abstractions:
+- VersionStrategy: Compares two versions and returns relative ordering
+- VersionReader: Detects current version from data folder
+
+See Also
+--------
+:class:`~r2x_core.upgrader.BaseUpgrader` : Uses version strategies to order upgrades.
+:class:`~r2x_core.upgrader_utils.UpgradeStep` : Upgrade steps paired with version ranges.
+"""
 
 from __future__ import annotations
 
@@ -176,8 +191,42 @@ class GitVersioningStrategy(VersionStrategy):
 
 @runtime_checkable
 class VersionReader(Protocol):
-    """Protocol for reading version from data files."""
+    """Protocol for detecting version from data files or folders.
+
+    Implementations detect the current version of a data structure by examining
+    files, metadata, or version markers. Works with various version formats
+    (semantic, git-based, timestamps, custom schemes).
+
+    Implementations should:
+    - Support Path objects pointing to data folders
+    - Return version as string (format depends on VersionStrategy used)
+    - Return None if version cannot be determined
+    - Raise ValueError if folder is invalid/empty
+
+    See Also
+    --------
+    :class:`VersionStrategy` : Compares versions detected by VersionReader.
+    """
 
     @abstractmethod
     def read_version(self, folder_path: Path) -> str | None:
-        """Detect version from data folder."""
+        """Detect current version from data folder.
+
+        Parameters
+        ----------
+        folder_path : Path
+            Path to data folder containing versioned files or metadata.
+
+        Returns
+        -------
+        str | None
+            Current version as string (format depends on implementation).
+            None if version information not found or folder is unversioned.
+
+        Raises
+        ------
+        ValueError
+            If folder_path is invalid, empty, or cannot be read.
+        FileNotFoundError
+            If folder_path does not exist.
+        """
