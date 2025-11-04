@@ -61,20 +61,60 @@ class ExporterWithKwargs(BaseExporter):
         return Ok(None)
 
 
-class ExporterWithErrors(BaseExporter):
-    """Exporter that uses additional kwargs.
-
-    This exporter demonstrates how to extend BaseExporter with custom
-    initialization parameters.
-    """
+class ExporterWithSetupError(BaseExporter):
+    """Exporter that fails during setup."""
 
     def setup_configuration(self) -> Result[None, ExporterError]:
-        """Implement required prepare_export method."""
-        return Err(ExporterError("failed"))
+        """Return error during setup."""
+        return Err(ExporterError("Setup failed"))
 
     def prepare_export(self) -> Result[None, ExporterError]:
         """Implement required prepare_export method."""
-        return Err(ExporterError("Error"))
+        return Ok(None)
+
+
+class ExporterWithPrepareError(BaseExporter):
+    """Exporter that fails during prepare."""
+
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Return error during prepare."""
+        return Err(ExporterError("Prepare failed"))
+
+
+class ExporterWithValidationError(BaseExporter):
+    """Exporter that fails during validation."""
+
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        return Ok(None)
+
+    def validate_export(self) -> Result[None, ExporterError]:
+        """Return error during validation."""
+        return Err(ExporterError("Validation failed"))
+
+
+class ExporterWithTimeSeriesError(BaseExporter):
+    """Exporter that fails during time series export."""
+
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        return Ok(None)
+
+    def export_time_series(self) -> Result[None, ExporterError]:
+        """Return error during time series export."""
+        return Err(ExporterError("Time series export failed"))
+
+
+class ExporterWithPostprocessError(BaseExporter):
+    """Exporter that fails during postprocess."""
+
+    def prepare_export(self) -> Result[None, ExporterError]:
+        """Implement required prepare_export method."""
+        return Ok(None)
+
+    def postprocess_export(self) -> Result[None, ExporterError]:
+        """Return error during postprocess."""
+        return Err(ExporterError("Postprocess failed"))
 
 
 def test_base_exporter_initialization(tmp_path):
@@ -146,11 +186,61 @@ def test_concrete_exporter_export_time_series_method(tmp_path):
     assert result.is_ok()
 
 
-def test_exporter_with_errors(tmp_path):
+def test_exporter_setup_error(tmp_path, caplog):
+    """Test that setup errors are properly logged and returned."""
     config = MockConfig(output_dir=tmp_path)
     system = System()
     data_store = DataStore()
-    exporter = ExporterWithErrors(config, system, data_store=data_store)
+    exporter = ExporterWithSetupError(config, system, data_store=data_store)
 
     result = exporter.export()
     assert result.is_err()
+    assert "Setup failed" in str(result.err())
+
+
+def test_exporter_prepare_error(tmp_path, caplog):
+    """Test that prepare errors are properly logged and returned."""
+    config = MockConfig(output_dir=tmp_path)
+    system = System()
+    data_store = DataStore()
+    exporter = ExporterWithPrepareError(config, system, data_store=data_store)
+
+    result = exporter.export()
+    assert result.is_err()
+    assert "Prepare failed" in str(result.err())
+
+
+def test_exporter_validation_error(tmp_path, caplog):
+    """Test that validation errors are properly logged and returned."""
+    config = MockConfig(output_dir=tmp_path)
+    system = System()
+    data_store = DataStore()
+    exporter = ExporterWithValidationError(config, system, data_store=data_store)
+
+    result = exporter.export()
+    assert result.is_err()
+    assert "Validation failed" in str(result.err())
+
+
+def test_exporter_timeseries_error(tmp_path, caplog):
+    """Test that time series export errors are properly logged and returned."""
+    config = MockConfig(output_dir=tmp_path)
+    system = System()
+    data_store = DataStore()
+    exporter = ExporterWithTimeSeriesError(config, system, data_store=data_store)
+
+    result = exporter.export()
+    assert result.is_err()
+    assert "Time series export failed" in str(result.err())
+
+
+def test_exporter_postprocess_error(tmp_path, caplog):
+    """Test that postprocess errors are properly logged and returned."""
+    config = MockConfig(output_dir=tmp_path)
+    system = System()
+    data_store = DataStore()
+    exporter = ExporterWithPostprocessError(config, system, data_store=data_store)
+
+    result = exporter.export()
+    assert result.is_err()
+    assert "Postprocess failed" in str(result.err())

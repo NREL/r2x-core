@@ -116,3 +116,55 @@ def test_read_json_file(reader_example, sample_json, tmp_path):
     assert isinstance(result, dict)
     assert result["key"] == "value"
     assert result["num"] == 42
+
+
+def test_read_data_file_with_custom_reader(reader_example, sample_csv, tmp_path):
+    import polars as pl
+
+    from r2x_core.datafile import DataFile, ReaderConfig
+
+    def custom_reader(path, **kwargs):
+        return pl.read_csv(path, **kwargs)
+
+    data_file = DataFile(
+        name="test",
+        fpath=sample_csv,
+        reader=ReaderConfig(function=custom_reader),
+    )
+
+    result = reader_example.read_data_file(data_file, tmp_path)
+    assert result is not None
+
+
+def test_read_data_file_with_processing_error(reader_example, sample_csv, tmp_path):
+    from r2x_core.datafile import DataFile, TabularProcessing
+
+    data_file = DataFile(
+        name="test",
+        fpath=sample_csv,
+        proc_spec=TabularProcessing(column_schema={"a": "invalid_type_name"}),
+    )
+
+    with pytest.raises(ValueError):
+        reader_example.read_data_file(data_file, tmp_path)
+
+
+def test_read_data_file_glob_pattern(reader_example, tmp_path):
+    from r2x_core.datafile import DataFile
+
+    (tmp_path / "data1.csv").write_text("a,b\n1,2\n")
+
+    data_file = DataFile(name="test", glob="*.csv")
+    result = reader_example.read_data_file(data_file, tmp_path)
+    assert result is not None
+
+
+def test_read_data_file_relative_path(reader_example, tmp_path):
+    from r2x_core.datafile import DataFile
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("col1,col2\n1,2\n")
+
+    data_file = DataFile(name="test", relative_fpath="data.csv")
+    result = reader_example.read_data_file(data_file, tmp_path)
+    assert result is not None

@@ -467,3 +467,170 @@ def test_result_unwrap_or_err():
     """Test unwrap_or with Err result."""
     result = Err("error")
     assert result.unwrap_or(0) == 0
+
+
+def test_result_map_err_on_ok():
+    """Test map_err on Ok value."""
+    result = Ok(5)
+    mapped = result.map_err(lambda e: str(e).upper())
+    assert mapped.is_ok()
+    assert mapped.unwrap() == 5
+
+
+def test_result_map_err_on_err():
+    """Test map_err on Err value."""
+    result = Err("error")
+    mapped = result.map_err(lambda e: str(e).upper())
+    assert mapped.is_err()
+    assert mapped.err() == "ERROR"
+
+
+def test_result_and_then_on_ok():
+    """Test and_then on Ok value."""
+    result = Ok(5)
+    chained = result.and_then(lambda x: Ok(x * 2))
+    assert chained.is_ok()
+    assert chained.unwrap() == 10
+
+
+def test_result_and_then_on_ok_returns_err():
+    """Test and_then on Ok that returns Err."""
+    result = Ok(5)
+    chained = result.and_then(lambda x: Err("processing error"))
+    assert chained.is_err()
+    assert chained.err() == "processing error"
+
+
+def test_result_and_then_on_err():
+    """Test and_then on Err value."""
+    result = Err("error")
+    chained = result.and_then(lambda x: Ok(x * 2))
+    assert chained.is_err()
+    assert chained.err() == "error"
+
+
+def test_result_or_else_on_ok():
+    """Test or_else on Ok value."""
+    result = Ok(5)
+    recovered = result.or_else(lambda e: Ok(0))
+    assert recovered.is_ok()
+    assert recovered.unwrap() == 5
+
+
+def test_result_or_else_on_err():
+    """Test or_else on Err value."""
+    result = Err("error")
+    recovered = result.or_else(lambda e: Ok(0))
+    assert recovered.is_ok()
+    assert recovered.unwrap() == 0
+
+
+def test_result_or_else_on_err_returns_err():
+    """Test or_else on Err that returns Err."""
+    result = Err("error1")
+    recovered = result.or_else(lambda e: Err("error2"))
+    assert recovered.is_err()
+    assert recovered.err() == "error2"
+
+
+def test_result_unwrap_or_else_ok():
+    """Test unwrap_or_else method with Ok."""
+    ok_result = Ok(42)
+    assert ok_result.unwrap_or_else(lambda e: 0) == 42
+
+
+def test_result_unwrap_or_else_err():
+    """Test unwrap_or_else method with Err."""
+    err_result = Err("error")
+    assert err_result.unwrap_or_else(lambda e: len(e)) == 5
+
+
+def test_result_expect_ok():
+    """Test expect method with Ok."""
+    ok_result = Ok(42)
+    assert ok_result.expect("Should not fail") == 42
+
+
+def test_result_expect_err():
+    """Test expect method with Err."""
+    err_result = Err("error")
+    with pytest.raises(UnwrapError):
+        err_result.expect("This should fail")
+
+
+def test_result_ok_method_ok():
+    """Test ok method on Ok result."""
+    ok_result = Ok(42)
+    assert ok_result.ok() == 42
+
+
+def test_result_ok_method_err():
+    """Test ok method on Err result."""
+    err_result = Err("error")
+    assert err_result.ok() is None
+
+
+def test_result_unwrap_or_raise():
+    """Test unwrap_or_raise method."""
+    ok_result = Ok(42)
+    assert ok_result.unwrap_or_raise() == 42
+
+
+def test_result_bool_ok():
+    """Test bool conversion of Ok result."""
+    ok_result = Ok(42)
+    assert bool(ok_result) is True
+
+
+def test_result_bool_err():
+    """Test bool conversion of Err result."""
+    err_result = Err("error")
+    assert bool(err_result) is False
+
+
+def test_result_eq_ok():
+    """Test equality comparison of Ok results."""
+    ok1 = Ok(42)
+    ok2 = Ok(42)
+    ok3 = Ok(43)
+    assert ok1 == ok2
+    assert ok1 != ok3
+
+
+def test_result_eq_err():
+    """Test equality comparison of Err results."""
+    err1 = Err("error")
+    err2 = Err("error")
+    assert err1 == err2
+
+
+def test_result_eq_cross():
+    """Test equality comparison across Ok and Err."""
+    ok_result = Ok(42)
+    err_result = Err("error")
+    assert ok_result != err_result
+
+
+def test_result_hash():
+    """Test hashing of results."""
+    ok_result = Ok(42)
+    err_result = Err("error")
+    result_dict = {ok_result: "ok", err_result: "err"}
+    assert result_dict[ok_result] == "ok"
+    assert result_dict[err_result] == "err"
+
+
+def test_result_str_repr():
+    """Test string representation of results."""
+    ok_result = Ok(42)
+    err_result = Err("error")
+    assert repr(ok_result) is not None
+    assert repr(err_result) is not None
+    assert str(ok_result) is not None
+    assert str(err_result) is not None
+
+
+def test_result_unwrap_err_on_ok():
+    result = Ok(42)
+    with pytest.raises(UnwrapError):
+        result.unwrap_err()

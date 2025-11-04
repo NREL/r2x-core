@@ -351,3 +351,166 @@ def test_build_system_fails_on_specific_stage(fail_stage):
 
     with pytest.raises(ParserError):
         parser.build_system()
+
+
+class ParserWithValidationError(BaseParser):
+    def validate_inputs(self):
+        return Err(ParserError("Validation failed"))
+
+    def build_system_components(self):
+        return Ok(None)
+
+    def build_time_series(self):
+        return Ok(None)
+
+    def prepare_data(self):
+        return Ok(None)
+
+
+class ParserWithPrepareError(BaseParser):
+    def prepare_data(self):
+        return Err(ParserError("Prepare failed"))
+
+    def build_system_components(self):
+        return Ok(None)
+
+    def build_time_series(self):
+        return Ok(None)
+
+    def validate_inputs(self):
+        return Ok(None)
+
+
+class ParserWithComponentError(BaseParser):
+    def validate_inputs(self):
+        return Ok(None)
+
+    def build_system_components(self):
+        return Err(ParserError("Component building failed"))
+
+    def build_time_series(self):
+        return Ok(None)
+
+
+class ParserWithTimeSeriesError(BaseParser):
+    def validate_inputs(self):
+        return Ok(None)
+
+    def build_system_components(self):
+        return Ok(None)
+
+    def build_time_series(self):
+        return Err(ParserError("Time series building failed"))
+
+
+class ParserWithPostprocessError(BaseParser):
+    def validate_inputs(self):
+        return Ok(None)
+
+    def build_system_components(self):
+        return Ok(None)
+
+    def build_time_series(self):
+        return Ok(None)
+
+    def postprocess_system(self):
+        return Err(ParserError("Postprocess failed"))
+
+
+class ParserWithFinalValidationError(BaseParser):
+    def validate_inputs(self):
+        return Ok(None)
+
+    def build_system_components(self):
+        return Ok(None)
+
+    def build_time_series(self):
+        return Ok(None)
+
+    def validate_system(self):
+        return Err(ParserError("System validation failed"))
+
+
+def test_parser_with_data_store(sample_config, sample_data_store):
+    parser = MockParser(config=sample_config, data_store=sample_data_store)
+    assert parser.store == sample_data_store
+
+
+def test_parser_repr(sample_config):
+    parser = MockParser(config=sample_config)
+    repr_str = repr(parser)
+    assert "MockParser" in repr_str
+
+
+def test_parser_validation_error(sample_config):
+    parser = ParserWithValidationError(config=sample_config)
+    with pytest.raises(ParserError, match="Validation failed"):
+        parser.build_system()
+
+
+def test_parser_prepare_error(sample_config):
+    parser = ParserWithPrepareError(config=sample_config)
+    with pytest.raises(ParserError, match="Prepare failed"):
+        parser.build_system()
+
+
+def test_parser_component_error(sample_config):
+    parser = ParserWithComponentError(config=sample_config)
+    with pytest.raises(ParserError, match="Component building failed"):
+        parser.build_system()
+
+
+def test_parser_timeseries_error(sample_config):
+    parser = ParserWithTimeSeriesError(config=sample_config)
+    with pytest.raises(ParserError, match="Time series building failed"):
+        parser.build_system()
+
+
+def test_parser_postprocess_error(sample_config):
+    parser = ParserWithPostprocessError(config=sample_config)
+    with pytest.raises(ParserError, match="Postprocess failed"):
+        parser.build_system()
+
+
+def test_parser_validation_system_error(sample_config):
+    parser = ParserWithFinalValidationError(config=sample_config)
+    with pytest.raises(ParserError, match="System validation failed"):
+        parser.build_system()
+
+
+def test_parser_add_component_success(sample_config):
+    parser = MockParser(config=sample_config)
+    component = MockBus(name="TestBus", voltage=230.0)
+    result = parser.add_component(component)
+    assert result.is_ok()
+    assert component in parser.system.get_components(MockBus)
+
+
+def test_parser_add_component_duplicate(sample_config):
+    parser = MockParser(config=sample_config)
+    component = MockBus(name="TestBus", voltage=230.0)
+    parser.add_component(component)
+    result = parser.add_component(component)
+    assert result.is_err()
+
+
+def test_parser_add_time_series_success(sample_config):
+    parser = MockParser(config=sample_config)
+    component = MockBus(name="TestBus", voltage=230.0)
+    parser.add_component(component)
+    mock_ts = Mock()
+    result = parser.add_time_series(component, mock_ts)
+    assert isinstance(result, bool)
+
+
+def test_parser_create_component_success(sample_config):
+    parser = MockParser(config=sample_config)
+    component = parser.create_component(MockBus, name="NewBus", voltage=500.0)
+    assert component.name == "NewBus"
+    assert component.voltage == 500.0
+
+
+def test_parser_get_data(sample_config, sample_data_store):
+    parser = MockParser(config=sample_config, data_store=sample_data_store)
+    data = parser.get_data("buses")
+    assert data is not None
