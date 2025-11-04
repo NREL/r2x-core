@@ -1,4 +1,33 @@
-"""Optimized serialization for modules with rich metadata and JSON schema support."""
+"""Serialization system for classes/functions with optional metadata and JSON schemas.
+
+Provides transparent serialization of callables (functions, classes) as importable
+paths ("module:Name" format) with optional rich metadata including signatures and
+parameter information. Uses Pydantic's custom schema system for seamless integration.
+
+Key components:
+- Importable: Annotation for fields holding serializable classes/functions
+- Fast path: Basic serialization with module, name, type (no introspection)
+- Full path: Extended serialization with parameter signatures and defaults
+- Schema export: Generate JSON schemas for plugin documentation
+
+Usage:
+
+    from pydantic import BaseModel
+    from r2x_core.serialization import Importable
+
+    class MyConfig(BaseModel):
+        handler: Annotated[type, Importable]  # Can serialize/deserialize handler class
+
+    # Automatically serializes to {"module": "mymod", "name": "MyHandler", "type": "class"}
+
+The serialization system is used internally for plugin metadata, allowing classes
+and functions to be stored in config files and reconstructed at runtime.
+
+See Also
+--------
+:class:`~r2x_core.plugin.BasePlugin` : Uses Importable for plugin callables.
+:func:`get_pydantic_schema` : Export Pydantic model JSON schemas.
+"""
 
 import inspect
 import json
@@ -13,14 +42,73 @@ _module_cache: dict[int, str] = {}
 
 
 def get_pydantic_schema(model_class: type[BaseModel]) -> dict[str, Any]:
-    """Get JSON schema for a Pydantic model (language-agnostic format)."""
+    """Get JSON schema for a Pydantic model.
+
+    Generates a JSON Schema (language-agnostic) representation of the Pydantic model's
+    structure, field types, descriptions, and validation constraints. Useful for
+    documentation generation, API schema publishing, and validation.
+
+    Parameters
+    ----------
+    model_class : type[BaseModel]
+        A Pydantic BaseModel subclass to extract schema from.
+
+    Returns
+    -------
+    dict[str, Any]
+        JSON Schema dictionary with $schema, title, properties, required, etc.
+        Can be serialized to JSON for documentation or API schemas.
+
+    Examples
+    --------
+    >>> from pydantic import BaseModel, Field
+    >>> from r2x_core.serialization import get_pydantic_schema
+    >>> class Config(BaseModel):
+    ...     name: str = Field(description="Config name")
+    ...     version: int = Field(default=1, ge=0)
+    >>> schema = get_pydantic_schema(Config)
+    >>> schema['properties']['name']
+    {'title': 'Name', 'type': 'string', 'description': 'Config name'}
+    """
     return model_class.model_json_schema()
 
 
 def export_schemas_for_documentation(
     output_path: str, include_models: list[type[BaseModel]] | None = None
 ) -> None:
-    """Export JSON schemas for plugin types to a file."""
+    """Export JSON schemas for models to a file for documentation.
+
+    Generates JSON schemas for specified Pydantic models and writes them to a JSON
+    file. Useful for generating OpenAPI/Swagger docs, API documentation, or
+    schema validation specifications.
+
+    Parameters
+    ----------
+    output_path : str
+        File path to write JSON schemas to (e.g., "/path/to/schemas.json").
+    include_models : list[type[BaseModel]] | None
+        List of Pydantic model classes to export. If None, uses default list:
+        [Package, ParserPlugin, UpgraderPlugin, ExporterPlugin].
+        Default is None.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    Export default plugin schemas:
+
+    >>> from r2x_core.serialization import export_schemas_for_documentation
+    >>> export_schemas_for_documentation("schemas.json")
+
+    Export custom models:
+
+    >>> from pydantic import BaseModel
+    >>> class CustomModel(BaseModel):
+    ...     field: str
+    >>> export_schemas_for_documentation("out.json", [CustomModel])
+    """
     if include_models is None:
         from r2x_core.package import Package
         from r2x_core.plugin import ExporterPlugin, ParserPlugin, UpgraderPlugin
