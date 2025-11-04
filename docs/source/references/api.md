@@ -18,6 +18,7 @@ Complete API documentation for all r2x-core classes and functions.
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 ```
 
 ## Data Management
@@ -25,6 +26,7 @@ Complete API documentation for all r2x-core classes and functions.
 ```{eval-rst}
 .. autoclass:: r2x_core.DataStore
    :members:
+   :no-index:
 ```
 
 ```{eval-rst}
@@ -48,6 +50,7 @@ Complete API documentation for all r2x-core classes and functions.
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 ```
 
 ```{eval-rst}
@@ -57,6 +60,7 @@ Complete API documentation for all r2x-core classes and functions.
    :model-show-validator-members: False
    :model-show-validator-summary: False
    :field-list-validators: False
+   :no-index:
 ```
 
 ## Exporter Framework
@@ -66,33 +70,12 @@ Complete API documentation for all r2x-core classes and functions.
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 ```
 
 ## Plugin System
 
-```{eval-rst}
-.. autoclass:: r2x_core.PluginManager
-   :members:
-   :undoc-members:
-```
-
-```{eval-rst}
-.. autoclass:: r2x_core.PluginComponent
-   :members:
-   :undoc-members:
-```
-
-```{eval-rst}
-.. autoclass:: r2x_core.SystemModifier
-   :members:
-   :show-inheritance:
-```
-
-```{eval-rst}
-.. autoclass:: r2x_core.FilterFunction
-   :members:
-   :show-inheritance:
-```
+The plugin system is extended through subclasses of the parser, exporter, and upgrader frameworks.
 
 ## File Types
 
@@ -101,6 +84,7 @@ Complete API documentation for all r2x-core classes and functions.
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 ```
 
 ## Exceptions
@@ -132,12 +116,6 @@ Complete API documentation for all r2x-core classes and functions.
 ## Versioning and Upgrades
 
 ```{eval-rst}
-.. autoclass:: r2x_core.VersioningStrategy
-   :members:
-   :show-inheritance:
-```
-
-```{eval-rst}
 .. autoclass:: r2x_core.SemanticVersioningStrategy
    :members:
    :undoc-members:
@@ -152,40 +130,13 @@ Complete API documentation for all r2x-core classes and functions.
 ```
 
 ```{eval-rst}
-.. autoclass:: r2x_core.FileModTimeStrategy
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
-
-```{eval-rst}
-.. autoclass:: r2x_core.UpgradeContext
-   :members:
-   :undoc-members:
-```
-
-```{eval-rst}
 .. autoclass:: r2x_core.UpgradeStep
    :members:
    :show-inheritance:
 ```
 
 ```{eval-rst}
-.. autoclass:: r2x_core.UpgradeResult
-   :members:
-   :undoc-members:
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.apply_upgrade
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.apply_upgrades
-```
-
-```{eval-rst}
-.. autofunction:: r2x_core.apply_upgrades_with_rollback
+.. autofunction:: r2x_core.run_upgrade_step
 ```
 
 ## Utilities

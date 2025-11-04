@@ -133,7 +133,7 @@ def shall_we_upgrade(
 
 
 def run_upgrade_step(step: UpgradeStep, data: Any, upgrader_context: Any | None = None) -> Result[Any, str]:
-    """Execute a single upgrade transformation on data.
+    r"""Execute a single upgrade transformation on data.
 
     Applies the upgrade function defined in the step, automatically detecting
     whether the function accepts an upgrader_context parameter using introspection.
@@ -165,7 +165,7 @@ def run_upgrade_step(step: UpgradeStep, data: Any, upgrader_context: Any | None 
     -----
     Introspection behavior:
     - If function has upgrader_context parameter: called with upgrader_context kwarg
-    - If function accepts **kwargs: called with upgrader_context kwarg
+    - If function accepts \\*\\*kwargs: called with upgrader_context kwarg
     - Otherwise: called with only data argument
 
     This allows upgrade steps to optionally use context without explicit interface.
