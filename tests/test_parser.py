@@ -36,9 +36,9 @@ class MockBus(Component):
 class MockParser(BaseParser):
     """Test parser implementation."""
 
-    def __init__(self, config: MockModelConfig, data_store: DataStore | None = None, **kwargs):
+    def __init__(self, config: MockModelConfig | None, data_store: DataStore | None = None, **kwargs):
         super().__init__(config, data_store=data_store, **kwargs)
-        self.model_year = config.model_year
+        self.model_year = config.model_year if config else 2020
         self.validation_called = False
         self.components_built = False
         self.time_series_built = False
@@ -130,6 +130,13 @@ def test_parser_initialization(mock_parser, sample_config, sample_data_store):
     assert mock_parser.system
     assert mock_parser.auto_add_composed_components is True
     assert mock_parser.skip_validation is False
+
+
+def test_parser_without_config(sample_data_store):
+    """Parsers can be instantiated without a PluginConfig."""
+    parser = MockParser(None, data_store=sample_data_store)
+    assert parser.config is None
+    parser.build_system()
 
 
 def test_parser_custom_name(sample_config, sample_data_store):
@@ -275,7 +282,7 @@ def test_must_implementbuild_system_components(sample_config, sample_data_store)
             pass
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        IncompleteParser(sample_config, store=sample_data_store)
+        IncompleteParser(sample_config, data_store=sample_data_store)
 
 
 def test_must_implementbuild_time_series(sample_config, sample_data_store):
@@ -286,7 +293,7 @@ def test_must_implementbuild_time_series(sample_config, sample_data_store):
             pass
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        IncompleteParser(sample_config, store=sample_data_store)
+        IncompleteParser(sample_config, data_store=sample_data_store)
 
 
 def test_parser_with_custom_validation(tmp_path):
@@ -312,7 +319,7 @@ def test_parser_with_custom_validation(tmp_path):
     data_store.add_data(DataFile(name="buses", fpath=bus_file))
 
     config = PluginConfig()
-    parser = ValidatingParser(config, store=data_store)
+    parser = ValidatingParser(config, data_store=data_store)
 
     with patch("infrasys.system.System") as mock_system_class:
         mock_system = MagicMock()

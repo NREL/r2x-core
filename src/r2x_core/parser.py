@@ -65,8 +65,9 @@ class BaseParser(ABC):
 
     Parameters
     ----------
-    config : PluginConfig
-        Parser configuration parameters. This is a positional-only parameter.
+    config : PluginConfig | None, optional
+        Parser configuration parameters. Optional for parsers that do not require
+        structured config. This is a positional-only parameter.
     data_store : DataStore | None, optional
         Optional data store for file management. If None, creates a new :class:`DataStore`.
         This is a keyword-only parameter. Default is None.
@@ -171,7 +172,7 @@ class BaseParser(ABC):
     def __init__(
         self,
         /,
-        config: PluginConfig,
+        config: PluginConfig | None = None,
         *,
         data_store: DataStore | None = None,
         system_name: str | None = None,
@@ -183,8 +184,9 @@ class BaseParser(ABC):
 
         Parameters
         ----------
-        config : PluginConfig
-            Parser configuration parameters. This is a positional-only parameter.
+        config : PluginConfig | None, optional
+            Parser configuration parameters. Optional for parsers that do not need config.
+            This is a positional-only parameter.
         data_store : DataStore | None, optional
             Optional data store for file management. If None, creates a new DataStore.
             This is a keyword-only parameter.
@@ -231,8 +233,8 @@ class BaseParser(ABC):
         self._system = System(name=system_name, **filter_valid_kwargs(System, kwargs))
 
     @property
-    def config(self) -> PluginConfig:
-        """Return the :class:`PluginConfig` instance."""
+    def config(self) -> PluginConfig | None:
+        """Return the :class:`PluginConfig` instance, if provided."""
         return self._config
 
     @property
@@ -659,4 +661,5 @@ class BaseParser(ABC):
         >>> gen_data = self.read_data_file("generators")
         >>> bus_data = self.read_data_file("buses", use_cache=False)
         """
-        return self._store.read_data(name=name, placeholders=self._config.model_dump(), **kwargs)
+        placeholders = self._config.model_dump() if self._config is not None else {}
+        return self._store.read_data(name=name, placeholders=placeholders, **kwargs)
