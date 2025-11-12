@@ -140,48 +140,17 @@ my_model_exporter = "my_package.plugins:exporter_plugin"
 Then expose a manifest in `my_package/plugins.py`:
 
 ```python
-from r2x_core import (
-    ArgumentSource,
-    ArgumentSpec,
-    ConfigSpec,
-    IOContract,
-    IOSlot,
-    IOSlotKind,
-    InvocationSpec,
-    PluginKind,
-    PluginManifest,
-    PluginSpec,
-    ResourceSpec,
-    StoreMode,
-    StoreSpec,
-)
+from r2x_core import PluginManifest, PluginSpec
 
-manifest = PluginManifest(
-    package="my_package",
-    plugins=[
-        PluginSpec(
-            name="my_model.parser",
-            kind=PluginKind.PARSER,
-            entry="my_package.parser:MyModelParser",
-            description="Builds a System from model inputs.",
-            invocation=InvocationSpec(
-                method="build_system",
-                constructor=[ArgumentSpec(name="config", source=ArgumentSource.CONFIG)],
-                call=[ArgumentSpec(name="store", source=ArgumentSource.STORE)],
-            ),
-            io=IOContract(
-                consumes=[
-                    IOSlot(kind=IOSlotKind.STORE_FOLDER, description="Input data directory"),
-                    IOSlot(kind=IOSlotKind.CONFIG_FILE, optional=True),
-                ],
-                produces=[IOSlot(kind=IOSlotKind.SYSTEM)],
-            ),
-            resources=ResourceSpec(
-                store=StoreSpec(required=True, modes=[StoreMode.FOLDER]),
-                config=ConfigSpec(model="my_package.config:MyModelConfig", required=True),
-            ),
-        ),
-    ],
+manifest = PluginManifest(package="my_package")
+
+manifest.add(
+    PluginSpec.parser(
+        name="my_model.parser",
+        entry="my_package.parser:MyModelParser",
+        description="Builds a System from model inputs.",
+        config="my_package.config:MyModelConfig",
+    )
 )
 ```
 

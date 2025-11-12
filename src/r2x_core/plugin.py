@@ -21,18 +21,19 @@ Key concepts
 * :class:`IOContract` - inputs/outputs exchanged with the pipeline
 * :class:`ResourceSpec` - how to materialize configs and data stores
 * :class:`UpgradeSpec` - declarative upgrader metadata (strategy + steps)
+* Helper constructors (:meth:`PluginSpec.parser`, etc.) for plugin authors
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Sequence
 from enum import Enum
 from importlib import import_module
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from r2x_core.upgrader_utils import UpgradeType
+from r2x_core.upgrader_utils import UpgradeStep, UpgradeType
 
 
 def _as_import_path(value: str | Callable[..., Any] | type | None) -> str | None:
@@ -256,6 +257,146 @@ class PluginSpec(BaseModel):
         """Import and return the entry callable/class."""
         return _import_from_path(self.entry)
 
+    @classmethod
+    def parser(
+        cls,
+        *,
+        name: str,
+        entry: str | type,
+        config: ConfigSpec | type | str | None = None,
+        config_optional: bool = False,
+        store: StoreSpec | bool | str | None = True,
+        method: str = "build_system",
+        description: str | None = None,
+        tags: Sequence[str] | None = None,
+    ) -> PluginSpec:
+        """Create a parser plugin with sensible defaults."""
+        store_spec = _coerce_store_spec(store)
+        config_spec = _coerce_config_spec(config, required=not config_optional)
+        invocation = InvocationSpec(
+            method=method,
+            constructor=list(_maybe_config_argument(config_spec)),
+            call=list(_maybe_store_argument(store_spec)),
+        )
+        io = _parser_io(store_spec, config_spec)
+        resources = _maybe_resources(store_spec, config_spec)
+        return cls(
+            name=name,
+            kind=PluginKind.PARSER,
+            entry=_as_import_path(entry),
+            invocation=invocation,
+            io=io,
+            resources=resources,
+            description=description,
+            tags=_normalize_tags(tags),
+        )
+
+    @classmethod
+    def exporter(
+        cls,
+        *,
+        name: str,
+        entry: str | type,
+        config: ConfigSpec | type | str | None = None,
+        config_optional: bool = False,
+        method: str = "export",
+        output_kind: IOSlotKind = IOSlotKind.FILE,
+        description: str | None = None,
+        tags: Sequence[str] | None = None,
+    ) -> PluginSpec:
+        """Create an exporter plugin with default IO contract."""
+        config_spec = _coerce_config_spec(config, required=not config_optional)
+        invocation = InvocationSpec(
+            method=method,
+            constructor=list(_maybe_config_argument(config_spec)),
+            call=[
+                ArgumentSpec(name="system", source=ArgumentSource.SYSTEM),
+            ],
+        )
+        io = _exporter_io(config_spec, output_kind)
+        resources = _maybe_resources(None, config_spec)
+        return cls(
+            name=name,
+            kind=PluginKind.EXPORTER,
+            entry=_as_import_path(entry),
+            invocation=invocation,
+            io=io,
+            resources=resources,
+            description=description,
+            tags=_normalize_tags(tags),
+        )
+
+    @classmethod
+    def function(
+        cls,
+        *,
+        name: str,
+        entry: str | Callable[..., Any],
+        takes_system: bool = True,
+        returns_system: bool = True,
+        description: str | None = None,
+        tags: Sequence[str] | None = None,
+    ) -> PluginSpec:
+        """Create a function-based modifier plugin."""
+        call = []
+        consumes = []
+        produces = []
+        if takes_system:
+            call.append(ArgumentSpec(name="system", source=ArgumentSource.SYSTEM))
+            consumes.append(IOSlot(kind=IOSlotKind.SYSTEM))
+        if returns_system:
+            produces.append(IOSlot(kind=IOSlotKind.SYSTEM))
+        io = IOContract(consumes=consumes, produces=produces or [IOSlot(kind=IOSlotKind.VOID)])
+        invocation = InvocationSpec(
+            implementation=ImplementationType.FUNCTION,
+            call=call,
+        )
+        return cls(
+            name=name,
+            kind=PluginKind.MODIFIER,
+            entry=_as_import_path(entry),
+            invocation=invocation,
+            io=io,
+            description=description,
+            tags=_normalize_tags(tags),
+        )
+
+    @classmethod
+    def upgrader(
+        cls,
+        *,
+        name: str,
+        entry: str | type | Callable[..., Any],
+        version_strategy: str | type,
+        version_reader: str | type,
+        steps: Sequence[UpgradeStepSpec | UpgradeStep] | None = None,
+        implementation: ImplementationType | None = None,
+        description: str | None = None,
+        tags: Sequence[str] | None = None,
+    ) -> PluginSpec:
+        """Create an upgrader plugin that operates on data folders."""
+        step_specs = _coerce_step_specs(steps, entry)
+        upgrade = UpgradeSpec(
+            strategy=_as_import_path(version_strategy),
+            reader=_as_import_path(version_reader),
+            steps=step_specs,
+        )
+        store_spec = StoreSpec(required=True, modes=[StoreMode.FOLDER])
+        invocation = InvocationSpec(
+            implementation=implementation or _guess_implementation(entry),
+        )
+        return cls(
+            name=name,
+            kind=PluginKind.UPGRADER,
+            entry=_as_import_path(entry),
+            invocation=invocation,
+            io=_upgrader_io(),
+            resources=ResourceSpec(store=store_spec),
+            upgrade=upgrade,
+            description=description,
+            tags=_normalize_tags(tags),
+        )
+
 
 class PluginManifest(BaseModel):
     """Package-level registry of plugins."""
@@ -278,3 +419,128 @@ class PluginManifest(BaseModel):
     def resolve_all_entries(self) -> dict[str, Any]:
         """Import every plugin entry and return a mapping."""
         return {plugin.name: plugin.resolve_entry() for plugin in self.plugins}
+
+    def add(self, plugin: PluginSpec) -> PluginSpec:
+        """Append a plugin to the manifest (builder convenience)."""
+        self.plugins.append(plugin)
+        return plugin
+
+
+def _normalize_tags(tags: Sequence[str] | None) -> list[str]:
+    return list(tags) if tags else []
+
+
+def _coerce_store_spec(
+    store: StoreSpec | bool | str | None,
+) -> StoreSpec | None:
+    if store is None:
+        return None
+    if isinstance(store, StoreSpec):
+        return store
+    if isinstance(store, bool):
+        return StoreSpec(required=store, modes=[StoreMode.FOLDER])
+    if isinstance(store, str):
+        return StoreSpec(required=True, modes=[StoreMode.FOLDER], default_path=store)
+    raise TypeError(f"Unsupported store specification: {store!r}")
+
+
+def _coerce_config_spec(
+    config: ConfigSpec | type | str | None,
+    *,
+    required: bool,
+) -> ConfigSpec | None:
+    if config is None:
+        return None
+    if isinstance(config, ConfigSpec):
+        return config.model_copy(update={"required": required})
+    return ConfigSpec(model=_as_import_path(config), required=required)
+
+
+def _maybe_config_argument(config: ConfigSpec | None) -> Iterable[ArgumentSpec]:
+    if config is None:
+        return
+    yield ArgumentSpec(
+        name="config",
+        source=ArgumentSource.CONFIG,
+        optional=not config.required,
+    )
+
+
+def _maybe_store_argument(store: StoreSpec | None) -> Iterable[ArgumentSpec]:
+    if store is None:
+        return
+    yield ArgumentSpec(
+        name="store",
+        source=ArgumentSource.STORE,
+        optional=not store.required,
+    )
+
+
+def _maybe_resources(
+    store: StoreSpec | None,
+    config: ConfigSpec | None,
+) -> ResourceSpec | None:
+    if store is None and config is None:
+        return None
+    return ResourceSpec(store=store, config=config)
+
+
+def _parser_io(store: StoreSpec | None, config: ConfigSpec | None) -> IOContract:
+    consumes: list[IOSlot] = []
+    if store is not None:
+        consumes.append(IOSlot(kind=IOSlotKind.STORE_FOLDER, optional=not store.required))
+    if config is not None:
+        consumes.append(IOSlot(kind=IOSlotKind.CONFIG_FILE, optional=not config.required))
+    produces = [IOSlot(kind=IOSlotKind.SYSTEM)]
+    return IOContract(consumes=consumes, produces=produces)
+
+
+def _exporter_io(config: ConfigSpec | None, output_kind: IOSlotKind) -> IOContract:
+    consumes = [IOSlot(kind=IOSlotKind.SYSTEM)]
+    if config is not None:
+        consumes.append(IOSlot(kind=IOSlotKind.CONFIG_FILE, optional=not config.required))
+    produces = [IOSlot(kind=output_kind)]
+    return IOContract(consumes=consumes, produces=produces)
+
+
+def _upgrader_io() -> IOContract:
+    return IOContract(
+        consumes=[IOSlot(kind=IOSlotKind.STORE_FOLDER)],
+        produces=[IOSlot(kind=IOSlotKind.STORE_FOLDER)],
+    )
+
+
+def _coerce_step_specs(
+    steps: Sequence[UpgradeStepSpec | UpgradeStep] | None,
+    entry: str | type | Callable[..., Any],
+) -> list[UpgradeStepSpec]:
+    if steps:
+        return [_convert_step(step) for step in steps]
+    if isinstance(entry, type) and hasattr(entry, "list_steps"):
+        raw_steps = entry.list_steps()
+        return [_convert_step(step) for step in raw_steps]
+    return []
+
+
+def _convert_step(step: UpgradeStepSpec | UpgradeStep) -> UpgradeStepSpec:
+    if isinstance(step, UpgradeStepSpec):
+        return step
+    return UpgradeStepSpec(
+        name=step.name,
+        entry=_as_import_path(step.func),
+        upgrade_type=step.upgrade_type,
+        priority=step.priority,
+        metadata={
+            "target_version": step.target_version,
+            "min_version": step.min_version,
+            "max_version": step.max_version,
+        },
+    )
+
+
+def _guess_implementation(entry: str | type | Callable[..., Any]) -> ImplementationType:
+    if isinstance(entry, type):
+        return ImplementationType.CLASS
+    if callable(entry):
+        return ImplementationType.FUNCTION
+    return ImplementationType.CLASS

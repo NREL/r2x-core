@@ -15,6 +15,17 @@ The R2X Core plugin system provides models for discovering and managing parser, 
 - {py:class}`~r2x_core.ResourceSpec` - Configuration/DataStore requirements
 - {py:class}`~r2x_core.PluginConfig` - Base class for type-safe model-specific configuration
 
+## Builder Helpers
+
+Plugin authors rarely need to populate every field of :class:`PluginSpec` manually. Use the helper constructors:
+
+- :meth:`PluginSpec.parser` - describe a typical `config + store -> system` parser
+- :meth:`PluginSpec.exporter` - describe an exporter that consumes a system
+- :meth:`PluginSpec.function` - declare a simple function modifier
+- :meth:`PluginSpec.upgrader` - wrap an upgrader class and re-use its registered steps
+
+These helpers set sensible defaults (method names, IO contracts, store/config requirements) while still producing a full manifest for CLI tooling.
+
 ## Usage Examples
 
 ### Creating a PluginConfig

@@ -112,44 +112,25 @@ system = parser.build_system()
 Create a manifest that describes each plugin explicitly:
 
 ```python
-from r2x_core import (
-    ArgumentSource,
-    ArgumentSpec,
-    ConfigSpec,
-    IOContract,
-    IOSlot,
-    IOSlotKind,
-    InvocationSpec,
-    PluginKind,
-    PluginManifest,
-    PluginSpec,
-    ResourceSpec,
-    StoreMode,
-    StoreSpec,
+from r2x_core import PluginManifest, PluginSpec
+
+manifest = PluginManifest(package="my-model")
+
+manifest.add(
+    PluginSpec.parser(
+        name="my-model.parser",
+        entry="my_package.parser:MyModelParser",
+        config="my_package.config:MyModelConfig",
+    )
 )
 
-manifest = PluginManifest(
-    package="my-model",
-    plugins=[
-        PluginSpec(
-            name="my-model.parser",
-            kind=PluginKind.PARSER,
-            entry="my_package.parser:MyModelParser",
-            invocation=InvocationSpec(
-                method="build_system",
-                constructor=[ArgumentSpec(name="config", source=ArgumentSource.CONFIG)],
-                call=[ArgumentSpec(name="store", source=ArgumentSource.STORE)],
-            ),
-            io=IOContract(
-                consumes=[IOSlot(kind=IOSlotKind.STORE_FOLDER)],
-                produces=[IOSlot(kind=IOSlotKind.SYSTEM)],
-            ),
-            resources=ResourceSpec(
-                store=StoreSpec(required=True, modes=[StoreMode.FOLDER]),
-                config=ConfigSpec(model="my_package.config:MyModelConfig", required=True),
-            ),
-        ),
-    ],
+manifest.add(
+    PluginSpec.exporter(
+        name="my-model.exporter",
+        entry="my_package.exporter:MyModelExporter",
+        config="my_package.config:MyModelConfig",
+        config_optional=True,
+    )
 )
 ```
 
