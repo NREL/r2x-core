@@ -58,6 +58,9 @@ dependencies = [
     "pydantic>=2.11.9,<3.0.0",
 ]
 
+[project.scripts]
+r2x-export-manifest = "r2x_core.export_manifest:main"
+
 [project.urls]
 Homepage = "https://github.com/NREL/r2x-core"
 Documentation = "https://nrel.github.io/r2x-core/"

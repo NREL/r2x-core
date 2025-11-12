@@ -99,6 +99,16 @@ my_model = "my_package.plugins"
 
 Plugins are discovered by loading the entry point and reading a `PluginManifest`. A manifest exports a list of :class:`PluginSpec` objects, each of which contains all the metadata downstream tooling needs (call signatures, resource requirements, IO contracts, etc.). Tools such as the CLI can parse the manifest file statically (via `ast-grep` or JSON artifacts) without executing arbitrary plugin code.
 
+### Manifest Export Utility
+
+Use the bundled CLI to emit a JSON artifact for downstream apps or packaging workflows:
+
+```bash
+r2x-export-manifest --module my_package.plugins --output plugins.json
+```
+
+This command loads the manifest attribute, validates it, and writes a JSON file that other runtimes (Rust CLI, pipelines, etc.) can consume without importing Python code.
+
 ### Configuration Directory Structure
 
 :class:`PluginConfig` expects the following directory structure relative to the config class module:

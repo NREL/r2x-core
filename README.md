@@ -134,6 +134,12 @@ manifest.add(
 )
 ```
 
+Export the manifest to JSON (for packaging or downstream automation):
+
+```bash
+r2x-export-manifest --module my_package.plugins --output plugins.json
+```
+
 Make plugins discoverable via `pyproject.toml`:
 
 ```toml
