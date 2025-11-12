@@ -40,6 +40,10 @@ on:
         required: false
         type: string
 
+env:
+  MANIFEST_MODULE: ${{ vars.MANIFEST_MODULE }}
+  MANIFEST_OUTPUT: ${{ vars.MANIFEST_OUTPUT }}
+
 jobs:
   determine-version:
     runs-on: ubuntu-latest
@@ -166,6 +170,13 @@ jobs:
 
       - name: Build package
         run: |
+          if [[ -n "${MANIFEST_MODULE}" ]]; then
+            OUTPUT_PATH="${MANIFEST_OUTPUT:-plugins.json}"
+            echo "Exporting manifest from module '${MANIFEST_MODULE}' to '$OUTPUT_PATH'"
+            uv run r2x-export-manifest --module "${MANIFEST_MODULE}" --output "$OUTPUT_PATH"
+          else
+            echo "No manifest_module provided; skipping export."
+          fi
           uv build
 
       - name: Store the distribution packages
