@@ -8,10 +8,11 @@ The R2X Core plugin system provides models for discovering and managing parser, 
 
 ## Quick Reference
 
-- {py:class}`~r2x_core.Package` - Container for plugins discovered from a single Python package
-- {py:class}`~r2x_core.ParserPlugin` - Parser plugin metadata
-- {py:class}`~r2x_core.ExporterPlugin` - Exporter plugin metadata
-- {py:class}`~r2x_core.UpgraderPlugin` - Upgrader/versioning plugin metadata
+- {py:class}`~r2x_core.PluginManifest` - Package-level registry exported by entry points
+- {py:class}`~r2x_core.PluginSpec` - Declarative description of a single plugin
+- {py:class}`~r2x_core.InvocationSpec` - How to instantiate/call the entry point
+- {py:class}`~r2x_core.IOContract` - Inputs/outputs consumed or produced
+- {py:class}`~r2x_core.ResourceSpec` - Configuration/DataStore requirements
 - {py:class}`~r2x_core.PluginConfig` - Base class for type-safe model-specific configuration
 
 ## Usage Examples
@@ -85,7 +86,7 @@ Register plugins in external packages via `pyproject.toml`:
 my_model = "my_package.plugins"
 ```
 
-Plugins are discovered by loading the entry point and expecting a `Package` instance or module with `ParserPlugin`, `ExporterPlugin`, and `UpgraderPlugin` definitions.
+Plugins are discovered by loading the entry point and reading a `PluginManifest`. A manifest exports a list of :class:`PluginSpec` objects, each of which contains all the metadata downstream tooling needs (call signatures, resource requirements, IO contracts, etc.). Tools such as the CLI can parse the manifest file statically (via `ast-grep` or JSON artifacts) without executing arbitrary plugin code.
 
 ### Configuration Directory Structure
 

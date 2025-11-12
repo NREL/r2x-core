@@ -109,42 +109,55 @@ system = parser.build_system()
 
 ### Plugin Registration and Discovery
 
-Create a registration function that returns a `Package` with your plugins:
+Create a manifest that describes each plugin explicitly:
 
 ```python
-from r2x_core import Package, ParserPlugin, ExporterPlugin
+from r2x_core import (
+    ArgumentSource,
+    ArgumentSpec,
+    ConfigSpec,
+    IOContract,
+    IOSlot,
+    IOSlotKind,
+    InvocationSpec,
+    PluginKind,
+    PluginManifest,
+    PluginSpec,
+    ResourceSpec,
+    StoreMode,
+    StoreSpec,
+)
 
-def register_plugins() -> Package:
-    """Register all plugins for this package."""
-    # Create plugin metadata
-    parser_plugin = ParserPlugin(
-        name="my-model-parser",
-        obj=MyModelParser,
-        call_method="build_system",
-        config=MyModelConfig,
-        requires_store=True,
-    )
-
-    exporter_plugin = ExporterPlugin(
-        name="my-model-exporter",
-        obj=MyModelExporter,
-        call_method="export",
-        config=MyModelConfig,
-    )
-
-    # Package plugins together
-    return Package(
-        name="my-model-plugin",
-        plugins=[parser_plugin, exporter_plugin],
-        metadata={"version": "1.0.0", "author": "Your Name"},
-    )
+manifest = PluginManifest(
+    package="my-model",
+    plugins=[
+        PluginSpec(
+            name="my-model.parser",
+            kind=PluginKind.PARSER,
+            entry="my_package.parser:MyModelParser",
+            invocation=InvocationSpec(
+                method="build_system",
+                constructor=[ArgumentSpec(name="config", source=ArgumentSource.CONFIG)],
+                call=[ArgumentSpec(name="store", source=ArgumentSource.STORE)],
+            ),
+            io=IOContract(
+                consumes=[IOSlot(kind=IOSlotKind.STORE_FOLDER)],
+                produces=[IOSlot(kind=IOSlotKind.SYSTEM)],
+            ),
+            resources=ResourceSpec(
+                store=StoreSpec(required=True, modes=[StoreMode.FOLDER]),
+                config=ConfigSpec(model="my_package.config:MyModelConfig", required=True),
+            ),
+        ),
+    ],
+)
 ```
 
 Make plugins discoverable via `pyproject.toml`:
 
 ```toml
 [project.entry-points.r2x_plugins]
-my_model = "my_package.plugins:register_plugins"
+my_model = "my_package.plugins:manifest"
 ```
 
 ## Documentation

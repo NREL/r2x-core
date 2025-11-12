@@ -1,216 +1,280 @@
-"""Plugin metadata and configuration models.
+"""Declarative plugin manifest models.
 
-This module defines the data models representing different plugin types and their
-configurations. Plugins are discovered via entry points and instantiated based on
-their metadata (class vs function, I/O patterns, configuration requirements).
+The legacy plugin registry used a collection of loosely typed Pydantic models
+(`Package`, `ParserPlugin`, `ExporterPlugin`, `UpgraderPlugin`) that mirrored the
+runtime objects. Downstream tooling had to import Python modules to figure out
+how to instantiate a plugin, whether a DataStore was required, or which inputs
+and outputs were involved.
 
-Plugin types:
-- **ClassPlugin**: Class-based plugins (parsers, exporters, modifiers).
-- **FunctionPlugin**: Function-based system modifiers.
-- **UpgraderPlugin**: Versioning/upgrade plugins with version strategies and steps.
-- **ParserPlugin**: Parser plugins reading model data into power systems.
-- **ExporterPlugin**: Exporter plugins writing systems to various formats.
+This module replaces that design with a declarative manifest that is easy to
+inspect statically (AST/`ast-grep` friendly) and expressive enough for the CLI
+to construct plugin instances without bespoke heuristics. Everything that a
+downstream application needs to know—how to instantiate an object, which
+resources to prepare, and what each plugin consumes or produces—is encoded in
+plain data structures.
 
-All plugins are Pydantic models with serializable fields using the Importable
-annotation to handle class/function references as strings (for config portability).
-
-See Also
---------
-:class:`~r2x_core.plugin_config.PluginConfig` : Plugin configuration base class.
-:class:`~r2x_core.parser.BaseParser` : Parser plugin base class.
-:class:`~r2x_core.exporter.BaseExporter` : Exporter plugin base class.
+Key concepts
+------------
+* :class:`PluginManifest` - package-level registry exported by entry points
+* :class:`PluginSpec` - description of a single plugin (parser/exporter/etc.)
+* :class:`InvocationSpec` - instructions for constructing and calling the entry
+* :class:`IOContract` - inputs/outputs exchanged with the pipeline
+* :class:`ResourceSpec` - how to materialize configs and data stores
+* :class:`UpgradeSpec` - declarative upgrader metadata (strategy + steps)
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from enum import Enum
-from typing import Annotated, Any
+from importlib import import_module
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from r2x_core.plugin_config import PluginConfig
-from r2x_core.serialization import Importable
-from r2x_core.upgrader_utils import UpgradeStep
-from r2x_core.versioning import VersionReader, VersionStrategy
+from r2x_core.upgrader_utils import UpgradeType
 
 
-class PluginType(str, Enum):
-    """Whether the plugin is implemented as a class or function.
+def _as_import_path(value: str | Callable[..., Any] | type | None) -> str | None:
+    """Normalise import targets to ``module:qualname`` strings."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    module = getattr(value, "__module__", None)
+    qualname = getattr(value, "__qualname__", None)
+    if not module or not qualname:  # pragma: no cover - defensive
+        raise TypeError(f"Cannot derive import path from {value!r}")
+    return f"{module}:{qualname}"
 
-    Attributes
-    ----------
-    CLASS : str
-        Plugin is a class that inherits from a base plugin (e.g., BaseParser).
-        Class plugins must implement required abstract methods and support configuration.
-    FUNCTION : str
-        Plugin is a function that transforms data. Functions are typically used
-        for simple system modifications without state.
-    """
+
+def _import_from_path(path: str) -> Any:
+    """Import an object from ``module:attr`` or ``module.attr`` syntax."""
+    module_name: str
+    attr_name: str
+    if ":" in path:
+        module_name, attr_name = path.split(":", 1)
+    else:
+        module_name, attr_name = path.rsplit(".", 1)
+    module = import_module(module_name)
+    return getattr(module, attr_name)
+
+
+class PluginKind(str, Enum):
+    """High-level category for a plugin."""
+
+    PARSER = "parser"
+    EXPORTER = "exporter"
+    MODIFIER = "modifier"
+    UPGRADER = "upgrader"
+    UTILITY = "utility"
+
+
+class ImplementationType(str, Enum):
+    """Whether the plugin entry point is a class or a simple function."""
 
     CLASS = "class"
     FUNCTION = "function"
 
 
-class IOType(str, Enum):
-    """Plugin I/O pattern for data flow in pipelines.
+class ArgumentSource(str, Enum):
+    """Source for an invocation argument."""
 
-    Attributes
-    ----------
-    STDIN : str
-        Plugin reads input from standard input (e.g., parser plugins).
-    STDOUT : str
-        Plugin writes output to standard output (e.g., exporter plugins).
-    BOTH : str
-        Plugin reads from stdin and writes to stdout (e.g., system modifiers).
-    """
+    SYSTEM = "system"
+    STORE = "store"
+    STORE_MANIFEST = "store_manifest"
+    CONFIG = "config"
+    CONFIG_PATH = "config_path"
+    PATH = "path"
+    STDIN = "stdin"
+    CONTEXT = "context"
+    LITERAL = "literal"
+    CUSTOM = "custom"
 
+
+class IOSlotKind(str, Enum):
+    """Canonical inputs/outputs handled by plugins."""
+
+    SYSTEM = "system"
+    STORE_FOLDER = "store_folder"
+    STORE_MANIFEST = "store_manifest"
+    STORE_INLINE = "store_inline"
+    CONFIG_FILE = "config_file"
+    CONFIG_INLINE = "config_inline"
+    FILE = "file"
+    FOLDER = "folder"
     STDIN = "stdin"
     STDOUT = "stdout"
-    BOTH = "both"
+    ARTIFACT = "artifact"
+    VOID = "void"
 
 
-class BasePlugin(BaseModel):
-    """Base representation of a plugin.
+class StoreMode(str, Enum):
+    """How a plugin expects its :class:`~r2x_core.store.DataStore`."""
 
-    Contains metadata about a plugin discovered via entry points or registered
-    programmatically. All class/function references use the Importable annotation
-    to serialize as module paths (e.g., "my_package.MyClass").
+    FOLDER = "folder"
+    MANIFEST = "manifest"
+    INLINE = "inline"
 
-    Attributes
-    ----------
-    name : str
-        Plugin display name (e.g., "reeds-parser", "plexos-exporter").
-    obj : type | Callable
-        The actual plugin class or function. Importable fields allow serialization
-        as "module:Name" strings for portability across environments.
-    io_type : IOType | None
-        Data flow pattern (STDIN, STDOUT, BOTH). None for non-pipeline plugins.
-        Default is None.
-    plugin_type : PluginType
-        Whether plugin is CLASS or FUNCTION. Default is FUNCTION.
 
-    See Also
-    --------
-    :class:`ClassPlugin` : Plugin wrapping a class with call_method.
-    :class:`UpgraderPlugin` : Plugin with versioning and upgrade steps.
-    :class:`ParserPlugin` : Parser-specific plugin metadata.
-    """
+class IOSlot(BaseModel):
+    """Describe a single input/output slot."""
+
+    kind: IOSlotKind
+    name: str | None = None
+    optional: bool = False
+    description: str | None = None
+
+
+class IOContract(BaseModel):
+    """Describe the data flow for a plugin."""
+
+    consumes: list[IOSlot] = Field(default_factory=list)
+    produces: list[IOSlot] = Field(default_factory=list)
+    description: str | None = None
+
+
+class ArgumentSpec(BaseModel):
+    """Describe how to source a constructor or call argument."""
 
     name: str
-    obj: Annotated[type | Callable[..., Any], Importable]
-    io_type: IOType | None = None
-    plugin_type: PluginType = PluginType.FUNCTION
+    source: ArgumentSource
+    optional: bool = False
+    default: Any | None = None
+    description: str | None = None
+
+    @model_validator(mode="after")
+    def _require_default_for_literal(self) -> ArgumentSpec:
+        provided_fields: set[str] = getattr(self, "model_fields_set", set())
+        if self.source == ArgumentSource.LITERAL and "default" not in provided_fields:
+            msg = f"Argument '{self.name}' uses LITERAL source but has no default value."
+            raise ValueError(msg)
+        return self
 
 
-class ClassPlugin(BasePlugin):
-    """Class-based plugin with a designated entry point method.
+class InvocationSpec(BaseModel):
+    """Instructions for instantiating/calling the plugin entry."""
 
-    Class plugins inherit from base classes (BaseParser, BaseExporter) and require
-    specification of which method serves as the plugin entry point.
+    implementation: ImplementationType = ImplementationType.CLASS
+    method: str | None = None
+    constructor: list[ArgumentSpec] = Field(default_factory=list)
+    call: list[ArgumentSpec] = Field(default_factory=list)
 
-    Attributes
-    ----------
-    plugin_type : PluginType
-        Always PluginType.CLASS for class-based plugins.
-    call_method : str
-        Name of the method to call when invoking the plugin.
-        Examples: "build_system" for parsers, "export" for exporters.
-
-    See Also
-    --------
-    :class:`ParserPlugin` : Class plugin specialized for parsers.
-    :class:`ExporterPlugin` : Class plugin specialized for exporters.
-    """
-
-    plugin_type: PluginType = PluginType.CLASS
-    call_method: str
+    @model_validator(mode="after")
+    def _validate_method(self) -> InvocationSpec:
+        if self.implementation == ImplementationType.FUNCTION and self.method:
+            msg = "Functions cannot declare a method to call."
+            raise ValueError(msg)
+        return self
 
 
-class UpgraderPlugin(BasePlugin):
-    """Plugin for managing data structure versioning and upgrades.
+class StoreSpec(BaseModel):
+    """Describe how a CLI should build a store for the plugin."""
 
-    Upgrader plugins handle version detection and migration of data structures
-    when schema or format changes occur. They define the versioning strategy
-    (how to detect versions) and ordered steps to apply for each version transition.
-
-    Attributes
-    ----------
-    plugin_type : PluginType
-        Always PluginType.CLASS for upgrader plugins.
-    requires_store : bool
-        Whether the upgrader requires a DataStore for operation. Default is False.
-    version_strategy : type[VersionStrategy]
-        Strategy class for determining current data version (e.g., file timestamps,
-        git tags, embedded version markers). Importable field.
-    version_reader : type[VersionReader]
-        Strategy class for reading version information from data objects.
-        Importable field.
-    upgrade_steps : list[UpgradeStep]
-        Ordered list of upgrade transformations to apply. Each step transforms
-        data from one version to the next. Applied sequentially based on detected
-        version. Default is empty list.
-
-    See Also
-    --------
-    :class:`~r2x_core.versioning.VersionStrategy` : Base class for version detection.
-    :class:`~r2x_core.versioning.VersionReader` : Base class for reading versions.
-    :class:`~r2x_core.upgrader_utils.UpgradeStep` : Individual upgrade transformation.
-    """
-
-    plugin_type: PluginType = PluginType.CLASS
-    requires_store: bool = False
-    version_strategy: Annotated[type[VersionStrategy], Importable]
-    version_reader: Annotated[type[VersionReader], Importable]
-    upgrade_steps: list[UpgradeStep] = Field(default_factory=list)
+    required: bool = False
+    modes: list[StoreMode] = Field(default_factory=list)
+    default_path: str | None = None
+    manifest_path: str | None = None
+    description: str | None = None
 
 
-class ParserPlugin(ClassPlugin):
-    """Parser plugin for reading model data into power systems.
+class ConfigSpec(BaseModel):
+    """Describe configuration requirements and helpers."""
 
-    Parser plugins read files or other sources and construct infrasys System objects.
-    They typically inherit from BaseParser and implement abstract methods:
-    build_system_components(), build_time_series(), and validate_inputs().
+    model: str | None = Field(default=None, description="Import path to PluginConfig subclass.")
+    required: bool = False
+    defaults_path: str | None = None
+    file_mapping_path: str | None = None
+    description: str | None = None
 
-    Attributes
-    ----------
-    requires_store : bool
-        Whether parser requires a DataStore for operation. Default is False.
-        Parsers typically require a store for accessing multiple input files.
-    config : type[PluginConfig] | None
-        Configuration class for the parser (e.g., ReEDSParserConfig).
-        Allows parsers to accept structured, validated configuration. None means
-        parser doesn't accept configuration beyond DataStore. Importable field.
-
-    See Also
-    --------
-    :class:`~r2x_core.parser.BaseParser` : Base class for all parsers.
-    :class:`~r2x_core.plugin_config.PluginConfig` : Configuration base class.
-    """
-
-    requires_store: bool = False
-    config: Annotated[type[PluginConfig] | None, Importable] = None
+    @field_validator("model", mode="before")
+    @classmethod
+    def _normalise_model(cls, value: Any) -> Any:
+        return _as_import_path(value)
 
 
-class ExporterPlugin(ClassPlugin):
-    """Exporter plugin for writing power systems to various formats.
+class ResourceSpec(BaseModel):
+    """Aggregate store/config requirements."""
 
-    Exporter plugins write infrasys System objects to files or other outputs
-    (CSV, JSON, XML, HDF5, etc.). They typically inherit from BaseExporter
-    and implement abstract methods: export() and export_time_series().
+    store: StoreSpec | None = None
+    config: ConfigSpec | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
 
-    Attributes
-    ----------
-    config : type[PluginConfig] | None
-        Configuration class for the exporter (e.g., PlexosExporterConfig).
-        Allows exporters to accept structured, validated configuration. None means
-        exporter doesn't accept configuration beyond System and output folder.
-        Importable field.
 
-    See Also
-    --------
-    :class:`~r2x_core.exporter.BaseExporter` : Base class for all exporters.
-    :class:`~r2x_core.plugin_config.PluginConfig` : Configuration base class.
-    """
+class UpgradeStepSpec(BaseModel):
+    """Declarative description of a single upgrade step."""
 
-    config: Annotated[type[PluginConfig] | None, Importable] = None
+    name: str
+    entry: str
+    upgrade_type: UpgradeType
+    consumes: list[IOSlot] = Field(default_factory=list)
+    produces: list[IOSlot] = Field(default_factory=list)
+    priority: int | None = None
+    description: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("entry", mode="before")
+    @classmethod
+    def _normalise_entry(cls, value: Any) -> Any:
+        return _as_import_path(value)
+
+
+class UpgradeSpec(BaseModel):
+    """Metadata necessary to run an upgrader plugin."""
+
+    strategy: str
+    reader: str
+    steps: list[UpgradeStepSpec] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("strategy", "reader", mode="before")
+    @classmethod
+    def _normalise_paths(cls, value: Any) -> Any:
+        return _as_import_path(value)
+
+
+class PluginSpec(BaseModel):
+    """Fully describe how to run a plugin."""
+
+    name: str
+    kind: PluginKind
+    entry: str
+    invocation: InvocationSpec = Field(default_factory=InvocationSpec)
+    io: IOContract = Field(default_factory=IOContract)
+    resources: ResourceSpec | None = None
+    upgrade: UpgradeSpec | None = None
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("entry", mode="before")
+    @classmethod
+    def _normalise_entry(cls, value: Any) -> Any:
+        return _as_import_path(value)
+
+    def resolve_entry(self) -> Any:
+        """Import and return the entry callable/class."""
+        return _import_from_path(self.entry)
+
+
+class PluginManifest(BaseModel):
+    """Package-level registry of plugins."""
+
+    package: str
+    plugins: list[PluginSpec] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def get_plugin(self, name: str) -> PluginSpec:
+        """Return a plugin by name, raising ``KeyError`` if missing."""
+        for plugin in self.plugins:
+            if plugin.name == name:
+                return plugin
+        raise KeyError(f"Plugin '{name}' not found in manifest '{self.package}'.")
+
+    def group_by_kind(self, kind: PluginKind) -> list[PluginSpec]:
+        """Return plugins that match a given :class:`PluginKind`."""
+        return [plugin for plugin in self.plugins if plugin.kind == kind]
+
+    def resolve_all_entries(self) -> dict[str, Any]:
+        """Import every plugin entry and return a mapping."""
+        return {plugin.name: plugin.resolve_entry() for plugin in self.plugins}
