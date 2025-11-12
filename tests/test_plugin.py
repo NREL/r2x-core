@@ -54,7 +54,11 @@ class SampleUpgrader(BaseUpgrader):
     """Stub upgrader used for manifest helpers."""
 
 
-@SampleUpgrader.register_step(name="touch-files", upgrade_type=UpgradeType.FILE)
+@SampleUpgrader.register_step(
+    name="touch-files",
+    upgrade_type=UpgradeType.FILE,
+    target_version="1.0.0",
+)
 def touch_files(path: Path) -> Path:  # pragma: no cover - simple placeholder
     return path
 
