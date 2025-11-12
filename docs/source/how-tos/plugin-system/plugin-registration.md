@@ -110,7 +110,7 @@ config = MyModelConfig(
 )
 
 # Set up data store
-data_store = DataStore(folder_path=config.input_folder)
+data_store = DataStore(path=config.input_folder)
 data_store.add_data(DataFile(name="buses", fpath="buses.csv"))
 
 # Parse

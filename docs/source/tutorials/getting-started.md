@@ -196,7 +196,7 @@ def main():
     output_folder.mkdir(exist_ok=True)
 
     # Configure the data store
-    data_store = DataStore(folder_path=input_folder)
+    data_store = DataStore(path=input_folder)
     data_store.add_data(DataFile(name="buses", fpath="buses.csv"))
     data_store.add_data(DataFile(name="generators", fpath="generators.csv"))
 

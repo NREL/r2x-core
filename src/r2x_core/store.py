@@ -11,12 +11,7 @@ from typing import Any
 from loguru import logger
 from pydantic import ValidationError
 
-from .datafile import (
-    DataFile,
-    FileProcessing,
-    TabularProcessing,
-    create_data_files_from_records,
-)
+from .datafile import DataFile, FileProcessing, TabularProcessing, create_data_files_from_records
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .utils import filter_valid_kwargs
@@ -32,27 +27,27 @@ class DataStore:
 
     Parameters
     ----------
-    folder_path : str | Path | None, optional
-        Path to the folder containing data files. If None, uses current
-        working directory. Default is None.
+    path : str | Path | None, optional
+        Path to the folder containing data files or a ``file_mapping.json``.
+        If None, uses current working directory. Default is None.
     reader : DataReader | None, optional
         Custom :class:`DataReader` instance. If None, a default reader
         is created. Default is None.
 
     Attributes
     ----------
-    folder_path : Path
+    folder : Path
         The resolved folder path containing the data files.
     reader : DataReader
         The data reader instance used to load data.
 
     Methods
     -------
-    from_data_files(data_files, folder_path)
+    from_data_files(data_files, path)
         Create a DataStore from a list of DataFile instances.
-    from_json(json_fpath, folder_path)
+    from_json(json_fpath, path)
         Create a DataStore from a JSON configuration file.
-    from_plugin_config(plugin_config, folder_path)
+    from_plugin_config(plugin_config, path)
         Create a DataStore from a PluginConfig instance.
     add_data(*data_files, overwrite)
         Add one or more DataFile instances to the store.
@@ -80,25 +75,34 @@ class DataStore:
     def __init__(
         self,
         /,
-        folder_path: str | Path | None = None,
+        path: str | Path | None = None,
         *,
         reader: DataReader | None = None,
     ) -> None:
         """Initialize the DataStore."""
-        if folder_path is None:
+        if path is None:
             logger.debug("Starting store in current directory: {}", str(Path.cwd()))
-            folder_path = Path.cwd()
+            resolved_path = Path.cwd()
+        else:
+            resolved_path = Path(path)
 
-        if isinstance(folder_path, str):
-            folder_path = Path(folder_path)
+        if not resolved_path.exists():
+            raise FileNotFoundError(f"Path does not exist: {resolved_path}")
 
-        if not folder_path.exists():
-            raise FileNotFoundError(f"Folder does not exist: {folder_path}")
+        mapping_path: Path | None = None
+        if resolved_path.is_file():
+            mapping_path = resolved_path
+            folder_path = resolved_path.parent
+        else:
+            folder_path = resolved_path
 
         self._reader = reader or DataReader()
         self._folder = folder_path.resolve()
         self._cache: dict[str, DataFile] = {}
         logger.debug("Initialized DataStore with folder: {}", self.folder)
+
+        if mapping_path is not None:
+            self._load_file_mapping(mapping_path)
 
     @property
     def folder(self) -> Path:
@@ -122,7 +126,7 @@ class DataStore:
     def from_data_files(
         cls,
         data_files: list[DataFile],
-        folder_path: Path | str | None = None,
+        path: Path | str | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a list of :class:`DataFile` instances.
 
@@ -130,7 +134,7 @@ class DataStore:
         ----------
         data_files : list[DataFile]
             List of DataFile instances to add to the store.
-        folder_path : Path | str | None, optional
+        path : Path | str | None, optional
             Path to the folder containing data files. Default is None.
 
         Returns
@@ -138,7 +142,7 @@ class DataStore:
         DataStore
             New DataStore instance with provided data files.
         """
-        store = cls(folder_path)
+        store = cls(path)
         store.add_data(*data_files)
         return store
 
@@ -146,7 +150,7 @@ class DataStore:
     def from_json(
         cls,
         json_fpath: Path | str,
-        folder_path: Path | str,
+        path: Path | str | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a JSON configuration file.
 
@@ -154,8 +158,8 @@ class DataStore:
         ----------
         json_fpath : Path | str
             Path to the JSON file containing data file configurations.
-        folder_path : Path | str
-            Path to the folder containing data files.
+        path : Path | str | None
+            Path to the folder containing data files. Defaults to the JSON's parent folder.
 
         Returns
         -------
@@ -165,44 +169,30 @@ class DataStore:
         Raises
         ------
         FileNotFoundError
-            If folder_path or json_fpath does not exist.
+            If the data folder or json_fpath does not exist.
         TypeError
             If JSON file is not a JSON array.
         ValidationError
             If data files in JSON are invalid.
         """
-        folder_path = Path(folder_path)
         json_fpath = Path(json_fpath)
+
+        if not json_fpath.exists():
+            raise FileNotFoundError(f"Configuration file not found: {json_fpath}")
+        folder_path = Path(path) if path is not None else json_fpath.parent
 
         if not folder_path.exists():
             raise FileNotFoundError(f"Data folder not found: {folder_path}")
 
-        if not json_fpath.exists():
-            raise FileNotFoundError(f"Configuration file not found: {json_fpath}")
-
-        with open(json_fpath, encoding="utf-8") as f:
-            data_files_json = json.load(f)
-
-        if not isinstance(data_files_json, list):
-            msg = f"JSON file `{json_fpath}` is not a JSON array."
-            raise TypeError(msg)
-
-        result = create_data_files_from_records(data_files_json, folder_path=folder_path)
-        if result.is_err():
-            errors = result.err()
-            line_errors: list[Any] = [e for err in errors for e in err.errors()]
-            raise ValidationError.from_exception_data(
-                title=f"Invalid data files in {json_fpath}",
-                line_errors=line_errors,
-            )
-        data_files = result.unwrap()
-        return cls.from_data_files(folder_path=folder_path, data_files=data_files)
+        store = cls(path=folder_path)
+        store._load_file_mapping(json_fpath)
+        return store
 
     @classmethod
     def from_plugin_config(
         cls,
         plugin_config: PluginConfig,
-        folder_path: Path | str,
+        path: Path | str,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a :class:`PluginConfig` instance.
 
@@ -210,7 +200,7 @@ class DataStore:
         ----------
         plugin_config : PluginConfig
             Plugin configuration containing file mappings.
-        folder_path : Path | str
+        path : Path | str
             Path to the folder containing data files.
 
         Returns
@@ -221,7 +211,16 @@ class DataStore:
         json_fpath = plugin_config.file_mapping_path
         logger.info("Loading DataStore from plugin config: {}", type(plugin_config).__name__)
         logger.debug("File mapping path: {}", json_fpath)
-        return cls.from_json(json_fpath=json_fpath, folder_path=folder_path)
+        store = cls(path=path)
+        if not json_fpath.exists():
+            logger.warning(
+                "File mapping not found for {} at {}; continuing with empty DataStore.",
+                type(plugin_config).__name__,
+                json_fpath,
+            )
+            return store
+        store._load_file_mapping(json_fpath)
+        return store
 
     @classmethod
     def load_file(
@@ -263,7 +262,7 @@ class DataStore:
         if name is None:
             name = fpath.stem
 
-        store = cls(folder_path=fpath.parent)
+        store = cls(path=fpath.parent)
 
         if proc_spec and isinstance(proc_spec, dict):
             proc_spec = TabularProcessing.model_validate(proc_spec)
@@ -451,3 +450,25 @@ class DataStore:
 
         data_file = self._cache[name]
         return self.reader.read_data_file(data_file, self.folder, placeholders=placeholders)
+
+    def _load_file_mapping(self, mapping_path: Path) -> None:
+        """Load DataFile definitions from a file-mapping JSON."""
+        logger.info("Loading file mapping from {}", mapping_path)
+        with open(mapping_path, encoding="utf-8") as f:
+            data_files_json = json.load(f)
+
+        if not isinstance(data_files_json, list):
+            msg = f"JSON file `{mapping_path}` is not a JSON array."
+            raise TypeError(msg)
+
+        result = create_data_files_from_records(data_files_json, folder_path=self.folder)
+        if result.is_err():
+            errors = result.err()
+            line_errors: list[Any] = [e for err in errors for e in err.errors()]
+            raise ValidationError.from_exception_data(
+                title=f"Invalid data files in {mapping_path}",
+                line_errors=line_errors,
+            )
+
+        data_files = result.unwrap()
+        self.add_data(*data_files)

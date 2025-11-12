@@ -52,7 +52,7 @@ The `DataStore` provides a high-level interface for managing and loading data fi
 from r2x_core import DataStore, DataFile
 
 # Create a DataStore pointing to your data directory
-store = DataStore(folder_path="/path/to/data")
+store = DataStore(path="/path/to/data")
 
 # Add files to the store
 data_file = DataFile(name="generators", fpath="gen.csv")
@@ -102,7 +102,7 @@ class MyModelParser(BaseParser):
 
 # Create a data store and parser
 config = MyModelConfig(folder="/path/to/data", year=2030)
-store = DataStore(folder_path=config.folder)
+store = DataStore(path=config.folder)
 parser = MyModelParser(config, data_store=store)
 system = parser.build_system()
 ```

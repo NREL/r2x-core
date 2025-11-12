@@ -30,7 +30,7 @@ class MyModelExporter(BaseExporter):
 
 config = MyModelConfig(model_year=2030, scenario_name="base")
 system = System()
-data_store = DataStore(folder_path="/path/to/output")
+data_store = DataStore(path="/path/to/output")
 exporter = MyModelExporter(config, system, data_store)
 exporter.export()
 ```

@@ -36,7 +36,7 @@ def test_filter_by_with_solve_year_substitution(tmp_path: Path):
 
     config = SampleConfig(solve_year=2030, weather_year=2012, config_path=config_dir)
 
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
     data = store.read_data(name="generators", placeholders=config.model_dump())
     df = data.collect()
 
@@ -76,7 +76,7 @@ def test_filter_by_with_multiple_config_variables(tmp_path: Path):
 
     config = SampleConfig(solve_year=2030, weather_year=2012, scenario="base", config_path=config_dir)
 
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
     data = store.read_data(name="filtered_data", placeholders=config.model_dump())
     df = data.collect()
 
@@ -108,7 +108,7 @@ def test_filter_by_with_config_variable_in_list(tmp_path: Path):
 
     config = SampleConfig(solve_year=2030, weather_year=2012, config_path=config_dir)
 
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
     data = store.read_data(name="multi_year", placeholders=config.model_dump())
     df = data.collect()
 
@@ -142,7 +142,7 @@ def test_filter_by_with_custom_config_fields(tmp_path: Path):
 
     config = CustomConfig(model_year=2030, horizon_year=2050, config_path=config_dir)
 
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
     data = store.read_data(name="custom_filter", placeholders=config.model_dump())
     df = data.collect()
 
@@ -176,7 +176,7 @@ def test_filter_by_placeholder_without_substitutions_fails_gracefully(tmp_path: 
 
     config = SampleConfig(solve_year=2030, weather_year=2012, config_path=config_dir)
 
-    store: DataStore = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store: DataStore = DataStore.from_plugin_config(config, path=tmp_path)
     with pytest.raises(ReaderError) as exc_info:
         store.read_data(name="test_data")
 
@@ -210,7 +210,7 @@ def test_filter_by_unknown_placeholder_fails_gracefully(tmp_path: Path):
 
     config = SampleConfig(solve_year=2030, weather_year=2012, config_path=config_dir)
 
-    store = DataStore.from_plugin_config(config, folder_path=tmp_path)
+    store = DataStore.from_plugin_config(config, path=tmp_path)
     with pytest.raises(ReaderError) as exc_info:
         store.read_data(name="test_data", placeholders=config.model_dump())
 

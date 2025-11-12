@@ -176,7 +176,7 @@ def test_from_data_files_constructor_with_relative_paths(data_store_example, fol
     df_01 = DataFile(name="test1", relative_fpath="file1.csv")
     df_02 = DataFile(name="test2", relative_fpath="file2.csv")
     df_03 = DataFile(name="test3", fpath="local_file.csv")
-    store = DataStore.from_data_files(data_files=[df_01, df_02, df_03], folder_path=folder_with_data)
+    store = DataStore.from_data_files(data_files=[df_01, df_02, df_03], path=folder_with_data)
     assert "test1" in store
     assert "test2" in store
     assert "test3" in store
@@ -198,6 +198,24 @@ def test_load_data_file(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         DataStore.load_file(tmp_path / "nota file")
+
+
+def test_from_plugin_config_missing_file_mapping(tmp_path, caplog):
+    from r2x_core import DataStore
+    from r2x_core.plugin_config import PluginConfig
+
+    class DummyConfig(PluginConfig):
+        pass
+
+    cfg = DummyConfig()
+    cfg.config_path = tmp_path / "config"
+    cfg.config_path.mkdir(parents=True, exist_ok=True)
+
+    with caplog.at_level("WARNING"):
+        store = DataStore.from_plugin_config(cfg, path=tmp_path)
+
+    assert store.list_data() == []
+    assert "File mapping not found" in caplog.text
 
 
 def test_load_file_with_json_transform_rename_keys(tmp_path):
@@ -404,7 +422,7 @@ def test_store_from_json_missing_folder(tmp_path):
     json_file.write_text("[]")
 
     with pytest.raises(FileNotFoundError):
-        DataStore.from_json(json_file, folder_path="/nonexistent")
+        DataStore.from_json(json_file, path="/nonexistent")
 
 
 def test_store_from_json_missing_config_file(tmp_path):
@@ -413,7 +431,7 @@ def test_store_from_json_missing_config_file(tmp_path):
     from r2x_core import DataStore
 
     with pytest.raises(FileNotFoundError):
-        DataStore.from_json(tmp_path / "nonexistent.json", folder_path=tmp_path)
+        DataStore.from_json(tmp_path / "nonexistent.json", path=tmp_path)
 
 
 def test_store_from_json_not_array(tmp_path):
@@ -425,7 +443,7 @@ def test_store_from_json_not_array(tmp_path):
     json_file.write_text('{"not": "array"}')
 
     with pytest.raises(TypeError):
-        DataStore.from_json(json_file, folder_path=tmp_path)
+        DataStore.from_json(json_file, path=tmp_path)
 
 
 def test_store_add_data_invalid_type(tmp_path):

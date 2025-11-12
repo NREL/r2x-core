@@ -60,7 +60,7 @@ def test_datastore_from_json_with_reader_kwargs():
         # Load DataStore from JSON
         from r2x_core.store import DataStore
 
-        store = DataStore.from_json(config_file, folder_path=tmpdir_path)
+        store = DataStore.from_json(config_file, path=tmpdir_path)
 
         # Verify the store loaded correctly
         files = store.list_data()
@@ -158,7 +158,7 @@ def test_datastore_from_json_with_multiple_h5_files():
         # Load DataStore from JSON
         from r2x_core.store import DataStore
 
-        store = DataStore.from_json(config_file, folder_path=tmpdir_path)
+        store = DataStore.from_json(config_file, path=tmpdir_path)
 
         # Verify all files loaded
         files = store.list_data()
@@ -220,7 +220,7 @@ def test_datastore_roundtrip_with_reader_kwargs():
         store.to_json(json_file)
 
         # Read back
-        store_loaded = DataStore.from_json(json_file, folder_path=tmpdir_path)
+        store_loaded = DataStore.from_json(json_file, path=tmpdir_path)
 
         # Verify reader_kwargs preserved
         files = store_loaded.list_data()

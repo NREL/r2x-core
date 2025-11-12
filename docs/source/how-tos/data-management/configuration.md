@@ -28,6 +28,6 @@ with open("data_config.json", "w") as f:
 ```python
 from r2x_core import DataStore
 
-store = DataStore.from_json("data_config.json", folder_path="/path/to/data")
+store = DataStore.from_json("data_config.json", path="/path/to/data")
 print(store.list_data())
 ```

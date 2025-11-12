@@ -19,7 +19,7 @@ Create a custom parser by subclassing BaseParser:
 
 Use with a data store for file management:
 
->>> store = DataStore(folder_path="/data")
+>>> store = DataStore(path="/data")
 >>> parser = MyParser(config, data_store=store)
 >>> gen_data = parser.read_data_file("generators")
 

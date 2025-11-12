@@ -21,7 +21,7 @@ config = MyModelConfig(
 )
 
 # Set up data store with file mappings
-data_store = DataStore(folder_path=config.input_folder)
+data_store = DataStore(path=config.input_folder)
 data_store.add_data(DataFile(name="buses", fpath="buses.csv"))
 data_store.add_data(DataFile(name="generators", fpath="generators.csv"))
 
@@ -81,7 +81,7 @@ R2X Core supports multiple file formats through the DataFile configuration:
 from r2x_core.datafile import DataFile, TabularProcessing, TabularTransformations
 
 # Configure data files with transformations
-data_store = DataStore(folder_path="./data")
+data_store = DataStore(path="./data")
 
 # CSV with transformations
 data_store.add_data(DataFile(
@@ -157,7 +157,7 @@ For large datasets, use Polars lazy evaluation:
 from r2x_core import DataStore
 
 # DataReader automatically handles large files
-data_store = DataStore(folder_path="./data")
+data_store = DataStore(path="./data")
 data_store.add_data(DataFile(name="large_dataset", fpath="large.csv"))
 
 # Data is read lazily (not loaded into memory until needed)
