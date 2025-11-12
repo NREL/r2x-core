@@ -89,7 +89,7 @@ def sample_data_store(tmp_path):
     bus_file = tmp_path / "buses.csv"
     bus_file.write_text("name,voltage\nBus1,230\nBus2,500\n")
 
-    data_store = DataStore(tmp_path)
+    data_store = DataStore(path=tmp_path)
     data_store.add_data(DataFile(name="buses", fpath=bus_file))
 
     return data_store
@@ -134,20 +134,20 @@ def test_parser_initialization(mock_parser, sample_config, sample_data_store):
 
 def test_parser_custom_name(sample_config, sample_data_store):
     """Test parser with custom name."""
-    parser = MockParser(sample_config, sample_data_store, system_name="custom_system")
+    parser = MockParser(sample_config, data_store=sample_data_store, system_name="custom_system")
     assert parser.system.name == "custom_system"
 
 
 def test_parser_skip_validation(sample_config, sample_data_store):
     """Test parser with skip_validation flag."""
-    parser = MockParser(sample_config, store=sample_data_store, skip_validation=True)
+    parser = MockParser(sample_config, data_store=sample_data_store, skip_validation=True)
     assert parser.skip_validation is True
 
 
 def test_validation_error_stops_build(sample_data_store):
     """Test that validation errors prevent system build."""
     config = MockModelConfig(model_year=2019, scenario="test")  # Invalid year
-    parser = MockParser(config, store=sample_data_store)
+    parser = MockParser(config, data_store=sample_data_store)
 
     with patch("infrasys.system.System") as mock_system_class:
         with pytest.raises(ValidationError, match="Model year must be >= 2020"):
@@ -164,6 +164,14 @@ def test_get_data(mock_parser: BaseParser, tmp_path):
 
     data_file = mock_parser.get_data("test_data")
     assert data_file.name == "test_data"
+
+
+def test_build_system_with_stdin(sample_config, sample_data_store):
+    """Parsers receive stdin payload via build_system keyword argument."""
+    parser = MockParser(sample_config, data_store=sample_data_store)
+    payload = "stdin-json"
+    parser.build_system(stdin_payload=payload)
+    assert parser.stdin_payload == payload
 
 
 def test_get_data_not_found(mock_parser):
@@ -300,7 +308,7 @@ def test_parser_with_custom_validation(tmp_path):
 
     bus_file = tmp_path / "buses.csv"
     bus_file.write_text("name,voltage\nBus1,230\n")
-    data_store = DataStore(tmp_path)
+    data_store = DataStore(path=tmp_path)
     data_store.add_data(DataFile(name="buses", fpath=bus_file))
 
     config = PluginConfig()

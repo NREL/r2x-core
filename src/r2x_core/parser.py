@@ -38,7 +38,7 @@ leveraging the DataStore and DataReader for file management.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
+from typing import IO, Any, TypeVar
 
 from infrasys import Component
 from infrasys.exceptions import ISAlreadyAttached
@@ -52,6 +52,7 @@ from .system import System
 from .utils import create_component, filter_valid_kwargs
 
 T = TypeVar("T", bound=Component)
+StdinPayload = IO[str] | IO[bytes] | str | bytes | None
 
 
 class BaseParser(ABC):
@@ -217,6 +218,7 @@ class BaseParser(ABC):
         """
         self._config = config
         self._store = data_store or DataStore()
+        self._stdin_payload: StdinPayload = None
 
         if not isinstance(self._store, DataStore):
             raise TypeError(f"data_store must be a DataStore instance, got {type(self._store).__name__}")
@@ -239,6 +241,11 @@ class BaseParser(ABC):
         return self._store
 
     @property
+    def stdin_payload(self) -> StdinPayload:
+        """Return the stdin payload provided to :meth:`build_system`, if any."""
+        return self._stdin_payload
+
+    @property
     def system(self) -> System:
         """Return the :class:`System` instance being built."""
         return self._system
@@ -247,7 +254,7 @@ class BaseParser(ABC):
         """Return a string representation of the parser for debugging."""
         return f"{type(self).__name__}(config={self.config!r})"
 
-    def build_system(self) -> System:
+    def build_system(self, *, stdin_payload: StdinPayload = None) -> System:
         """Build and return the complete :class:`System` using template method pattern.
 
         This is a **template method** that orchestrates the build process by
@@ -268,6 +275,13 @@ class BaseParser(ABC):
         System
             The built system instance.
 
+        Parameters
+        ----------
+        stdin_payload : IO[str] | IO[bytes] | str | bytes | None, keyword-only
+            Streaming data supplied by the CLI (typically stdin). Parsers that support
+            streaming can inspect :attr:`stdin_payload` to decide whether to bypass the
+            :class:`DataStore`. Default is None.
+
         Raises
         ------
         ParserError
@@ -280,6 +294,7 @@ class BaseParser(ABC):
         >>> print(system.name)
         """
         parser_name = type(self).__name__
+        self._stdin_payload = stdin_payload
         logger.info("Starting system build for {}", parser_name)
 
         logger.debug("Validating parser inputs for {}", parser_name)
