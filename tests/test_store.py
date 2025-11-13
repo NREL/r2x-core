@@ -43,6 +43,21 @@ def test_instance_fails_with_nonexistent_folder():
         DataStore("/nonexistent/path")
 
 
+def test_datastore_from_mapping_file(tmp_path):
+    from r2x_core import DataStore
+
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    csv_file = inputs / "file.csv"
+    csv_file.write_text("a,b\n1,2\n3,4\n")
+
+    mapping_path = tmp_path / "file_mapping.json"
+    mapping_path.write_text(json.dumps([{"name": "table", "fpath": "inputs/file.csv"}]))
+
+    store = DataStore(path=mapping_path)
+    assert "table" in store.list_data()
+
+
 def test_add_data_overwrite_datafile(data_store_example, folder_with_data):
     from r2x_core import DataFile
 
@@ -273,6 +288,16 @@ def test_load_file_with_json_transform_drop_columns(tmp_path):
     assert "avg_capacity_MW" in result["battery"]
 
 
+def test_load_file_converts_proc_spec_dict(tmp_path):
+    from r2x_core import DataStore
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("c1,c2\n1,2\n3,4\n")
+
+    lazy = DataStore.load_file(csv_file, proc_spec={"drop_columns": ["c2"]})
+    assert "c2" not in lazy.collect().columns
+
+
 def test_load_file_with_json_transform_filter_by(tmp_path):
     """Test load_file with JSONProcessing to filter JSON dict."""
     from r2x_core import DataStore
@@ -375,6 +400,22 @@ def test_load_file_with_combined_transforms(tmp_path):
     assert "capacity" in result["battery"]
     assert "avg_capacity_MW" not in result["battery"]
     assert "temp_id" not in result["battery"]
+
+
+def test_load_file_mapping_validation_error(tmp_path):
+    from pydantic import ValidationError
+
+    from r2x_core import DataStore
+
+    csv = tmp_path / "file.csv"
+    csv.write_text("a,b\n1,2\n")
+
+    store = DataStore(path=tmp_path)
+    bad_mapping = tmp_path / "bad.json"
+    bad_mapping.write_text(json.dumps([{"name": 123, "fpath": "file.csv"}]))
+
+    with pytest.raises(ValidationError):
+        store._load_file_mapping(bad_mapping)
 
 
 def test_store_load_file_csv_with_processing(tmp_path):
