@@ -1,0 +1,73 @@
+name: Update Plugin Manifests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**/plugins.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Export manifests
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run python - <<'PY'
+from pathlib import Path
+from r2x_core.manifest_tools import dump_manifest
+
+src = Path("src")
+plugin_files = sorted(src.glob("*/plugins.py"))
+
+if not plugin_files:
+    print("::warning::No plugin manifests declared under src/*/plugins.py")
+else:
+    for plugin_file in plugin_files:
+        package = plugin_file.parent.name
+        module = f"{package}.plugins"
+        output = plugin_file.parent / "manifest.json"
+        print(f"Exporting {module} -> {output}")
+        dump_manifest(module, output=output, indent=2)
+PY
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          branch: automation/manifest-refresh
+          commit-message: "chore(manifest): refresh plugin manifests"
+          title: "chore: refresh plugin manifests"
+          body: |
+            Automated export of plugin manifests.
+          labels: automation
