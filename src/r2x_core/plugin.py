@@ -146,6 +146,7 @@ class ArgumentSpec(BaseModel):
 
     @model_validator(mode="after")
     def _require_default_for_literal(self) -> ArgumentSpec:
+        """Ensure literal arguments declare a default value."""
         provided_fields: set[str] = getattr(self, "model_fields_set", set())
         if self.source == ArgumentSource.LITERAL and "default" not in provided_fields:
             msg = f"Argument '{self.name}' uses LITERAL source but has no default value."
@@ -163,6 +164,7 @@ class InvocationSpec(BaseModel):
 
     @model_validator(mode="after")
     def _validate_method(self) -> InvocationSpec:
+        """Validate that functions do not specify a call method."""
         if self.implementation == ImplementationType.FUNCTION and self.method:
             msg = "Functions cannot declare a method to call."
             raise ValueError(msg)
@@ -191,6 +193,7 @@ class ConfigSpec(BaseModel):
     @field_validator("model", mode="before")
     @classmethod
     def _normalise_model(cls, value: Any) -> Any:
+        """Normalise config model references to import paths."""
         return _as_import_path(value)
 
 
@@ -217,6 +220,7 @@ class UpgradeStepSpec(BaseModel):
     @field_validator("entry", mode="before")
     @classmethod
     def _normalise_entry(cls, value: Any) -> Any:
+        """Normalise upgrade step entry to import path."""
         return _as_import_path(value)
 
 
@@ -231,6 +235,7 @@ class UpgradeSpec(BaseModel):
     @field_validator("strategy", "reader", mode="before")
     @classmethod
     def _normalise_paths(cls, value: Any) -> Any:
+        """Normalise strategy/reader paths."""
         return _as_import_path(value)
 
 
@@ -251,6 +256,7 @@ class PluginSpec(BaseModel):
     @field_validator("entry", mode="before")
     @classmethod
     def _normalise_entry(cls, value: Any) -> Any:
+        """Normalise plugin entry path."""
         return _as_import_path(value)
 
     def resolve_entry(self) -> Any:
@@ -427,12 +433,14 @@ class PluginManifest(BaseModel):
 
 
 def _normalize_tags(tags: Sequence[str] | None) -> list[str]:
+    """Return a list of tags or an empty list when none provided."""
     return list(tags) if tags else []
 
 
 def _coerce_store_spec(
     store: StoreSpec | bool | str | None,
 ) -> StoreSpec | None:
+    """Convert loose store specifications into a StoreSpec instance."""
     if store is None:
         return None
     if isinstance(store, StoreSpec):
@@ -449,6 +457,7 @@ def _coerce_config_spec(
     *,
     required: bool,
 ) -> ConfigSpec | None:
+    """Convert loose config specifications into a ConfigSpec instance."""
     if config is None:
         return None
     if isinstance(config, ConfigSpec):
@@ -457,6 +466,7 @@ def _coerce_config_spec(
 
 
 def _maybe_config_argument(config: ConfigSpec | None) -> Iterable[ArgumentSpec]:
+    """Yield an ArgumentSpec for config when required by the plugin."""
     if config is None:
         return
     yield ArgumentSpec(
@@ -467,6 +477,7 @@ def _maybe_config_argument(config: ConfigSpec | None) -> Iterable[ArgumentSpec]:
 
 
 def _maybe_store_argument(store: StoreSpec | None) -> Iterable[ArgumentSpec]:
+    """Yield an ArgumentSpec for the store when required by the plugin."""
     if store is None:
         return
     yield ArgumentSpec(
@@ -480,12 +491,14 @@ def _maybe_resources(
     store: StoreSpec | None,
     config: ConfigSpec | None,
 ) -> ResourceSpec | None:
+    """Create a ResourceSpec when at least one resource is declared."""
     if store is None and config is None:
         return None
     return ResourceSpec(store=store, config=config)
 
 
 def _parser_io(store: StoreSpec | None, config: ConfigSpec | None) -> IOContract:
+    """Build the IO contract for parser plugins."""
     consumes: list[IOSlot] = []
     if store is not None:
         consumes.append(IOSlot(kind=IOSlotKind.STORE_FOLDER, optional=not store.required))
@@ -496,6 +509,7 @@ def _parser_io(store: StoreSpec | None, config: ConfigSpec | None) -> IOContract
 
 
 def _exporter_io(config: ConfigSpec | None, output_kind: IOSlotKind) -> IOContract:
+    """Build the IO contract for exporter plugins."""
     consumes = [IOSlot(kind=IOSlotKind.SYSTEM)]
     if config is not None:
         consumes.append(IOSlot(kind=IOSlotKind.CONFIG_FILE, optional=not config.required))
@@ -504,6 +518,7 @@ def _exporter_io(config: ConfigSpec | None, output_kind: IOSlotKind) -> IOContra
 
 
 def _upgrader_io() -> IOContract:
+    """Return the IO contract shared by upgrader plugins."""
     return IOContract(
         consumes=[IOSlot(kind=IOSlotKind.STORE_FOLDER)],
         produces=[IOSlot(kind=IOSlotKind.STORE_FOLDER)],
@@ -514,6 +529,7 @@ def _coerce_step_specs(
     steps: Sequence[UpgradeStepSpec | UpgradeStep] | None,
     entry: str | type | Callable[..., Any],
 ) -> list[UpgradeStepSpec]:
+    """Convert UpgradeStep objects to UpgradeStepSpec instances."""
     if steps:
         return [_convert_step(step) for step in steps]
     if isinstance(entry, type) and hasattr(entry, "list_steps"):
@@ -523,6 +539,7 @@ def _coerce_step_specs(
 
 
 def _convert_step(step: UpgradeStepSpec | UpgradeStep) -> UpgradeStepSpec:
+    """Adapt UpgradeStep inputs into spec objects."""
     if isinstance(step, UpgradeStepSpec):
         return step
     return UpgradeStepSpec(
@@ -539,6 +556,7 @@ def _convert_step(step: UpgradeStepSpec | UpgradeStep) -> UpgradeStepSpec:
 
 
 def _guess_implementation(entry: str | type | Callable[..., Any]) -> ImplementationType:
+    """Guess implementation type based on entry object."""
     if isinstance(entry, type):
         return ImplementationType.CLASS
     if callable(entry):

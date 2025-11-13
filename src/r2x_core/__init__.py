@@ -18,7 +18,6 @@ from .exceptions import (
 )
 from .exporter import BaseExporter
 from .file_types import FileFormat, H5Format
-from .manifest_tools import dump_manifest, load_manifest_from_module
 from .parser import BaseParser
 from .plugin import (
     ArgumentSource,
@@ -107,12 +106,10 @@ __all__ = [
     "ValidationError",
     "VersionReader",
     "VersionStrategy",
-    "dump_manifest",
     "get_unit_system",
     "h5_readers",
     "is_err",
     "is_ok",
-    "load_manifest_from_module",
     "run_upgrade_step",
     "set_unit_system",
 ]

@@ -156,12 +156,6 @@ manifest.add(
 
 The CLI (and other downstream tools) read this manifest to determine how to construct your parser/exporter/upgrader without having to import your module eagerly.
 
-Export a machine-readable manifest for packaging/distribution:
-
-```bash
-r2x-export-manifest --module my_package.plugins --output plugins.json
-```
-
 ## Best Practices
 
 - Keep configuration separate from implementation logic
