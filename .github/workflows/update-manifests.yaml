@@ -30,26 +30,7 @@ jobs:
         run: uv sync --dev
 
       - name: Export manifests
-        env:
-          PYTHONPATH: src
-        run: |
-          uv run python - <<'PY'
-from pathlib import Path
-from r2x_core.manifest_tools import dump_manifest
-
-src = Path("src")
-plugin_files = sorted(src.glob("*/plugins.py"))
-
-if not plugin_files:
-    print("::warning::No plugin manifests declared under src/*/plugins.py")
-else:
-    for plugin_file in plugin_files:
-        package = plugin_file.parent.name
-        module = f"{package}.plugins"
-        output = plugin_file.parent / "manifest.json"
-        print(f"Exporting {module} -> {output}")
-        dump_manifest(module, output=output, indent=2)
-PY
+        run: uv run python scripts/export_manifests.py
 
       - name: Detect changes
         id: diff
