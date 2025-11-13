@@ -3,7 +3,7 @@
 ```python
 from r2x_core import DataStore
 
-store = DataStore(folder_path="/path/to/data")
+store = DataStore(path="/path/to/data")
 ```
 
 # Add Files To A Datastore

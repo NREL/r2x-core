@@ -110,7 +110,7 @@ config = MyModelConfig(
 )
 
 # Set up data store
-data_store = DataStore(folder_path=config.input_folder)
+data_store = DataStore(path=config.input_folder)
 data_store.add_data(DataFile(name="buses", fpath="buses.csv"))
 
 # Parse
@@ -137,24 +137,24 @@ my_model = "my_package.plugins:parser_plugin"
 my_model_exporter = "my_package.plugins:exporter_plugin"
 ```
 
-Then provide plugin metadata in `my_package/plugins.py`:
+Then expose a manifest in `my_package/plugins.py`:
 
 ```python
-from r2x_core import ParserPlugin, ExporterPlugin
-from r2x_core.serialization import Importable
+from r2x_core import PluginManifest, PluginSpec
 
-parser_plugin = ParserPlugin(
-    name="my_model",
-    obj=Importable("my_package.parser:MyModelParser"),
-    config=Importable("my_package.config:MyModelConfig"),
-)
+manifest = PluginManifest(package="my_package")
 
-exporter_plugin = ExporterPlugin(
-    name="my_model",
-    obj=Importable("my_package.exporter:MyModelExporter"),
-    config=Importable("my_package.config:MyModelConfig"),
+manifest.add(
+    PluginSpec.parser(
+        name="my_model.parser",
+        entry="my_package.parser:MyModelParser",
+        description="Builds a System from model inputs.",
+        config="my_package.config:MyModelConfig",
+    )
 )
 ```
+
+The CLI (and other downstream tools) read this manifest to determine how to construct your parser/exporter/upgrader without having to import your module eagerly.
 
 ## Best Practices
 

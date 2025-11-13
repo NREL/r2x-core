@@ -92,6 +92,6 @@ class MyModelConfig(PluginConfig):
     solve_year: int
 
 config = MyModelConfig(solve_year=2030)
-store = DataStore.from_plugin_config(config, folder_path="/data/mymodel")
+store = DataStore.from_plugin_config(config, path="/data/mymodel")
 print(store.list_data())
 ```

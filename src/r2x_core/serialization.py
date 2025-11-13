@@ -25,7 +25,6 @@ and functions to be stored in config files and reconstructed at runtime.
 
 See Also
 --------
-:class:`~r2x_core.plugin.BasePlugin` : Uses Importable for plugin callables.
 :func:`get_pydantic_schema` : Export Pydantic model JSON schemas.
 """
 
@@ -87,9 +86,8 @@ def export_schemas_for_documentation(
     output_path : str
         File path to write JSON schemas to (e.g., "/path/to/schemas.json").
     include_models : list[type[BaseModel]] | None
-        List of Pydantic model classes to export. If None, uses default list:
-        [Package, ParserPlugin, UpgraderPlugin, ExporterPlugin].
-        Default is None.
+        List of Pydantic model classes to export. If None, exports the core
+        plugin manifest models.
 
     Returns
     -------
@@ -110,10 +108,33 @@ def export_schemas_for_documentation(
     >>> export_schemas_for_documentation("out.json", [CustomModel])
     """
     if include_models is None:
-        from r2x_core.package import Package
-        from r2x_core.plugin import ExporterPlugin, ParserPlugin, UpgraderPlugin
+        from r2x_core.plugin import (
+            ArgumentSpec,
+            ConfigSpec,
+            InvocationSpec,
+            IOContract,
+            IOSlot,
+            PluginManifest,
+            PluginSpec,
+            ResourceSpec,
+            StoreSpec,
+            UpgradeSpec,
+            UpgradeStepSpec,
+        )
 
-        include_models = [Package, ParserPlugin, UpgraderPlugin, ExporterPlugin]
+        include_models = [
+            PluginManifest,
+            PluginSpec,
+            InvocationSpec,
+            ArgumentSpec,
+            IOContract,
+            IOSlot,
+            StoreSpec,
+            ConfigSpec,
+            ResourceSpec,
+            UpgradeSpec,
+            UpgradeStepSpec,
+        ]
 
     schemas = {model.__name__: get_pydantic_schema(model) for model in include_models}
 

@@ -43,6 +43,21 @@ def test_instance_fails_with_nonexistent_folder():
         DataStore("/nonexistent/path")
 
 
+def test_datastore_from_mapping_file(tmp_path):
+    from r2x_core import DataStore
+
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    csv_file = inputs / "file.csv"
+    csv_file.write_text("a,b\n1,2\n3,4\n")
+
+    mapping_path = tmp_path / "file_mapping.json"
+    mapping_path.write_text(json.dumps([{"name": "table", "fpath": "inputs/file.csv"}]))
+
+    store = DataStore(path=mapping_path)
+    assert "table" in store.list_data()
+
+
 def test_add_data_overwrite_datafile(data_store_example, folder_with_data):
     from r2x_core import DataFile
 
@@ -176,7 +191,7 @@ def test_from_data_files_constructor_with_relative_paths(data_store_example, fol
     df_01 = DataFile(name="test1", relative_fpath="file1.csv")
     df_02 = DataFile(name="test2", relative_fpath="file2.csv")
     df_03 = DataFile(name="test3", fpath="local_file.csv")
-    store = DataStore.from_data_files(data_files=[df_01, df_02, df_03], folder_path=folder_with_data)
+    store = DataStore.from_data_files(data_files=[df_01, df_02, df_03], path=folder_with_data)
     assert "test1" in store
     assert "test2" in store
     assert "test3" in store
@@ -198,6 +213,24 @@ def test_load_data_file(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         DataStore.load_file(tmp_path / "nota file")
+
+
+def test_from_plugin_config_missing_file_mapping(tmp_path, caplog):
+    from r2x_core import DataStore
+    from r2x_core.plugin_config import PluginConfig
+
+    class DummyConfig(PluginConfig):
+        pass
+
+    cfg = DummyConfig()
+    cfg.config_path = tmp_path / "config"
+    cfg.config_path.mkdir(parents=True, exist_ok=True)
+
+    with caplog.at_level("WARNING"):
+        store = DataStore.from_plugin_config(cfg, path=tmp_path)
+
+    assert store.list_data() == []
+    assert "File mapping not found" in caplog.text
 
 
 def test_load_file_with_json_transform_rename_keys(tmp_path):
@@ -253,6 +286,16 @@ def test_load_file_with_json_transform_drop_columns(tmp_path):
     assert "battery" in result
     assert "internal_id" not in result["battery"]
     assert "avg_capacity_MW" in result["battery"]
+
+
+def test_load_file_converts_proc_spec_dict(tmp_path):
+    from r2x_core import DataStore
+
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("c1,c2\n1,2\n3,4\n")
+
+    lazy = DataStore.load_file(csv_file, proc_spec={"drop_columns": ["c2"]})
+    assert "c2" not in lazy.collect().columns
 
 
 def test_load_file_with_json_transform_filter_by(tmp_path):
@@ -359,6 +402,22 @@ def test_load_file_with_combined_transforms(tmp_path):
     assert "temp_id" not in result["battery"]
 
 
+def test_load_file_mapping_validation_error(tmp_path):
+    from pydantic import ValidationError
+
+    from r2x_core import DataStore
+
+    csv = tmp_path / "file.csv"
+    csv.write_text("a,b\n1,2\n")
+
+    store = DataStore(path=tmp_path)
+    bad_mapping = tmp_path / "bad.json"
+    bad_mapping.write_text(json.dumps([{"name": 123, "fpath": "file.csv"}]))
+
+    with pytest.raises(ValidationError):
+        store._load_file_mapping(bad_mapping)
+
+
 def test_store_load_file_csv_with_processing(tmp_path):
     from r2x_core import DataStore, TabularProcessing
 
@@ -404,7 +463,7 @@ def test_store_from_json_missing_folder(tmp_path):
     json_file.write_text("[]")
 
     with pytest.raises(FileNotFoundError):
-        DataStore.from_json(json_file, folder_path="/nonexistent")
+        DataStore.from_json(json_file, path="/nonexistent")
 
 
 def test_store_from_json_missing_config_file(tmp_path):
@@ -413,7 +472,7 @@ def test_store_from_json_missing_config_file(tmp_path):
     from r2x_core import DataStore
 
     with pytest.raises(FileNotFoundError):
-        DataStore.from_json(tmp_path / "nonexistent.json", folder_path=tmp_path)
+        DataStore.from_json(tmp_path / "nonexistent.json", path=tmp_path)
 
 
 def test_store_from_json_not_array(tmp_path):
@@ -425,7 +484,7 @@ def test_store_from_json_not_array(tmp_path):
     json_file.write_text('{"not": "array"}')
 
     with pytest.raises(TypeError):
-        DataStore.from_json(json_file, folder_path=tmp_path)
+        DataStore.from_json(json_file, path=tmp_path)
 
 
 def test_store_add_data_invalid_type(tmp_path):

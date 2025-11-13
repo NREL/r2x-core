@@ -52,7 +52,7 @@ The `DataStore` provides a high-level interface for managing and loading data fi
 from r2x_core import DataStore, DataFile
 
 # Create a DataStore pointing to your data directory
-store = DataStore(folder_path="/path/to/data")
+store = DataStore(path="/path/to/data")
 
 # Add files to the store
 data_file = DataFile(name="generators", fpath="gen.csv")
@@ -102,49 +102,43 @@ class MyModelParser(BaseParser):
 
 # Create a data store and parser
 config = MyModelConfig(folder="/path/to/data", year=2030)
-store = DataStore(folder_path=config.folder)
+store = DataStore(path=config.folder)
 parser = MyModelParser(config, data_store=store)
 system = parser.build_system()
 ```
 
 ### Plugin Registration and Discovery
 
-Create a registration function that returns a `Package` with your plugins:
+Create a manifest that describes each plugin explicitly:
 
 ```python
-from r2x_core import Package, ParserPlugin, ExporterPlugin
+from r2x_core import PluginManifest, PluginSpec
 
-def register_plugins() -> Package:
-    """Register all plugins for this package."""
-    # Create plugin metadata
-    parser_plugin = ParserPlugin(
-        name="my-model-parser",
-        obj=MyModelParser,
-        call_method="build_system",
-        config=MyModelConfig,
-        requires_store=True,
-    )
+manifest = PluginManifest(package="my-model")
 
-    exporter_plugin = ExporterPlugin(
-        name="my-model-exporter",
-        obj=MyModelExporter,
-        call_method="export",
-        config=MyModelConfig,
+manifest.add(
+    PluginSpec.parser(
+        name="my-model.parser",
+        entry="my_package.parser:MyModelParser",
+        config="my_package.config:MyModelConfig",
     )
+)
 
-    # Package plugins together
-    return Package(
-        name="my-model-plugin",
-        plugins=[parser_plugin, exporter_plugin],
-        metadata={"version": "1.0.0", "author": "Your Name"},
+manifest.add(
+    PluginSpec.exporter(
+        name="my-model.exporter",
+        entry="my_package.exporter:MyModelExporter",
+        config="my_package.config:MyModelConfig",
+        config_optional=True,
     )
+)
 ```
 
 Make plugins discoverable via `pyproject.toml`:
 
 ```toml
 [project.entry-points.r2x_plugins]
-my_model = "my_package.plugins:register_plugins"
+my_model = "my_package.plugins:manifest"
 ```
 
 ## Documentation

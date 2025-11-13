@@ -19,7 +19,7 @@ Create a custom parser by subclassing BaseParser:
 
 Use with a data store for file management:
 
->>> store = DataStore(folder_path="/data")
+>>> store = DataStore(path="/data")
 >>> parser = MyParser(config, data_store=store)
 >>> gen_data = parser.read_data_file("generators")
 
@@ -38,7 +38,7 @@ leveraging the DataStore and DataReader for file management.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
+from typing import IO, Any, TypeVar
 
 from infrasys import Component
 from infrasys.exceptions import ISAlreadyAttached
@@ -52,6 +52,7 @@ from .system import System
 from .utils import create_component, filter_valid_kwargs
 
 T = TypeVar("T", bound=Component)
+StdinPayload = IO[str] | IO[bytes] | str | bytes | None
 
 
 class BaseParser(ABC):
@@ -64,8 +65,9 @@ class BaseParser(ABC):
 
     Parameters
     ----------
-    config : PluginConfig
-        Parser configuration parameters. This is a positional-only parameter.
+    config : PluginConfig | None, optional
+        Parser configuration parameters. Optional for parsers that do not require
+        structured config. This is a positional-only parameter.
     data_store : DataStore | None, optional
         Optional data store for file management. If None, creates a new :class:`DataStore`.
         This is a keyword-only parameter. Default is None.
@@ -170,7 +172,7 @@ class BaseParser(ABC):
     def __init__(
         self,
         /,
-        config: PluginConfig,
+        config: PluginConfig | None = None,
         *,
         data_store: DataStore | None = None,
         system_name: str | None = None,
@@ -182,8 +184,9 @@ class BaseParser(ABC):
 
         Parameters
         ----------
-        config : PluginConfig
-            Parser configuration parameters. This is a positional-only parameter.
+        config : PluginConfig | None, optional
+            Parser configuration parameters. Optional for parsers that do not need config.
+            This is a positional-only parameter.
         data_store : DataStore | None, optional
             Optional data store for file management. If None, creates a new DataStore.
             This is a keyword-only parameter.
@@ -217,6 +220,7 @@ class BaseParser(ABC):
         """
         self._config = config
         self._store = data_store or DataStore()
+        self._stdin_payload: StdinPayload = None
 
         if not isinstance(self._store, DataStore):
             raise TypeError(f"data_store must be a DataStore instance, got {type(self._store).__name__}")
@@ -229,14 +233,19 @@ class BaseParser(ABC):
         self._system = System(name=system_name, **filter_valid_kwargs(System, kwargs))
 
     @property
-    def config(self) -> PluginConfig:
-        """Return the :class:`PluginConfig` instance."""
+    def config(self) -> PluginConfig | None:
+        """Return the :class:`PluginConfig` instance, if provided."""
         return self._config
 
     @property
     def store(self) -> DataStore:
         """Return the parser's :class:`DataStore` instance."""
         return self._store
+
+    @property
+    def stdin_payload(self) -> StdinPayload:
+        """Return the stdin payload provided to :meth:`build_system`, if any."""
+        return self._stdin_payload
 
     @property
     def system(self) -> System:
@@ -247,7 +256,7 @@ class BaseParser(ABC):
         """Return a string representation of the parser for debugging."""
         return f"{type(self).__name__}(config={self.config!r})"
 
-    def build_system(self) -> System:
+    def build_system(self, *, stdin_payload: StdinPayload = None) -> System:
         """Build and return the complete :class:`System` using template method pattern.
 
         This is a **template method** that orchestrates the build process by
@@ -268,6 +277,13 @@ class BaseParser(ABC):
         System
             The built system instance.
 
+        Parameters
+        ----------
+        stdin_payload : IO[str] | IO[bytes] | str | bytes | None, keyword-only
+            Streaming data supplied by the CLI (typically stdin). Parsers that support
+            streaming can inspect :attr:`stdin_payload` to decide whether to bypass the
+            :class:`DataStore`. Default is None.
+
         Raises
         ------
         ParserError
@@ -280,6 +296,7 @@ class BaseParser(ABC):
         >>> print(system.name)
         """
         parser_name = type(self).__name__
+        self._stdin_payload = stdin_payload
         logger.info("Starting system build for {}", parser_name)
 
         logger.debug("Validating parser inputs for {}", parser_name)
@@ -644,4 +661,5 @@ class BaseParser(ABC):
         >>> gen_data = self.read_data_file("generators")
         >>> bus_data = self.read_data_file("buses", use_cache=False)
         """
-        return self._store.read_data(name=name, placeholders=self._config.model_dump(), **kwargs)
+        placeholders = self._config.model_dump() if self._config is not None else {}
+        return self._store.read_data(name=name, placeholders=placeholders, **kwargs)
