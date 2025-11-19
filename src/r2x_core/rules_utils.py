@@ -21,7 +21,7 @@ def _resolve_component_type(type_name: str, context: TranslationContext) -> Resu
     """Resolve a component type name to a class.
 
     Uses cache to avoid repeated module imports for the same type.
-    Searches modules specified in config.models_modules (defaults to r2x_sienna.models, r2x_plexos.models).
+    Searches modules specified in config.models (defaults to r2x_sienna.models, r2x_plexos.models).
 
     Parameters
     ----------
@@ -32,7 +32,7 @@ def _resolve_component_type(type_name: str, context: TranslationContext) -> Resu
 
     Returns
     -------
-    Result[type, ValueError]
+    Result[type, TypeError]
         Ok with the resolved class, or Err if not found
 
     Notes

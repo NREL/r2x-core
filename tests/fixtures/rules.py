@@ -4,9 +4,8 @@ from r2x_core import Rule
 
 
 @pytest.fixture
-def rules_simple() -> Rule:
+def rules_simple() -> list[Rule]:
     """Translation rules between source and target fixture components."""
-    from r2x_core import Rule
 
     rules = [
         {

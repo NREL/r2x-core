@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class TransferStats(NamedTuple):
-    """Class that represent the transfer status of time series."""
+    """Class that represents the transfer status of time series."""
 
     transferred: int
     updated: int

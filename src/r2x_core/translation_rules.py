@@ -68,7 +68,7 @@ class Rule:
     version: int
     field_map: dict[str, str | list[str]] = field(default_factory=dict)
     getters: dict[str, Callable[[TranslationContext, Any], Any] | str] = field(default_factory=dict)
-    defaults: dict[str, str] = field(default_factory=dict)
+    defaults: dict[str, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:  # noqa: D105
         return f"{self.source_type}->{self.target_type}(v{self.version})"
