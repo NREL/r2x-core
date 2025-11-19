@@ -70,10 +70,12 @@ class Rule:
     getters: dict[str, Callable[[TranslationContext, Any], Any] | str] = field(default_factory=dict)
     defaults: dict[str, Any] = field(default_factory=dict)
 
-    def __str__(self) -> str:  # noqa: D105
+    def __str__(self) -> str:
+        """Represent string."""
         return f"{self.source_type}->{self.target_type}(v{self.version})"
 
-    def __post_init__(self) -> Any:  # noqa: D105
+    def __post_init__(self) -> Any:
+        """Validate init."""
         # Validate that we don't have both multiple sources and multiple targets
         if self.has_multiple_sources() and self.has_multiple_targets():
             raise NotImplementedError(

@@ -181,3 +181,62 @@ def test_getter_callable_with_result_type():
     result = test_getter_func(None, None)
     assert result.is_ok()
     assert result.unwrap() == 42
+
+
+def test_preprocess_rule_getters_passes_through_callables():
+    """Callables in getter dict remain unchanged."""
+    from r2x_core.getters import _preprocess_rule_getters
+
+    def compute(ctx, comp):
+        return "value"
+
+    result = _preprocess_rule_getters({"field": compute})
+    assert result.is_ok()
+    resolved = result.unwrap()
+    assert resolved["field"] is compute
+
+
+def test_preprocess_rule_getters_resolves_registry_names():
+    """String referencing registered getter resolves to callable."""
+    from r2x_core import Ok
+    from r2x_core.getters import GETTER_REGISTRY, _preprocess_rule_getters, getter
+
+    unique_name = "registry_lookup_getter"
+
+    if unique_name not in GETTER_REGISTRY:
+
+        @getter(name=unique_name)
+        def registry_lookup_getter(ctx, comp):
+            return Ok("from_registry")
+
+    result = _preprocess_rule_getters({"field": unique_name})
+    assert result.is_ok()
+    resolved = result.unwrap()
+    assert resolved["field"] is GETTER_REGISTRY[unique_name]
+
+
+def test_preprocess_rule_getters_builds_attr_getter():
+    """String path not in registry becomes attribute getter."""
+    from r2x_core.getters import _preprocess_rule_getters
+
+    class Child:
+        value = 123
+
+    class Parent:
+        child = Child()
+
+    result = _preprocess_rule_getters({"field": "child.value"})
+    assert result.is_ok()
+    getter_fn = result.unwrap()["field"]
+    out = getter_fn(None, Parent())
+    assert out.is_ok()
+    assert out.unwrap() == 123
+
+
+def test_preprocess_rule_getters_rejects_invalid_types():
+    """Invalid getter types raise a TypeError result."""
+    from r2x_core.getters import _preprocess_rule_getters
+
+    result = _preprocess_rule_getters({"field": 123})
+    assert result.is_err()
+    assert isinstance(result.err(), TypeError)

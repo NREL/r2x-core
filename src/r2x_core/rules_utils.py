@@ -68,6 +68,7 @@ def _make_attr_getter(chain: list[str]) -> Callable[[TranslationContext, Any], R
     """Create a getter that safely walks nested attributes and returns a Result."""
 
     def _getter(_: TranslationContext, src: Any) -> Result[Any, ValueError]:
+        """Extract attributes."""
         val = src
         for attr in chain:
             val = getattr(val, attr, None)

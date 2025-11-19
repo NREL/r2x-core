@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+from fixtures.context import FIXTURE_MODEL_MODULES
+
 if TYPE_CHECKING:
     from r2x_core import TranslationContext
 
@@ -36,3 +39,45 @@ def test_convert_rule_single_component(context_example: TranslationContext):
         station for station in target_system.get_components(StationComponent) if station.name == "plant_alpha"
     ]
     assert stations and stations[0].resource == "gas"
+
+
+def test_apply_rules_requires_non_empty_rule_list(source_system, target_system):
+    """Translation context without rules raises ValueError."""
+    from r2x_core import PluginConfig, TranslationContext, apply_rules_to_context
+
+    context = TranslationContext(
+        source_system=source_system,
+        target_system=target_system,
+        config=PluginConfig(models=FIXTURE_MODEL_MODULES),
+        rules=[],
+    )
+
+    with pytest.raises(ValueError, match="has no rules"):
+        apply_rules_to_context(context)
+
+
+def test_apply_rules_reports_resolution_errors(source_system, target_system):
+    """Failed component resolution surfaces as failed rule result."""
+    from r2x_core import PluginConfig, Rule, TranslationContext, apply_rules_to_context
+
+    invalid_rule = Rule(
+        source_type="MissingComponent",
+        target_type="NodeComponent",
+        version=1,
+        field_map={"name": "name"},
+    )
+
+    context = TranslationContext(
+        source_system=source_system,
+        target_system=target_system,
+        config=PluginConfig(models=FIXTURE_MODEL_MODULES),
+        rules=[invalid_rule],
+    )
+
+    result = apply_rules_to_context(context)
+
+    assert not result.success
+    assert result.total_rules == 1
+    assert result.failed_rules == 1
+    assert result.rule_results[0].success is False
+    assert "MissingComponent" in result.rule_results[0].error

@@ -9,11 +9,12 @@ from loguru import logger
 
 from r2x_core import Err, Ok
 
+from .translation_rules import TranslationContext
+
 if TYPE_CHECKING:
     from . import Result
-    from .translation_rules import TranslationContext
 
-GetterFunc = Callable[["TranslationContext", Any], Any]
+GetterFunc = Callable[[TranslationContext, Any], Any]
 F = TypeVar("F", bound=GetterFunc)
 
 GETTER_REGISTRY: dict[str, GetterFunc] = {}
@@ -31,6 +32,7 @@ def getter(func: F | None = None, *, name: str | None = None) -> F | Callable[[F
     """
 
     def _decorator(f: F) -> F:
+        """Decorate function."""
         key = name or f.__name__
         if key in GETTER_REGISTRY:
             raise ValueError(f"Getter '{key}' already registered")
