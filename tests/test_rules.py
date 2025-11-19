@@ -4,12 +4,18 @@ import pytest
 def test_simple_rule_creation(rules_simple):
     """Create and verify simple rule with single-field mapping."""
     rule_simple = rules_simple[0]
-    assert rule_simple.source_type == "ACBus"
-    assert rule_simple.target_type == "PLEXOSNode"
+    assert rule_simple.source_type == "BusComponent"
+    assert rule_simple.target_type == "NodeComponent"
     assert rule_simple.version == 1
-    assert rule_simple.field_map == {"name": "name", "uuid": "uuid", "units": "available"}
+    assert rule_simple.field_map == {
+        "name": "name",
+        "uuid": "uuid",
+        "kv_rating": "voltage_kv",
+        "demand_mw": "load_mw",
+        "area": "zone",
+    }
     assert rule_simple.getters == {}
-    assert rule_simple.defaults == {"load": 0.0, "units": 0.0}
+    assert rule_simple.defaults == {"area": "unspecified"}
 
 
 def test_multifield_rule_requires_getter():
@@ -54,3 +60,27 @@ def test_rule_is_frozen(rules_simple):
     rule_simple = rules_simple[0]
     with pytest.raises(FrozenInstanceError):
         rule_simple.version = 2
+
+
+@pytest.mark.parametrize(
+    "defaults,expected",
+    [
+        ({}, {}),
+        ({"field": "default"}, {"field": "default"}),
+        ({"f1": 1, "f2": "default"}, {"f1": 1, "f2": "default"}),
+    ],
+    ids=["no_defaults", "single_default", "multiple_defaults"],
+)
+def test_defaults_are_optional(defaults, expected):
+    """Defaults are optional and default to empty dict."""
+    from r2x_core import Rule
+
+    rule = Rule(
+        source_type="A",
+        target_type="B",
+        version=1,
+        field_map={"f": "f"},
+        defaults=defaults,
+    )
+
+    assert rule.defaults == expected

@@ -5,39 +5,41 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
+    from r2x_core import PluginConfig, TranslationContext
+
+FIXTURE_MODEL_MODULES: tuple[str, ...] = (
+    "fixtures.source_system",
+    "fixtures.target_system",
+)
+
+
+def _build_config() -> PluginConfig:
+    """Create a PluginConfig pointing at fixture component modules."""
+    from r2x_core import PluginConfig
+
+    return PluginConfig(models=FIXTURE_MODEL_MODULES)
+
+
+def _build_translation_context(
+    rules_simple,
+    source_system,
+    target_system,
+) -> TranslationContext:
     from r2x_core import TranslationContext
+
+    return TranslationContext(
+        source_system=source_system,
+        target_system=target_system,
+        config=_build_config(),
+        rules=rules_simple,
+    )
 
 
 @pytest.fixture
-def context(
+def context_example(
     rules_simple,
+    source_system,
+    target_system,
 ) -> TranslationContext:
-    """TranslationContext with mock systems and rules.
-
-    Creates a complete TranslationContext for use in tests. All rules
-    are indexed automatically by (source_type, target_type, version).
-
-    Returns
-    -------
-    TranslationContext
-        Ready-to-use context with all rules accessible
-
-    Examples
-    --------
-    Basic usage:
-    >>> rule = context.get_rule("Bus", "Node")
-
-    Get specific version:
-    >>> rule = context.get_rule("Bus", "Node", version=1)
-
-    List all rules:
-    >>> all_rules = context.list_rules()
-    """
-    from r2x_core import PluginConfig, System, TranslationContext
-
-    return TranslationContext(
-        source_system=System(name="Source"),
-        target_system=System(name="Target"),
-        config=PluginConfig(),
-        rules=rules_simple,
-    )
+    """TranslationContext with populated systems and fixture rules."""
+    return _build_translation_context(rules_simple, source_system, target_system)

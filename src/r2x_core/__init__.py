@@ -40,6 +40,7 @@ from .plugin import (
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .result import Err, Ok, Result, is_err, is_ok
+from .rules_executor import apply_rules_to_context, apply_single_rule
 from .store import DataStore
 from .system import System
 from .translation_rules import Rule, TranslationContext
@@ -109,6 +110,8 @@ __all__ = [
     "ValidationError",
     "VersionReader",
     "VersionStrategy",
+    "apply_rules_to_context",
+    "apply_single_rule",
     "get_unit_system",
     "h5_readers",
     "is_err",

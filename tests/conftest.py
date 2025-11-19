@@ -11,6 +11,8 @@ REEDS_SCENARIO = "test_Pacific"
 pytest_plugins = [
     "fixtures.rules",
     "fixtures.context",
+    "fixtures.source_system",
+    "fixtures.target_system",
 ]
 
 
