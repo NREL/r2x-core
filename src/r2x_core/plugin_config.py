@@ -141,6 +141,10 @@ class PluginConfig(BaseModel):
     DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
 
     config_path: Path | None = Field(default=None, exclude=True)
+    models: list[str] = Field(
+        ...,
+        description="Module paths where component classes can be imported. Must be supplied by plugins.",
+    )
 
     @model_validator(mode="after")
     def resolve_config_path(self) -> "PluginConfig":
@@ -149,6 +153,7 @@ class PluginConfig(BaseModel):
             module_file = inspect.getfile(self.__class__)
             self.config_path = Path(module_file).parent / self.CONFIG_DIR
         assert isinstance(self.config_path, Path)
+        self.models = list(self.models)
         return self
 
     @property

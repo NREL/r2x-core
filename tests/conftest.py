@@ -8,6 +8,11 @@ from r2x_core.logger import setup_logging
 DATA_FOLDER = "tests/data"
 REEDS_SCENARIO = "test_Pacific"
 
+pytest_plugins = [
+    "fixtures.rules",
+    "fixtures.context",
+]
+
 
 @pytest.fixture(scope="function")
 def empty_file(tmp_path) -> Path:

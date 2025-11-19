@@ -42,6 +42,7 @@ from .reader import DataReader
 from .result import Err, Ok, Result, is_err, is_ok
 from .store import DataStore
 from .system import System
+from .translation_rules import Rule, TranslationContext
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
 from .upgrader import PluginUpgrader
 from .upgrader_utils import UpgradeStep, UpgradeType, run_upgrade_step
@@ -91,11 +92,13 @@ __all__ = [
     "ReaderConfig",
     "ResourceSpec",
     "Result",
+    "Rule",
     "SemanticVersioningStrategy",
     "StoreMode",
     "StoreSpec",
     "System",
     "TabularProcessing",
+    "TranslationContext",
     "Unit",
     "UnitSystem",
     "UpgradeError",
