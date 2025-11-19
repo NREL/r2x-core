@@ -68,7 +68,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from loguru import logger
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PluginConfig(BaseModel):
@@ -104,6 +104,8 @@ class PluginConfig(BaseModel):
         Load default values from defaults.json with optional overrides.
     load_file_mapping(config_path=None, file_overrides=None)
         Load file mappings from file_mapping.json with optional path overrides.
+    load_translation_rules(config_path=None)
+        Load translation rules from rules.json if present.
 
     Notes
     -----
@@ -115,6 +117,7 @@ class PluginConfig(BaseModel):
         ├── config/
         │   ├── defaults.json       # Default model parameters
         │   └── file_mapping.json   # File path mappings
+        ├── rules.json            # Optional translation rules
         └── ...
 
     The defaults.json file should be a dict with default values.
@@ -139,12 +142,28 @@ class PluginConfig(BaseModel):
     CONFIG_DIR: ClassVar[str] = "config"
     FILE_MAPPING_NAME: ClassVar[str] = "file_mapping.json"
     DEFAULTS_FILE_NAME: ClassVar[str] = "defaults.json"
+    RULES_FILE_NAME: ClassVar[str] = "rules.json"
 
     config_path: Path | None = Field(default=None, exclude=True)
-    models: list[str] = Field(
-        ...,
-        description="Module paths where component classes can be imported. Must be supplied by plugins.",
+    models: tuple[str, ...] = Field(
+        default_factory=tuple,
+        description=(
+            "Module path(s) for component classes, e.g. 'r2x_sienna.models'. "
+            "If omitted, rules will use an empty module list."
+        ),
     )
+
+    @field_validator("models", mode="before")
+    @classmethod
+    def _coerce_models(cls, value: Any | None) -> tuple[str, ...]:
+        """Allow models to be configured via str, iterable, or omitted entirely."""
+        if value is None:
+            return ()
+        if isinstance(value, str):
+            return (value,)
+        if isinstance(value, (list, tuple, set)):
+            return tuple(value)
+        raise TypeError("models must be a string or iterable of strings")
 
     @model_validator(mode="after")
     def resolve_config_path(self) -> "PluginConfig":
@@ -153,7 +172,6 @@ class PluginConfig(BaseModel):
             module_file = inspect.getfile(self.__class__)
             self.config_path = Path(module_file).parent / self.CONFIG_DIR
         assert isinstance(self.config_path, Path)
-        self.models = list(self.models)
         return self
 
     @property
@@ -189,6 +207,12 @@ class PluginConfig(BaseModel):
         """
         assert self.config_path is not None
         return self.config_path / self.DEFAULTS_FILE_NAME
+
+    @property
+    def translation_rules_path(self) -> Path:
+        """Get path to translation rules file at the plugin package root."""
+        assert self.config_path is not None
+        return self.config_path.parent / self.RULES_FILE_NAME
 
     @classmethod
     def load_defaults(
@@ -350,6 +374,53 @@ class PluginConfig(BaseModel):
                 name = item["name"]
                 if name in file_overrides:
                     item["fpath"] = file_overrides[name]
+
+        return data
+
+    @classmethod
+    def load_translation_rules(
+        cls,
+        config_path: Path | str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Load translation rules from rules.json located beside the config directory.
+
+        Parameters
+        ----------
+        config_path : Path | str | None, optional
+            Path to the config directory. The translation rules file lives in
+            the parent directory, e.g. ``plugin_package/rules.json``.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Translation rules list. Returns an empty list if rules.json does not exist.
+
+        Raises
+        ------
+        json.JSONDecodeError
+            If rules.json contains invalid JSON.
+        ValueError
+            If rules.json does not contain a list.
+        """
+        resolved_config = cls._resolve_config_path(config_path)
+        rules_file = resolved_config.parent / cls.RULES_FILE_NAME
+
+        if not rules_file.exists():
+            logger.debug(f"Translation rules file not found: {rules_file}. Returning empty list.")
+            return []
+
+        try:
+            with open(rules_file, encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse translation rules JSON from {rules_file}: {e}")
+            raise
+
+        if not isinstance(data, list):
+            raise ValueError(
+                f"Translation rules file must contain a list, got {type(data).__name__}. "
+                f"Expected format: [{{'source_type': '...', 'target_type': '...', ...}}]"
+            )
 
         return data
 

@@ -165,7 +165,7 @@ class Rule:
     @classmethod
     def from_records(cls, records: list[dict[str, Any]]) -> list[Rule]:
         """Create rules from json objects."""
-        from .rules_registry import _preprocess_rule_getters
+        from .getters import _preprocess_rule_getters
 
         rules_list = []
         for rule in records:
