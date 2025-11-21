@@ -13,6 +13,7 @@ from .rules_utils import (
     _create_target_component,
     _evaluate_rule_filter,
     _resolve_component_type,
+    _sort_rules_by_dependencies,
 )
 from .system_utils import _iter_system_components
 from .time_series import transfer_time_series_metadata
@@ -35,17 +36,23 @@ def apply_rules_to_context(context: TranslationContext) -> TranslationResult:
     Raises
     ------
     ValueError
-        If the context has no rules defined
+        If the context has no rules defined or if circular dependencies are detected
     """
     if not context.rules:
         raise ValueError(f"{type(context).__name__} has no rules. Use context.list_rules().")
+
+    sorted_rules_result = _sort_rules_by_dependencies(context.list_rules())
+    if sorted_rules_result.is_err():
+        raise ValueError(str(sorted_rules_result.err()))
+
+    sorted_rules = sorted_rules_result.unwrap()
 
     rule_results: list[RuleResult] = []
     total_converted = 0
     successful_rules = 0
     failed_rules = 0
 
-    for rule in context.list_rules():
+    for rule in sorted_rules:
         logger.debug("Applying rule: {}", rule)
         result = apply_single_rule(rule, context)
 
@@ -110,6 +117,8 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
     converted = 0
     should_regenerate_uuid = len(rule.get_target_types()) > 1
 
+    read_system = context.target_system if rule.system == "target" else context.source_system
+
     for source_type in rule.get_source_types():
         source_class_result = _resolve_component_type(source_type, context)
         if source_class_result.is_err():
@@ -121,9 +130,7 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
         if rule.filter:
             filter_func = lambda comp: _evaluate_rule_filter(rule.filter, comp)  # noqa: E731
 
-        for src_component in _iter_system_components(
-            context.source_system, source_class, filter_func=filter_func
-        ):  # type: Any
+        for src_component in _iter_system_components(read_system, source_class, filter_func=filter_func):  # type: Any
             source_component = cast(Any, src_component)
             for target_type in rule.get_target_types():
                 result = _convert_component(

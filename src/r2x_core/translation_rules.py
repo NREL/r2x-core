@@ -109,6 +109,15 @@ class Rule:
     defaults : dict[str, Any]
         Default values for target fields if source is None/missing.
         Key is the target field name, value is the default.
+    system : Literal["source", "target"]
+        Which system to read components from. Defaults to "source".
+        When set to "target", the rule reads from target_system instead of source_system.
+        Useful for creating relationship components that link previously created components.
+    name : str | None
+        Optional identifier for this rule. Used for dependency tracking via depends_on.
+    depends_on : list[str] | None
+        Optional list of rule names that must execute before this rule.
+        Used to enforce ordering when rules have dependencies.
     """
 
     source_type: str | list[str]
@@ -118,6 +127,9 @@ class Rule:
     getters: dict[str, Callable[[TranslationContext, Any], Any] | str] = field(default_factory=dict)
     defaults: dict[str, Any] = field(default_factory=dict)
     filter: RuleFilter | None = field(default=None)
+    system: Literal["source", "target"] = "source"
+    name: str | None = None
+    depends_on: list[str] | None = None
 
     def __str__(self) -> str:
         """Represent string."""

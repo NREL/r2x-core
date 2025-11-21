@@ -161,3 +161,65 @@ def _evaluate_rule_filter(rule_filter: RuleFilter, component: Any) -> bool:
             return False
         return cand_num >= threshold
     return False
+
+
+def _sort_rules_by_dependencies(rules: list[Rule]) -> Result[list[Rule], ValueError]:
+    """Sort rules by dependencies using topological sort.
+
+    Parameters
+    ----------
+    rules : list[Rule]
+        Rules to sort
+
+    Returns
+    -------
+    Result[list[Rule], ValueError]
+        Ok with sorted rules, or Err if circular dependencies detected
+
+    Notes
+    -----
+    Rules without names or dependencies are placed at the beginning.
+    Uses Kahn's algorithm for topological sorting.
+    """
+    named_rules: dict[str, Rule] = {}
+    unnamed_rules: list[Rule] = []
+
+    for rule in rules:
+        if rule.name:
+            if rule.name in named_rules:
+                return Err(ValueError(f"Duplicate rule name: {rule.name}"))
+            named_rules[rule.name] = rule
+        else:
+            unnamed_rules.append(rule)
+
+    # Dependency graph
+    in_degree: dict[str, int] = dict.fromkeys(named_rules, 0)
+    adjacency: dict[str, list[str]] = {name: [] for name in named_rules}
+
+    for name, rule in named_rules.items():
+        if rule.depends_on:
+            for dep in rule.depends_on:
+                if dep not in named_rules:
+                    return Err(ValueError(f"Rule '{name}' depends on unknown rule '{dep}'"))
+                adjacency[dep].append(name)
+                in_degree[name] += 1
+
+    # Kahn's algorithm
+    queue = [name for name, degree in in_degree.items() if degree == 0]
+    sorted_names: list[str] = []
+
+    while queue:
+        current = queue.pop(0)
+        sorted_names.append(current)
+
+        for neighbor in adjacency[current]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    if len(sorted_names) != len(named_rules):
+        unsorted = set(named_rules.keys()) - set(sorted_names)
+        return Err(ValueError(f"Circular dependencies detected in rules: {', '.join(unsorted)}"))
+
+    sorted_rules = unnamed_rules + [named_rules[name] for name in sorted_names]
+    return Ok(sorted_rules)
