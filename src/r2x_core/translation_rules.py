@@ -15,11 +15,59 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
+
+from pydantic import BaseModel, model_validator
 
 if TYPE_CHECKING:
     from . import System
     from .plugin_config import PluginConfig
+
+
+class RuleFilter(BaseModel):
+    """Declarative predicate for selecting source components."""
+
+    field: str | None = None
+    op: Literal["eq", "neq", "in", "not_in", "geq"] | None = None
+    values: list[Any] | None = None
+    any_of: list[RuleFilter] | None = None
+    all_of: list[RuleFilter] | None = None
+    casefold: bool = True
+    on_missing: Literal["include", "exclude"] = "exclude"
+
+    @model_validator(mode="after")
+    def _validate_structure(self) -> RuleFilter:
+        """Ensure the filter is either a leaf or a composition."""
+        is_leaf = self.field is not None or self.op is not None or self.values is not None
+        has_children = bool(self.any_of) or bool(self.all_of)
+
+        if is_leaf and has_children:
+            raise ValueError("RuleFilter cannot mix field/op/values with any_of/all_of")
+        if not is_leaf and not has_children:
+            raise ValueError("RuleFilter requires field/op/values or any_of/all_of")
+        if self.any_of and self.all_of:
+            raise ValueError("RuleFilter cannot set both any_of and all_of")
+
+        if is_leaf:
+            if not self.field:
+                raise ValueError("RuleFilter.field is required for leaf filters")
+            if self.op is None:
+                raise ValueError("RuleFilter.op is required for leaf filters")
+            if not self.values:
+                raise ValueError("RuleFilter.values must contain at least one value")
+            if self.op == "geq" and len(self.values) != 1:
+                raise ValueError("RuleFilter.geq expects exactly one comparison value")
+
+        return self
+
+    def matches(self, component: Any) -> bool:
+        """Evaluate this filter against a component instance."""
+        from .rules_utils import _evaluate_rule_filter
+
+        return _evaluate_rule_filter(self, component)
+
+
+RuleFilter.model_rebuild()
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +117,7 @@ class Rule:
     field_map: dict[str, str | list[str]] = field(default_factory=dict)
     getters: dict[str, Callable[[TranslationContext, Any], Any] | str] = field(default_factory=dict)
     defaults: dict[str, Any] = field(default_factory=dict)
+    filter: RuleFilter | None = field(default=None)
 
     def __str__(self) -> str:
         """Represent string."""
@@ -88,6 +137,8 @@ class Rule:
             if isinstance(source_fields, list) and target_field not in self.getters:
                 msg = f"Multi-field mapping for '{target_field}' requires a getter function"
                 raise ValueError(msg)
+        if self.filter is not None and not isinstance(self.filter, RuleFilter):
+            raise TypeError(f"Rule.filter must be a RuleFilter, not {type(self.filter).__name__}")
 
     def __hash__(self) -> int:
         """Hash based on rule's unique identifier.
@@ -173,6 +224,10 @@ class Rule:
         for rule in records:
             if getters := rule.get("getters"):
                 rule["getters"] = _preprocess_rule_getters(getters).unwrap_or_raise()
+            if "filter" in rule:
+                rule["filter"] = (
+                    RuleFilter.model_validate(rule["filter"]) if rule["filter"] is not None else None
+                )
             rules_list.append(cls(**rule))
         return rules_list
 

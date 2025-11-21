@@ -11,6 +11,7 @@ from . import Err, Ok, Result
 from .rules_utils import (
     _build_target_fields,
     _create_target_component,
+    _evaluate_rule_filter,
     _resolve_component_type,
 )
 from .system_utils import _iter_system_components
@@ -48,34 +49,33 @@ def apply_rules_to_context(context: TranslationContext) -> TranslationResult:
         logger.debug("Applying rule: {}", rule)
         result = apply_single_rule(rule, context)
 
-        if result.is_ok():
-            converted, skipped = result.unwrap()
-            rule_results.append(
-                RuleResult(
-                    rule=rule,
-                    converted=converted,
-                    skipped=skipped,
-                    success=True,
-                    error=None,
+        match result:
+            case Ok((converted, skipped)):
+                rule_results.append(
+                    RuleResult(
+                        rule=rule,
+                        converted=converted,
+                        skipped=skipped,
+                        success=True,
+                        error=None,
+                    )
                 )
-            )
-            total_converted += converted
-            successful_rules += 1
-        else:
-            error = str(result.err())
-            logger.error("Rule {} failed: {}", rule, error)
-            rule_results.append(
-                RuleResult(
-                    rule=rule,
-                    converted=0,
-                    skipped=0,
-                    success=False,
-                    error=error,
+                total_converted += converted
+                successful_rules += 1
+            case Err(_):
+                error = str(result.err())
+                logger.error("Rule {} failed: {}", rule, error)
+                rule_results.append(
+                    RuleResult(
+                        rule=rule,
+                        converted=0,
+                        skipped=0,
+                        success=False,
+                        error=error,
+                    )
                 )
-            )
-            failed_rules += 1
+                failed_rules += 1
 
-    # Transfer time series metadata
     ts_result = transfer_time_series_metadata(context)
 
     return TranslationResult(
@@ -117,8 +117,13 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
             return Err(ValueError(str(source_class_result.err())))
 
         source_class = source_class_result.unwrap()
+        filter_func = None
+        if rule.filter:
+            filter_func = lambda comp: _evaluate_rule_filter(rule.filter, comp)  # noqa: E731
 
-        for src_component in _iter_system_components(context.source_system, source_class):  # type: Any
+        for src_component in _iter_system_components(
+            context.source_system, source_class, filter_func=filter_func
+        ):  # type: Any
             source_component = cast(Any, src_component)
             for target_type in rule.get_target_types():
                 result = _convert_component(

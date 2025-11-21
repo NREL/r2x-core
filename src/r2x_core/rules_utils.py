@@ -11,7 +11,7 @@ from loguru import logger
 from . import Err, Ok, Result
 
 if TYPE_CHECKING:
-    from .translation_rules import Rule, TranslationContext
+    from .translation_rules import Rule, RuleFilter, TranslationContext
 
 
 _COMPONENT_TYPE_CACHE: dict[str, type] = {}
@@ -124,3 +124,40 @@ def _build_target_fields(
                     return Err(ValueError(f"Getter for '{target_field}' failed: {e}"))
 
     return Ok(kwargs)
+
+
+def _evaluate_rule_filter(rule_filter: RuleFilter, component: Any) -> bool:
+    """Return True if the component satisfies the rule filter."""
+    if rule_filter.any_of is not None:
+        return any(_evaluate_rule_filter(child, component) for child in rule_filter.any_of)
+    if rule_filter.all_of is not None:
+        return all(_evaluate_rule_filter(child, component) for child in rule_filter.all_of)
+
+    assert rule_filter.field is not None and rule_filter.op is not None and rule_filter.values is not None
+
+    attr = getattr(component, rule_filter.field, None)
+    if attr is None:
+        return rule_filter.on_missing == "include"
+
+    candidate = str(attr).casefold() if rule_filter.casefold and isinstance(attr, str) else attr
+    values = [
+        str(val).casefold() if rule_filter.casefold and isinstance(val, str) else val
+        for val in rule_filter.values
+    ]
+
+    if rule_filter.op == "eq":
+        return candidate == values[0]
+    if rule_filter.op == "neq":
+        return candidate != values[0]
+    if rule_filter.op == "in":
+        return candidate in values
+    if rule_filter.op == "not_in":
+        return candidate not in values
+    if rule_filter.op == "geq":
+        try:
+            cand_num = float(candidate)
+            threshold = float(values[0])
+        except (TypeError, ValueError):
+            return False
+        return cand_num >= threshold
+    return False
