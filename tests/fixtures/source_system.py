@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import numpy as np
 import pytest
-from infrasys import Component, SingleTimeSeries
+from infrasys import Component, SingleTimeSeries, SupplementalAttribute
 from pydantic import Field
 
 from r2x_core.system import System
@@ -35,6 +35,14 @@ class PlantComponent(Component):
     capacity_mw: float = Field(default=0.0, description="Maximum output in MW.")
     min_stable_level_mw: float = Field(default=0.0, description="Minimum operating level in MW.")
     fuel_type: str = Field(default="", description="Primary fuel used by the plant.")
+
+
+class BusGeographicInfo(SupplementalAttribute):
+    """Supplemental attribute with geographic information for buses."""
+
+    latitude: float = Field(default=0.0, description="Latitude in degrees")
+    longitude: float = Field(default=0.0, description="Longitude in degrees")
+    location_name: str = Field(default="", description="Location name")
 
 
 def _attach_bus_time_series(system: System, bus: BusComponent) -> None:

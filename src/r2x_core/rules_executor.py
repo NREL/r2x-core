@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 from uuid import uuid4
 
+from infrasys import Component, SupplementalAttribute
 from loguru import logger
 
 from . import Err, Ok, Result
@@ -142,6 +143,12 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
                 )
                 if result.is_err():
                     return Err(ValueError(str(result.err())))
+
+                component = result.unwrap()
+                attach_result = _attach_component(component, source_component, context)
+                if attach_result.is_err():
+                    return Err(ValueError(str(attach_result.err())))
+
                 converted += 1
 
     logger.debug("Rule {}: {} converted", rule, converted)
@@ -154,8 +161,11 @@ def _convert_component(
     target_type: str,
     context: TranslationContext,
     regenerate_uuid: bool,
-) -> Result[None, ValueError]:
+) -> Result[Any, ValueError]:
     """Convert a single source component to a target type.
+
+    This function creates the target component but does not add it to the system.
+    The caller is responsible for attaching the component using _attach_component().
 
     Parameters
     ----------
@@ -172,8 +182,8 @@ def _convert_component(
 
     Returns
     -------
-    Result[None, ValueError]
-        Ok if conversion succeeds, Err otherwise
+    Result[Any, ValueError]
+        Ok with the created component if conversion succeeds, Err otherwise
     """
     target_class_result = _resolve_component_type(target_type, context)
     if target_class_result.is_err():
@@ -184,10 +194,12 @@ def _convert_component(
 
     fields_result = _build_target_fields(rule, source_component, context)
     if fields_result.is_err():
-        src_name = getattr(
-            source_component, "label", getattr(source_component, "name", str(source_component))
+        logger.error(
+            "Failed to build fields for {} -> {}: {}",
+            source_component.label,
+            target_type,
+            fields_result.err(),
         )
-        logger.error("Failed to build fields for {} -> {}: {}", src_name, target_type, fields_result.err())
         return Err(ValueError(str(fields_result.err())))
 
     kwargs = fields_result.unwrap()
@@ -197,5 +209,73 @@ def _convert_component(
         kwargs["uuid"] = str(uuid4())
 
     target = _create_target_component(target_class, kwargs)
-    context.target_system.add_component(target)
+    return Ok(target)
+
+
+def _is_supplemental_attribute(component: Component) -> bool:
+    """Check if a component is a supplemental attribute.
+
+    Parameters
+    ----------
+    component : Any
+        The component to check
+
+    Returns
+    -------
+    bool
+        True if the component is a supplemental attribute, False otherwise
+    """
+    return isinstance(component, SupplementalAttribute)
+
+
+def _attach_component(
+    component: Any,
+    source_component: Any,
+    context: TranslationContext,
+) -> Result[None, ValueError]:
+    """Attach a component to the target system.
+
+    For regular components, adds them directly to the system.
+    For supplemental attributes, finds the corresponding target component
+    and attaches the supplemental attribute to it.
+
+    Parameters
+    ----------
+    component : Any
+        The component or supplemental attribute to attach
+    source_component : Any
+        The source component that was converted
+    context : TranslationContext
+        The translation context
+
+    Returns
+    -------
+    Result[None, ValueError]
+        Ok if attachment succeeds, Err otherwise
+    """
+    if not _is_supplemental_attribute(component):
+        context.target_system.add_component(component)
+        return Ok(None)
+
+    # Find the target component that corresponds to the source component
+    # We look for a component with the same UUID in the target system
+    try:
+        target_component = context.target_system.get_component_by_uuid(source_component.uuid)
+    except Exception as e:
+        logger.error(
+            "Failed to find target component with UUID {} for supplemental attribute attachment: {}",
+            source_component.uuid,
+            e,
+        )
+        return Err(
+            ValueError(
+                f"Cannot attach supplemental attribute: target component with UUID "
+                f"{source_component.uuid} not found in target system"
+            )
+        )
+
+    context.target_system.add_supplemental_attribute(target_component, component)
+    logger.debug(
+        "Attached supplemental attribute {} to component {}", type(component).__name__, target_component.label
+    )
     return Ok(None)
