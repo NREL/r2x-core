@@ -66,6 +66,15 @@ def test_plugin_config_defaults_path(tmp_path):
     assert config.defaults_path == expected_path
 
 
+def test_plugin_config_translation_rules_path(tmp_path):
+    """Test translation_rules_path property resolves to parent directory."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config = SampleConfig(param1="test", config_path=config_dir)
+    expected_path = tmp_path / "rules.json"
+    assert config.translation_rules_path == expected_path
+
+
 def test_plugin_config_model_dump_excludes_config_path():
     """Test that config_path is excluded from serialization."""
     config = SampleConfig(param1="test")
@@ -82,6 +91,24 @@ def test_plugin_config_model_dump_json_excludes_config_path():
     data = json.loads(json_str)
     assert "config_path" not in data
     assert data["param1"] == "test"
+
+
+def test_plugin_config_models_defaults_to_empty_list():
+    """Ensure models defaults to an empty list when omitted."""
+    config = SampleConfig(param1="test")
+    assert config.models == ()
+
+
+def test_plugin_config_models_accepts_string():
+    """Ensure models accepts a single module path string."""
+    config = SampleConfig(param1="test", models="r2x_sienna.models")
+    assert config.models == ("r2x_sienna.models",)
+
+
+def test_plugin_config_models_accepts_iterable():
+    """Ensure models accepts iterable of module paths."""
+    config = SampleConfig(param1="test", models=("mod.a", "mod.b"))
+    assert config.models == ("mod.a", "mod.b")
 
 
 def test_load_defaults_basic(tmp_path):
@@ -249,6 +276,49 @@ def test_load_file_mapping_with_extra_fields(tmp_path):
     mapping = SampleConfig.load_file_mapping(config_path=tmp_path)
     assert mapping[0]["description"] == "Main data file"
     assert mapping[0]["optional"] is False
+
+
+def test_load_translation_rules_basic(tmp_path):
+    """Test loading translation rules from rules.json."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    rules_file = tmp_path / "rules.json"
+    rules_data = [{"source_type": "Bus", "target_type": "Node"}]
+    rules_file.write_text(json.dumps(rules_data))
+
+    rules = SampleConfig.load_translation_rules(config_path=config_dir)
+    assert rules == rules_data
+
+
+def test_load_translation_rules_missing_file(tmp_path):
+    """Test that missing translation rules file returns empty list."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+
+    rules = SampleConfig.load_translation_rules(config_path=config_dir)
+    assert rules == []
+
+
+def test_load_translation_rules_invalid_json(tmp_path):
+    """Test loading translation rules with invalid JSON raises error."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    rules_file = tmp_path / "rules.json"
+    rules_file.write_text("{ invalid json }")
+
+    with pytest.raises(json.JSONDecodeError):
+        SampleConfig.load_translation_rules(config_path=config_dir)
+
+
+def test_load_translation_rules_not_list(tmp_path):
+    """Test translation rules must contain a list."""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    rules_file = tmp_path / "rules.json"
+    rules_file.write_text(json.dumps({"not": "a list"}))
+
+    with pytest.raises(ValueError, match="must contain a list"):
+        SampleConfig.load_translation_rules(config_path=config_dir)
 
 
 def test_merge_dicts_scalar_override():

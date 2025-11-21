@@ -40,8 +40,10 @@ from .plugin import (
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .result import Err, Ok, Result, is_err, is_ok
+from .rules_executor import apply_rules_to_context, apply_single_rule
 from .store import DataStore
 from .system import System
+from .translation_rules import Rule, RuleFilter, TranslationContext
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
 from .upgrader import PluginUpgrader
 from .upgrader_utils import UpgradeStep, UpgradeType, run_upgrade_step
@@ -91,11 +93,14 @@ __all__ = [
     "ReaderConfig",
     "ResourceSpec",
     "Result",
+    "Rule",
+    "RuleFilter",
     "SemanticVersioningStrategy",
     "StoreMode",
     "StoreSpec",
     "System",
     "TabularProcessing",
+    "TranslationContext",
     "Unit",
     "UnitSystem",
     "UpgradeError",
@@ -106,6 +111,9 @@ __all__ = [
     "ValidationError",
     "VersionReader",
     "VersionStrategy",
+    "apply_rules_to_context",
+    "apply_single_rule",
+    "evaluate_rule_filter",
     "get_unit_system",
     "h5_readers",
     "is_err",
