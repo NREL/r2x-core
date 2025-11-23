@@ -9,8 +9,8 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    FilePath,
     ValidationError,
+    ValidationInfo,
     computed_field,
     model_validator,
 )
@@ -18,6 +18,13 @@ from pydantic import (
 from .file_types import EXTENSION_MAPPING, FileFormat
 from .result import Err, Ok, Result
 from .utils import validate_file_extension, validate_glob_pattern
+
+
+def _validate_optional_file_extension(path: Path | None, info: ValidationInfo) -> Path | None:
+    """Run validate_file_extension when a path is provided."""
+    if path is None:
+        return None
+    return validate_file_extension(path, info)
 
 
 class FileInfo(BaseModel):
@@ -227,7 +234,9 @@ class DataFile(BaseModel):
 
     name: Annotated[str, Field(description="Name of the mapping")]
     fpath: Annotated[
-        FilePath | None, AfterValidator(validate_file_extension), Field(description="Absolute file path")
+        Path | None,
+        AfterValidator(_validate_optional_file_extension),
+        Field(description="Absolute file path"),
     ] = None
     relative_fpath: Annotated[Path | str | None, Field(description="Relative file path")] = None
     glob: Annotated[str | None, AfterValidator(validate_glob_pattern), Field(description="Glob pattern")] = (
@@ -249,6 +258,13 @@ class DataFile(BaseModel):
         if paths_set > 1:
             msg = "Multiple path sources specified. Use exactly one of: 'fpath', 'relative_fpath', or 'glob'"
             raise ValueError(msg)
+
+        if self.fpath is not None:
+            is_optional = self.info.is_optional if self.info else False
+            if not is_optional and not self.fpath.exists():
+                msg = f"File not found: {self.fpath}"
+                raise FileNotFoundError(msg)
+
         return self
 
     @computed_field  # type: ignore
@@ -314,8 +330,14 @@ def create_data_files_from_records(
     errors: list[ValidationError] = []
 
     for idx, record in enumerate(records):
+        info = record.get("info")
+        is_optional = bool(info.get("is_optional")) if isinstance(info, dict) else False
         try:
-            resolved = resolve_data_file_path(record["fpath"], folder_path)
+            resolved = resolve_data_file_path(
+                record["fpath"],
+                folder_path,
+                must_exist=not is_optional,
+            )
             record["fpath"] = resolved
 
             data_files.append(DataFile.model_validate(record))
@@ -347,12 +369,17 @@ def create_data_files_from_records(
     return Ok(data_files)
 
 
-def resolve_data_file_path(raw_path: str | Path, folder_path: Path) -> Path:
+def resolve_data_file_path(
+    raw_path: str | Path,
+    folder_path: Path,
+    *,
+    must_exist: bool = True,
+) -> Path:
     """Resolve a file path relative or absolute to folder_path.
 
     Converts relative paths to absolute using folder_path as the base.
-    Absolute paths are used as-is. Raises FileNotFoundError if the
-    resolved path does not exist.
+    Absolute paths are used as-is. When ``must_exist`` is True, a
+    FileNotFoundError is raised if the resolved path does not exist.
 
     Parameters
     ----------
@@ -360,6 +387,8 @@ def resolve_data_file_path(raw_path: str | Path, folder_path: Path) -> Path:
         Path to resolve (relative or absolute).
     folder_path : Path
         Base folder for resolving relative paths.
+    must_exist : bool, default True
+        When False, return the resolved path even if the file does not exist.
 
     Returns
     -------
@@ -369,7 +398,7 @@ def resolve_data_file_path(raw_path: str | Path, folder_path: Path) -> Path:
     Raises
     ------
     FileNotFoundError
-        If the resolved path does not exist.
+        If the resolved path does not exist and ``must_exist`` is True.
 
     See Also
     --------
@@ -379,7 +408,7 @@ def resolve_data_file_path(raw_path: str | Path, folder_path: Path) -> Path:
     path = Path(raw_path)
     resolved = path if path.is_absolute() else folder_path / path
 
-    if not resolved.exists():
+    if must_exist and not resolved.exists():
         raise FileNotFoundError(f"File not found: {resolved}")
 
     return resolved
