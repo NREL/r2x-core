@@ -6,13 +6,12 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from loguru import logger
+from rust_ok import Err, Ok
 
-from r2x_core import Err, Ok
-
-from .translation_rules import TranslationContext
+from .translation import TranslationContext
 
 if TYPE_CHECKING:
-    from . import Result
+    from rust_ok import Result
 
 GetterFunc = Callable[[TranslationContext, Any], Any]
 F = TypeVar("F", bound=GetterFunc)

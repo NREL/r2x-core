@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import pytest
 from fixtures.source_system import BusComponent
 from fixtures.target_system import NodeComponent
+from rust_ok import Err, Ok
 
-from r2x_core import Err, Ok, Rule
+from r2x_core import Rule
 from r2x_core.rules_utils import (
     _build_target_fields,
     _create_target_component,
     _make_attr_getter,
     _resolve_component_type,
+    build_component_kwargs,
 )
 
 
@@ -140,3 +145,48 @@ def test_create_target_component_instantiates_class():
 
     assert isinstance(dummy, Dummy)
     assert dummy.name == "node_x"
+
+
+def test_build_component_kwargs_from_parser_record(context_example):
+    """Parsers should be able to reuse rules helpers with raw records."""
+    record = {
+        "name": "parser_component",
+        "region_code": "north-zone",
+        "ramp_rate_mw_per_min": 12.0,
+    }
+
+    @dataclass
+    class RampLimits:
+        up: float
+        down: float
+
+    def resolve_region(ctx, src):
+        for node in ctx.target_system.get_components(NodeComponent):
+            if node.area == src.region_code:
+                return Ok(node)
+        return Err(ValueError(f"Unknown region code {src.region_code}"))
+
+    def convert_ramp_rate(ctx, src):
+        system_base = ctx.target_system.base_power or 1.0
+        per_unit_value = src.ramp_rate_mw_per_min / system_base
+        return Ok(RampLimits(up=per_unit_value, down=per_unit_value))
+
+    rule = Rule(
+        source_type="ParserRecord",
+        target_type="StationComponent",
+        version=1,
+        field_map={"component_name": "name"},
+        getters={
+            "region_component": resolve_region,
+            "ramp_limits": convert_ramp_rate,
+        },
+    )
+
+    result = build_component_kwargs(rule, record, context_example)
+
+    assert result.is_ok()
+    kwargs = result.unwrap()
+    assert kwargs["component_name"] == "parser_component"
+    assert kwargs["region_component"].area == "north-zone"
+    assert kwargs["ramp_limits"].up == pytest.approx(0.12)
+    assert kwargs["ramp_limits"].down == pytest.approx(0.12)

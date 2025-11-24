@@ -18,11 +18,11 @@ from typing import Annotated, Any
 
 from loguru import logger
 from pydantic import BaseModel
+from rust_ok import Err, Ok, Result
 
 from r2x_core.serialization import Importable
 
 from .exceptions import UpgradeError
-from .result import Err, Ok, Result
 from .versioning import VersionStrategy
 
 

@@ -5,8 +5,10 @@ from __future__ import annotations
 from importlib.metadata import version
 
 from loguru import logger
+from rust_ok import Err, Ok, Result, is_err, is_ok
 
 from . import h5_readers
+from .context import Context, ExporterContext, ParserContext
 from .datafile import DataFile, FileInfo, JSONProcessing, ReaderConfig, TabularProcessing
 from .exceptions import (
     CLIError,
@@ -39,11 +41,11 @@ from .plugin import (
 )
 from .plugin_config import PluginConfig
 from .reader import DataReader
-from .result import Err, Ok, Result, is_err, is_ok
+from .rules import Rule, RuleFilter
 from .rules_executor import apply_rules_to_context, apply_single_rule
 from .store import DataStore
 from .system import System
-from .translation_rules import Rule, RuleFilter, TranslationContext
+from .translation import TranslationContext
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
 from .upgrader import PluginUpgrader
 from .upgrader_utils import UpgradeStep, UpgradeType, run_upgrade_step
@@ -66,10 +68,12 @@ __all__ = [
     "CLIError",
     "ComponentCreationError",
     "ConfigSpec",
+    "Context",
     "DataFile",
     "DataReader",
     "DataStore",
     "Err",
+    "ExporterContext",
     "ExporterError",
     "FileFormat",
     "FileInfo",
@@ -84,6 +88,7 @@ __all__ = [
     "InvocationSpec",
     "JSONProcessing",
     "Ok",
+    "ParserContext",
     "ParserError",
     "PluginConfig",
     "PluginKind",

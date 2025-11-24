@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from infrasys import Component
+from rust_ok import Err, Ok
 
 from r2x_core.datafile import DataFile
 from r2x_core.exceptions import ComponentCreationError, ParserError, ValidationError
 from r2x_core.parser import BaseParser
 from r2x_core.plugin_config import PluginConfig
-from r2x_core.result import Err, Ok
 from r2x_core.store import DataStore
 
 

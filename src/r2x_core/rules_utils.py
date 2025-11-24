@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+from rust_ok import Err, Ok, Result
 
-from . import Err, Ok, Result
+from .rules import RuleLike
 
 if TYPE_CHECKING:
-    from .translation_rules import Rule, RuleFilter, TranslationContext
+    from .rules import Rule, RuleFilter
+    from .translation import TranslationContext
 
 
 _COMPONENT_TYPE_CACHE: dict[str, type] = {}
@@ -84,20 +87,46 @@ def _build_target_fields(
     source_component: Any,
     context: TranslationContext,
 ) -> Result[dict[str, Any], ValueError]:
-    """Build field map for the target component.
+    """Build field map for the target component."""
+    return build_component_kwargs(rule, source_component, context)
 
-    All getters must return Result types. Fails fast if source_field has no getter.
-    Gracefully falls back to defaults on getter errors.
+
+def _as_attr_source(source_component: Any) -> Any:
+    """Return an object that supports attribute access for the provided record."""
+    if isinstance(source_component, Mapping):
+        return SimpleNamespace(**source_component)
+    return source_component
+
+
+def build_component_kwargs(
+    rule: RuleLike,
+    source_component: Any,
+    context: TranslationContext,
+) -> Result[dict[str, Any], ValueError]:
+    """Construct kwargs for instantiating a target component.
+
+    Parameters
+    ----------
+    rule : RuleLike
+        Object exposing field_map, getters, and defaults.
+    source_component : Any
+        Source object or parser record providing attributes referenced by the rule.
+    context : TranslationContext
+        Active translation context used by getters.
     """
+    source_obj = _as_attr_source(source_component)
+    field_map = getattr(rule, "field_map", {})
+    getters = getattr(rule, "getters", {})
+    defaults = getattr(rule, "defaults", {})
     kwargs: dict[str, Any] = {}
 
-    for target_field, source_field in rule.field_map.items():
+    for target_field, source_field in field_map.items():
         if isinstance(source_field, list):
             # Multi-field mappings must be handled by a getter; skip direct assignment.
             continue
-        value = getattr(source_component, source_field, None)
-        if value is None and target_field in rule.defaults:
-            value = rule.defaults[target_field]
+        value = getattr(source_obj, source_field, None)
+        if value is None and target_field in defaults:
+            value = defaults[target_field]
         elif value is None:
             return Err(
                 ValueError(
@@ -107,9 +136,9 @@ def _build_target_fields(
 
         kwargs[target_field] = value
 
-    for target_field, getter_func in rule.getters.items():
+    for target_field, getter_func in getters.items():
         if callable(getter_func):
-            result = getter_func(context, source_component)
+            result = getter_func(context, source_obj)
         else:
             return Err(ValueError(f"Getter for '{target_field}' is not callable: {getter_func}"))
 
@@ -118,8 +147,8 @@ def _build_target_fields(
                 if value is not None:
                     kwargs[target_field] = value
             case Err(e):
-                if target_field in rule.defaults:
-                    kwargs[target_field] = rule.defaults[target_field]
+                if target_field in defaults:
+                    kwargs[target_field] = defaults[target_field]
                 else:
                     return Err(ValueError(f"Getter for '{target_field}' failed: {e}"))
 

@@ -14,9 +14,9 @@ from pydantic import (
     computed_field,
     model_validator,
 )
+from rust_ok import Err, Ok, Result
 
 from .file_types import EXTENSION_MAPPING, FileFormat
-from .result import Err, Ok, Result
 from .utils import validate_file_extension, validate_glob_pattern
 
 

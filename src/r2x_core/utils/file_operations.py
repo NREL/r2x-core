@@ -5,8 +5,7 @@ import platform
 from pathlib import Path
 
 from loguru import logger
-
-from ..result import Err, Ok, Result
+from rust_ok import Err, Ok, Result
 
 
 def backup_folder(folder_path: Path | str) -> Result[None, str]:

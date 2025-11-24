@@ -56,6 +56,7 @@ dependencies = [
     "packaging>=24.0,<25.0",
     "polars>=1.33.1,<2.0.0",
     "pydantic>=2.11.9,<3.0.0",
+    "rust-ok>=0.1.0,<1.0.0",
 ]
 
 [project.urls]

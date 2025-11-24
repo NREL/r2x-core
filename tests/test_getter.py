@@ -171,7 +171,8 @@ def test_getter_with_custom_name_prevents_duplicate():
 
 def test_getter_callable_with_result_type():
     """@getter decorated function returns Result type correctly."""
-    from r2x_core import Ok
+    from rust_ok import Ok
+
     from r2x_core.getters import getter
 
     @getter
@@ -198,7 +199,8 @@ def test_preprocess_rule_getters_passes_through_callables():
 
 def test_preprocess_rule_getters_resolves_registry_names():
     """String referencing registered getter resolves to callable."""
-    from r2x_core import Ok
+    from rust_ok import Ok
+
     from r2x_core.getters import GETTER_REGISTRY, _preprocess_rule_getters, getter
 
     unique_name = "registry_lookup_getter"

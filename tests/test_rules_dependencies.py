@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from r2x_core import Ok
+from rust_ok import Ok
+
 from r2x_core.getters import getter
 
 

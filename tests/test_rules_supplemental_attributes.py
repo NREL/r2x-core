@@ -8,9 +8,10 @@ from fixtures.source_system import BusComponent, BusGeographicInfo
 from fixtures.target_system import NodeComponent
 
 from r2x_core import PluginConfig
+from r2x_core.rules import Rule
 from r2x_core.rules_executor import apply_rules_to_context
 from r2x_core.system import System
-from r2x_core.translation_rules import Rule, TranslationContext
+from r2x_core.translation import TranslationContext
 
 
 def _build_test_config() -> PluginConfig:

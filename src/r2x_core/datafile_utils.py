@@ -3,10 +3,10 @@
 from pathlib import Path
 
 from loguru import logger
+from rust_ok import Err, Ok, Result
 
 from .datafile import DataFile, FileInfo
 from .exceptions import MultipleFileError
-from .result import Err, Ok, Result
 
 
 def get_file_path(

@@ -7,8 +7,9 @@ from uuid import uuid4
 
 from infrasys import Component, SupplementalAttribute
 from loguru import logger
+from rust_ok import Err, Ok, Result
 
-from . import Err, Ok, Result
+from .rules import Rule
 from .rules_utils import (
     _build_target_fields,
     _create_target_component,
@@ -18,7 +19,7 @@ from .rules_utils import (
 )
 from .system_utils import _iter_system_components
 from .time_series import transfer_time_series_metadata
-from .translation_rules import Rule, RuleResult, TranslationContext, TranslationResult
+from .translation import RuleResult, TranslationContext, TranslationResult
 
 
 def apply_rules_to_context(context: TranslationContext) -> TranslationResult:

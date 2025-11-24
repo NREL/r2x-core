@@ -1,256 +1,23 @@
-"""Data models for the functional converter architecture.
-
-This module defines the core data structures for transformation rules and
-translation context, following a declarative, schema-driven approach with
-clear separation of concerns.
-
-Design Principles:
-- TransformationRule: Declarative descriptions of component mappings
-- TranslationContext: Static configuration holder (no mutable state)
-- Getters: Responsible for all field extraction, computation, and formatting
-- Rule metadata is single-source-of-truth (source_type, target_type, version)
-"""
+"""Translation context and result data structures."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, model_validator
+from .context import Context
 
 if TYPE_CHECKING:
     from . import System
-    from .plugin_config import PluginConfig
-
-
-class RuleFilter(BaseModel):
-    """Declarative predicate for selecting source components."""
-
-    field: str | None = None
-    op: Literal["eq", "neq", "in", "not_in", "geq"] | None = None
-    values: list[Any] | None = None
-    any_of: list[RuleFilter] | None = None
-    all_of: list[RuleFilter] | None = None
-    casefold: bool = True
-    on_missing: Literal["include", "exclude"] = "exclude"
-
-    @model_validator(mode="after")
-    def _validate_structure(self) -> RuleFilter:
-        """Ensure the filter is either a leaf or a composition."""
-        is_leaf = self.field is not None or self.op is not None or self.values is not None
-        has_children = bool(self.any_of) or bool(self.all_of)
-
-        if is_leaf and has_children:
-            raise ValueError("RuleFilter cannot mix field/op/values with any_of/all_of")
-        if not is_leaf and not has_children:
-            raise ValueError("RuleFilter requires field/op/values or any_of/all_of")
-        if self.any_of and self.all_of:
-            raise ValueError("RuleFilter cannot set both any_of and all_of")
-
-        if is_leaf:
-            if not self.field:
-                raise ValueError("RuleFilter.field is required for leaf filters")
-            if self.op is None:
-                raise ValueError("RuleFilter.op is required for leaf filters")
-            if not self.values:
-                raise ValueError("RuleFilter.values must contain at least one value")
-            if self.op == "geq" and len(self.values) != 1:
-                raise ValueError("RuleFilter.geq expects exactly one comparison value")
-
-        return self
-
-    def matches(self, component: Any) -> bool:
-        """Evaluate this filter against a component instance."""
-        from .rules_utils import _evaluate_rule_filter
-
-        return _evaluate_rule_filter(self, component)
-
-
-RuleFilter.model_rebuild()
+    from .rules import Rule
 
 
 @dataclass(frozen=True, slots=True)
-class Rule:
-    """Declarative rule for converting one component type to another.
-
-    Describes how to transform a Sienna component into a PLEXOS component,
-    including field mappings, type conversions, and custom extraction logic.
-
-    The rule's metadata (source_type, target_type, version) is the single
-    source of truth for rule identification. Rules are stored in a list
-    with automatic indexing for fast lookups.
-
-    Attributes
-    ----------
-    source_type : str | list[str]
-        Name of the source component type (e.g., "ACBus") or list of source types.
-        When a list is provided, the same transformation is applied to all source types.
-        Cannot be a list if target_type is also a list.
-    target_type : str | list[str]
-        Name of the target component type (e.g., "PLEXOSNode") or list of target types.
-        When a list is provided, the source component is split into multiple targets.
-        Cannot be a list if source_type is also a list.
-    version : int
-        Version of this rule for tracking changes and revisions.
-        Users can have multiple versions of the same source→target conversion
-        and select which version(s) to use via config.active_versions.
-    field_map : dict[str, str | list[str]]
-        Mapping from target fields to source fields.
-        - Single field: "target_field": "source_field"
-        - Multi-field: "target_field": ["source_field1", "source_field2"]
-        Multi-field mappings require a getter function.
-    getters : dict[str, Callable]
-        Functions for extracting/computing multi-field source values.
-        Key is the target field name, value is the getter function.
-        Getters should return the final value (float, dict, or PLEXOSPropertyValue),
-        handling any necessary scaling, aggregation, unit conversion, or formatting.
-        Signature: getter(ctx: TranslationContext, component: Any) -> Any
-    defaults : dict[str, Any]
-        Default values for target fields if source is None/missing.
-        Key is the target field name, value is the default.
-    system : Literal["source", "target"]
-        Which system to read components from. Defaults to "source".
-        When set to "target", the rule reads from target_system instead of source_system.
-        Useful for creating relationship components that link previously created components.
-    name : str | None
-        Optional identifier for this rule. Used for dependency tracking via depends_on.
-    depends_on : list[str] | None
-        Optional list of rule names that must execute before this rule.
-        Used to enforce ordering when rules have dependencies.
-    """
-
-    source_type: str | list[str]
-    target_type: str | list[str]
-    version: int
-    field_map: dict[str, str | list[str]] = field(default_factory=dict)
-    getters: dict[str, Callable[[TranslationContext, Any], Any] | str] = field(default_factory=dict)
-    defaults: dict[str, Any] = field(default_factory=dict)
-    filter: RuleFilter | None = field(default=None)
-    system: Literal["source", "target"] = "source"
-    name: str | None = None
-    depends_on: list[str] | None = None
-
-    def __str__(self) -> str:
-        """Represent string."""
-        return f"{self.source_type}->{self.target_type}(v{self.version})"
-
-    def __post_init__(self) -> Any:
-        """Validate init."""
-        # Validate that we don't have both multiple sources and multiple targets
-        if self.has_multiple_sources() and self.has_multiple_targets():
-            raise NotImplementedError(
-                f"Rule cannot have both multiple sources and multiple targets. "
-                f"source_type={self.source_type}, target_type={self.target_type}"
-            )
-
-        # Validate multi-field mappings have getters
-        for target_field, source_fields in self.field_map.items():
-            if isinstance(source_fields, list) and target_field not in self.getters:
-                msg = f"Multi-field mapping for '{target_field}' requires a getter function"
-                raise ValueError(msg)
-        if self.filter is not None and not isinstance(self.filter, RuleFilter):
-            raise TypeError(f"Rule.filter must be a RuleFilter, not {type(self.filter).__name__}")
-
-    def __hash__(self) -> int:
-        """Hash based on rule's unique identifier.
-
-        Rules are uniquely identified by (source_type, target_type, version).
-        This allows rules to be used in sets and as dict keys if needed.
-
-        Notes
-        -----
-        For lists, we convert to tuples for hashing.
-        """
-        source_key = tuple(self.source_type) if isinstance(self.source_type, list) else self.source_type
-        target_key = tuple(self.target_type) if isinstance(self.target_type, list) else self.target_type
-        return hash((source_key, target_key, self.version))
-
-    def __eq__(self, other: object) -> bool:
-        """Equality based on rule's unique identifier.
-
-        Two rules are equal if they have the same source_type, target_type,
-        and version. Other attributes are not considered for equality since
-        the metadata uniquely identifies the rule.
-
-        Notes
-        -----
-        Handles comparison of both string and list types.
-        """
-        if not isinstance(other, Rule):
-            return NotImplemented
-        return (
-            self.source_type == other.source_type
-            and self.target_type == other.target_type
-            and self.version == other.version
-        )
-
-    def has_multiple_sources(self) -> bool:
-        """Check if rule applies to multiple source types.
-
-        Returns
-        -------
-        bool
-            True if source_type is a list, False otherwise.
-        """
-        return isinstance(self.source_type, list)
-
-    def has_multiple_targets(self) -> bool:
-        """Check if rule creates multiple target types.
-
-        Returns
-        -------
-        bool
-            True if target_type is a list, False otherwise.
-        """
-        return isinstance(self.target_type, list)
-
-    def get_source_types(self) -> list[str]:
-        """Return source types as list.
-
-        Returns
-        -------
-        list[str]
-            List of source type names. If source_type is a string,
-            returns a single-element list.
-        """
-        return self.source_type if isinstance(self.source_type, list) else [self.source_type]
-
-    def get_target_types(self) -> list[str]:
-        """Return target types as list.
-
-        Returns
-        -------
-        list[str]
-            List of target type names. If target_type is a string,
-            returns a single-element list.
-        """
-        return self.target_type if isinstance(self.target_type, list) else [self.target_type]
-
-    @classmethod
-    def from_records(cls, records: list[dict[str, Any]]) -> list[Rule]:
-        """Create rules from json objects."""
-        from .getters import _preprocess_rule_getters
-
-        rules_list = []
-        for rule in records:
-            if getters := rule.get("getters"):
-                rule["getters"] = _preprocess_rule_getters(getters).unwrap_or_raise()
-            if "filter" in rule:
-                rule["filter"] = (
-                    RuleFilter.model_validate(rule["filter"]) if rule["filter"] is not None else None
-                )
-            rules_list.append(cls(**rule))
-        return rules_list
-
-
-@dataclass(frozen=True)
-class TranslationContext:
+class TranslationContext(Context):
     """Immutable context for component transformation."""
 
     source_system: System
     target_system: System
-    config: PluginConfig
     rules: list[Rule]
 
     def __post_init__(self) -> None:
@@ -267,6 +34,9 @@ class TranslationContext:
         For rules with multiple sources or targets, creates index entries
         for each combination to enable efficient lookups.
         """
+        if self.config is None:
+            raise ValueError("TranslationContext requires a config instance")
+
         rule_index: dict[tuple[str, str, int], Rule] = {}
         for rule in self.rules:
             for source_type in rule.get_source_types():

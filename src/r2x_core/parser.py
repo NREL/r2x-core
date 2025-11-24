@@ -43,10 +43,10 @@ from typing import IO, Any, TypeVar
 from infrasys import Component
 from infrasys.exceptions import ISAlreadyAttached
 from loguru import logger
+from rust_ok import Err, Ok, Result
 
 from .exceptions import ComponentCreationError, ParserError
 from .plugin_config import PluginConfig
-from .result import Err, Ok, Result
 from .store import DataStore
 from .system import System
 from .utils import create_component, filter_valid_kwargs
@@ -58,115 +58,115 @@ StdinPayload = IO[str] | IO[bytes] | str | bytes | None
 class BaseParser(ABC):
     """Abstract base class for building infrasys.System objects from model data.
 
-    The :class:`BaseParser` provides a standardized framework for creating
-    model-specific parsers by orchestrating data loading, validation, transformation,
-    and system construction through a template method pattern. Subclasses implement
-    abstract methods to customize component and time series building logic.
+        The :class:`BaseParser` provides a standardized framework for creating
+        model-specific parsers by orchestrating data loading, validation, transformation,
+        and system construction through a template method pattern. Subclasses implement
+        abstract methods to customize component and time series building logic.
 
     Parameters
     ----------
-    config : PluginConfig | None, optional
-        Parser configuration parameters. Optional for parsers that do not require
-        structured config. This is a positional-only parameter.
-    data_store : DataStore | None, optional
-        Optional data store for file management. If None, creates a new :class:`DataStore`.
-        This is a keyword-only parameter. Default is None.
-    system_name : str | None, optional
-        Name for the system being built. Defaults to "system".
-        Default is None.
-    auto_add_composed_components : bool, optional
-        Whether to automatically add composed components to the system.
-        Default is True.
-    skip_validation : bool, optional
-        Skip Pydantic validation when creating components (faster but less safe).
-        Default is False.
-    **kwargs : Any
-        Additional keyword arguments passed to :class:`System` constructor.
+        config : PluginConfig | None, optional
+            Parser configuration parameters. Optional for parsers that do not require
+            structured config. This is a positional-only parameter.
+        data_store : DataStore | None, optional
+            Optional data store for file management. If None, creates a new :class:`DataStore`.
+            This is a keyword-only parameter. Default is None.
+        system_name : str | None, optional
+            Name for the system being built. Defaults to "system".
+            Default is None.
+        auto_add_composed_components : bool, optional
+            Whether to automatically add composed components to the system.
+            Default is True.
+        skip_validation : bool, optional
+            Skip Pydantic validation when creating components (faster but less safe).
+            Default is False.
+        **kwargs : Any
+            Additional keyword arguments passed to :class:`System` constructor.
 
     Attributes
     ----------
-    config : PluginConfig
-        The parser configuration instance.
-    store : DataStore
-        The data store for file management.
-    system : System
-        The infrasys System instance being built.
-    auto_add_composed_components : bool
-        Whether composed components are automatically added.
-    skip_validation : bool
-        Whether component validation is skipped.
+        config : PluginConfig
+            The parser configuration instance.
+        store : DataStore
+            The data store for file management.
+        system : System
+            The infrasys System instance being built.
+        auto_add_composed_components : bool
+            Whether composed components are automatically added.
+        skip_validation : bool
+            Whether component validation is skipped.
 
     Methods
     -------
-    build_system()
-        Build and return the complete system using template method pattern.
-    build_system_components()
-        Create all system components (abstract).
-    build_time_series()
-        Attach time series data to components (abstract).
-    validate_inputs()
-        Hook to validate configuration and data.
-    prepare_data()
-        Hook to prepare and load data.
-    postprocess_system()
-        Hook for post-processing after system construction.
-    validate_system()
-        Hook to validate the complete system.
-    add_component()
-        Add a component to the system.
-    add_time_series()
-        Attach time series data to a component.
-    create_component()
-        Create a component instance with optional validation.
-    get_data()
-        Retrieve parsed data from the data store.
-    read_data_file()
-        Read a data file through the data store.
+        build_system()
+            Build and return the complete system using template method pattern.
+        build_system_components()
+            Create all system components (abstract).
+        build_time_series()
+            Attach time series data to components (abstract).
+        validate_inputs()
+            Hook to validate configuration and data.
+        prepare_data()
+            Hook to prepare and load data.
+        postprocess_system()
+            Hook for post-processing after system construction.
+        validate_system()
+            Hook to validate the complete system.
+        add_component()
+            Add a component to the system.
+        add_time_series()
+            Attach time series data to a component.
+        create_component()
+            Create a component instance with optional validation.
+        get_data()
+            Retrieve parsed data from the data store.
+        read_data_file()
+            Read a data file through the data store.
 
     See Also
     --------
-    :class:`DataStore` : Data file storage and management.
-    :class:`DataReader` : Reader for loading data files.
-    :class:`PluginConfig` : Parser configuration base class.
-    :class:`ComponentCreationError` : Error during component creation.
-    :class:`ParserError` : Error during parsing.
+        :class:`DataStore` : Data file storage and management.
+        :class:`DataReader` : Reader for loading data files.
+        :class:`PluginConfig` : Parser configuration base class.
+        :class:`ComponentCreationError` : Error during component creation.
+        :class:`ParserError` : Error during parsing.
 
     Examples
     --------
-    Create a custom parser by implementing abstract methods:
+        Create a custom parser by implementing abstract methods:
 
-    >>> from r2x_core.parser import BaseParser
-    >>> from r2x_core.result import Ok
-    >>> class MyModelParser(BaseParser):
-    ...     def build_system_components(self):
-    ...         # Create buses, generators, loads, etc.
-    ...         gen_data = self.read_data_file("generators")
-    ...         for row in gen_data.iter_rows(named=True):
-    ...             self.create_component(Generator, name=row["name"])
-    ...         return Ok(None)
-    ...     def build_time_series(self):
-    ...         # Attach time series
-    ...         return Ok(None)
-    >>> config = MyModelConfig()
-    >>> parser = MyModelParser(config)
-    >>> system = parser.build_system()
+        >>> from r2x_core.parser import BaseParser
+    >>> from rust_ok import Ok
+        >>> class MyModelParser(BaseParser):
+        ...     def build_system_components(self):
+        ...         # Create buses, generators, loads, etc.
+        ...         gen_data = self.read_data_file("generators")
+        ...         for row in gen_data.iter_rows(named=True):
+        ...             self.create_component(Generator, name=row["name"])
+        ...         return Ok(None)
+        ...     def build_time_series(self):
+        ...         # Attach time series
+        ...         return Ok(None)
+        >>> config = MyModelConfig()
+        >>> parser = MyModelParser(config)
+        >>> system = parser.build_system()
 
     Notes
     -----
-    The signature uses PEP 570 positional-only (``/``) and keyword-only (``*``)
-    parameter separators:
+        The signature uses PEP 570 positional-only (``/``) and keyword-only (``*``)
+        parameter separators:
 
-    - ``config`` must be passed positionally
-    - All other parameters must be passed by keyword
+        - ``config`` must be passed positionally
+        - All other parameters must be passed by keyword
 
-    The build process follows this sequence:
+        The build process follows this sequence:
 
-    1. :meth:`validate_inputs` - validate configuration and data
-    2. :meth:`prepare_data` - load and preprocess data
-    3. :meth:`build_system_components` - create system components (abstract)
-    4. :meth:`build_time_series` - attach time series (abstract)
-    5. :meth:`postprocess_system` - post-processing
-    6. :meth:`validate_system` - validate complete system
+        1. :meth:`validate_inputs` - validate configuration and data
+        2. :meth:`prepare_data` - load and preprocess data
+        3. :meth:`build_system_components` - create system components (abstract)
+        4. :meth:`build_time_series` - attach time series (abstract)
+        5. :meth:`postprocess_system` - post-processing
+        6. :meth:`validate_system` - validate complete system
     """
 
     def __init__(
