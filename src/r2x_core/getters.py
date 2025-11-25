@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from loguru import logger
 from rust_ok import Err, Ok
 
-from .translation import TranslationContext
+from .context import TranslationContext
 
 if TYPE_CHECKING:
     from rust_ok import Result

@@ -9,7 +9,7 @@ from uuid import UUID
 from loguru import logger
 
 if TYPE_CHECKING:
-    from .translation import TranslationContext
+    from .context import TranslationContext
 
 
 class TransferStats(NamedTuple):

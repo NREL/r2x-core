@@ -10,11 +10,11 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
-from .rules import RuleLike
+from .context import ContextT
 
 if TYPE_CHECKING:
-    from .rules import Rule, RuleFilter
-    from .translation import TranslationContext
+    from .context import TranslationContext
+    from .rules import Rule, RuleFilter, RuleLike
 
 
 _COMPONENT_TYPE_CACHE: dict[str, type] = {}
@@ -99,9 +99,9 @@ def _as_attr_source(source_component: Any) -> Any:
 
 
 def build_component_kwargs(
-    rule: RuleLike,
+    rule: RuleLike[ContextT],
     source_component: Any,
-    context: TranslationContext,
+    context: ContextT,
 ) -> Result[dict[str, Any], ValueError]:
     """Construct kwargs for instantiating a target component.
 
@@ -111,8 +111,8 @@ def build_component_kwargs(
         Object exposing field_map, getters, and defaults.
     source_component : Any
         Source object or parser record providing attributes referenced by the rule.
-    context : TranslationContext
-        Active translation context used by getters.
+    context : Context
+        Active context passed to getters (TranslationContext or custom).
     """
     source_obj = _as_attr_source(source_component)
     field_map = getattr(rule, "field_map", {})

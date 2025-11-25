@@ -9,6 +9,8 @@ from infrasys import Component, SupplementalAttribute
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
+from .context import TranslationContext
+from .result import RuleResult, TranslationResult
 from .rules import Rule
 from .rules_utils import (
     _build_target_fields,
@@ -19,7 +21,6 @@ from .rules_utils import (
 )
 from .system_utils import _iter_system_components
 from .time_series import transfer_time_series_metadata
-from .translation import RuleResult, TranslationContext, TranslationResult
 
 
 def apply_rules_to_context(context: TranslationContext) -> TranslationResult:
