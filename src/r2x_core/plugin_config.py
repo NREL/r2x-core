@@ -124,7 +124,7 @@ class PluginConfig(BaseModel):
         Path
             Path to file_mapping.json in config directory
         """
-        return self.config_path / PluginConfigAsset.FILE_MAPPING
+        return self.config_path / PluginConfigAsset.FILE_MAPPING.value
 
     @property
     def defaults_path(self) -> Path:
@@ -135,7 +135,7 @@ class PluginConfig(BaseModel):
         Path
             Path to defaults.json in config directory
         """
-        return self.config_path / PluginConfigAsset.DEFAULTS
+        return self.config_path / PluginConfigAsset.DEFAULTS.value
 
     @property
     def exporter_rules_path(self) -> Path:
@@ -146,7 +146,7 @@ class PluginConfig(BaseModel):
         Path
             Path to exporter_rules.json in config directory
         """
-        return self.config_path / PluginConfigAsset.EXPORTER_RULES
+        return self.config_path / PluginConfigAsset.EXPORTER_RULES.value
 
     @property
     def parser_rules_path(self) -> Path:
@@ -157,7 +157,7 @@ class PluginConfig(BaseModel):
         Path
             Path to parser_rules.json in config directory
         """
-        return self.config_path / PluginConfigAsset.PARSER_RULES
+        return self.config_path / PluginConfigAsset.PARSER_RULES.value
 
     @property
     def translation_rules_path(self) -> Path:
@@ -168,7 +168,7 @@ class PluginConfig(BaseModel):
         Path
             Path to translation_rules.json in config directory
         """
-        return self.config_path / PluginConfigAsset.TRANSLATION_RULES
+        return self.config_path / PluginConfigAsset.TRANSLATION_RULES.value
 
     @classmethod
     def load_config(
