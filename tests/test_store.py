@@ -250,9 +250,9 @@ def test_from_plugin_config_missing_file_mapping(tmp_path, caplog):
     class DummyConfig(PluginConfig):
         pass
 
-    cfg = DummyConfig()
-    cfg.config_path = tmp_path / "config"
-    cfg.config_path.mkdir(parents=True, exist_ok=True)
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    cfg = DummyConfig(config_path_override=config_dir)
 
     with caplog.at_level("WARNING"):
         store = DataStore.from_plugin_config(cfg, path=tmp_path)

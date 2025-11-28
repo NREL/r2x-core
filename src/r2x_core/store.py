@@ -208,7 +208,7 @@ class DataStore:
         DataStore
             New DataStore instance with data files from plugin config.
         """
-        json_fpath = plugin_config.file_mapping_path
+        json_fpath = plugin_config.fmap_path
         logger.info("Loading DataStore from plugin config: {}", type(plugin_config).__name__)
         logger.debug("File mapping path: {}", json_fpath)
         store = cls(path=path)
