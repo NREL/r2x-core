@@ -148,6 +148,6 @@ df2_transformed = lowercase_transform(df2)
 
 ## See Also
 
-- {doc}`../how-tos/data-reading` - Data reading guide
+- {doc}`../how-tos/data-management/data-reading` - Data reading guide
 - {doc}`file-formats` - File format configuration
 - {doc}`models` - DataFile model reference

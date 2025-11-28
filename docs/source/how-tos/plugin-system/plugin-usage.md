@@ -169,7 +169,7 @@ result = data.filter(...).select(...).collect()
 
 ## Next Steps
 
-- [Creating Custom Parsers](parser-basics.md)
-- [Creating Custom Exporters](exporter-basics.md)
-- [Data Transformations](data-reading.md)
+- [Creating Custom Parsers](../system-operations/parser-basics.md)
+- [Creating Custom Exporters](../system-operations/exporter-basics.md)
+- [Data Transformations](../data-management/data-reading.md)
 - [Plugin Registration](plugin-registration.md)

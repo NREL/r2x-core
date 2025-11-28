@@ -36,7 +36,7 @@ Model plugins register parser and/or exporter classes for specific energy models
 - Full IDE support for field completion
 
 ```{seealso}
-See :doc:`../how-tos/plugin-standards` for configuration best practices and standards.
+See :doc:`../how-tos/plugin-system/plugin-standards` for configuration best practices and standards.
 ```
 
 #### System Modifier Plugins
@@ -341,7 +341,7 @@ Future versions could add:
 
 ## See Also
 
-- :doc:`../how-tos/plugin-registration` : How to register plugins
-- :doc:`../how-tos/plugin-usage` : How to use registered plugins
+- :doc:`../how-tos/plugin-system/plugin-registration` : How to register plugins
+- :doc:`../how-tos/plugin-system/plugin-usage` : How to use registered plugins
 - :doc:`../how-tos/filter-examples` : Filter registry examples
 - :doc:`../reference/plugin-api` : Plugin API reference

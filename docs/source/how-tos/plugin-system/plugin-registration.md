@@ -166,6 +166,6 @@ The CLI (and other downstream tools) read this manifest to determine how to cons
 
 ## See Also
 
-- [Parser Basics](parser-basics.md) - Detailed parser implementation guide
-- [Exporter Basics](exporter-basics.md) - Detailed exporter implementation guide
+- [Parser Basics](../system-operations/parser-basics.md) - Detailed parser implementation guide
+- [Exporter Basics](../system-operations/exporter-basics.md) - Detailed exporter implementation guide
 - [Plugin Standards](plugin-standards.md) - Plugin development standards
