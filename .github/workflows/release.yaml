@@ -32,10 +32,10 @@ jobs:
           manifest-file: .release-please-manifest.json
           target-branch: main
 
-  package:
-    name: Build and test package
+  build:
+    name: Build
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    if: needs.release-please.outputs.release_created
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release commit
@@ -69,7 +69,7 @@ jobs:
 
   publish-testpypi:
     runs-on: ubuntu-latest
-    needs: package
+    needs: build
     environment:
       name: testpypi
       url: https://test.pypi.org/p/r2x-core
@@ -87,7 +87,7 @@ jobs:
 
   publish-pypi:
     needs:
-      - package
+      - build
       - publish-testpypi
     runs-on: ubuntu-latest
     environment:
