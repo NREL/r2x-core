@@ -6,7 +6,7 @@
       "draft": false,
       "extra-files": [
         {
-          "jsonpath": "$.package[?(@.name.value=='r2x-core')].version",
+          "jsonpath": "$.package[?(@.name=='r2x-core')].version",
           "path": "uv.lock",
           "type": "toml"
         }
