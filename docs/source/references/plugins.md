@@ -121,10 +121,10 @@ config/
 - **Pydantic validation** - Full support for Pydantic field validators and configuration
 - **Type safety** - IDE support and runtime validation for all model parameters
 
-## See Also
+-## See Also
 
-- {doc}`../how-tos/plugin-registration` - Detailed plugin registration guide
-- {doc}`../how-tos/plugin-standards` - Plugin development standards
+- {doc}`../how-tos/plugin-system/plugin-registration` - Detailed plugin registration guide
+- {doc}`../how-tos/plugin-system/plugin-standards` - Plugin development standards
 - {doc}`../explanations/plugin-system` - Deep dive into plugin architecture
 - {doc}`parser` - BaseParser reference
 - {doc}`exporter` - BaseExporter reference
