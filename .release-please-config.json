@@ -12,7 +12,7 @@
         }
       ],
       "include-component-in-tag": false,
-      "package_name": "r2x-core",
+      "package-name": "r2x-core",
       "prerelease": false,
       "release-type": "python"
     }
