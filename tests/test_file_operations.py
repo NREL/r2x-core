@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from r2x_core.utils.file_operations import backup_folder, get_r2x_cache_path
+from r2x_core.utils.file_operations import backup_folder, get_r2x_cache_path, resolve_glob_pattern
 
 
 def test_backup_folder(tmp_path, caplog):
@@ -113,3 +113,12 @@ def test_backup_folder_preserves_contents(tmp_path):
     backup_path = tmp_path / "folder_backup"
     assert backup_path.exists()
     assert (backup_path / "file1.txt").read_text() == "content1"
+
+
+def test_resolve_glob_pattern_rejects_non_pattern(tmp_path):
+    file_path = tmp_path / "exact.csv"
+    file_path.write_text("data")
+
+    result = resolve_glob_pattern(tmp_path, "exact.csv")
+    assert result.is_err()
+    assert "does not contain glob wildcards" in str(result.err())

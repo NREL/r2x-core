@@ -27,13 +27,13 @@ Key concepts
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Sequence
-from enum import Enum
 from importlib import import_module
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from r2x_core.upgrader_utils import UpgradeStep, UpgradeType
+from .enums import ArgumentSource, ImplementationType, IOSlotKind, PluginKind, StoreMode
+from .upgrader_utils import UpgradeStep, UpgradeType
 
 
 def _as_import_path(value: str | Callable[..., Any] | type | None) -> str | None:
@@ -59,63 +59,6 @@ def _import_from_path(path: str) -> Any:
         module_name, attr_name = path.rsplit(".", 1)
     module = import_module(module_name)
     return getattr(module, attr_name)
-
-
-class PluginKind(str, Enum):
-    """High-level category for a plugin."""
-
-    PARSER = "parser"
-    EXPORTER = "exporter"
-    MODIFIER = "modifier"
-    UPGRADER = "upgrader"
-    UTILITY = "utility"
-
-
-class ImplementationType(str, Enum):
-    """Whether the plugin entry point is a class or a simple function."""
-
-    CLASS = "class"
-    FUNCTION = "function"
-
-
-class ArgumentSource(str, Enum):
-    """Source for an invocation argument."""
-
-    SYSTEM = "system"
-    STORE = "store"
-    STORE_MANIFEST = "store_manifest"
-    CONFIG = "config"
-    CONFIG_PATH = "config_path"
-    PATH = "path"
-    STDIN = "stdin"
-    CONTEXT = "context"
-    LITERAL = "literal"
-    CUSTOM = "custom"
-
-
-class IOSlotKind(str, Enum):
-    """Canonical inputs/outputs handled by plugins."""
-
-    SYSTEM = "system"
-    STORE_FOLDER = "store_folder"
-    STORE_MANIFEST = "store_manifest"
-    STORE_INLINE = "store_inline"
-    CONFIG_FILE = "config_file"
-    CONFIG_INLINE = "config_inline"
-    FILE = "file"
-    FOLDER = "folder"
-    STDIN = "stdin"
-    STDOUT = "stdout"
-    ARTIFACT = "artifact"
-    VOID = "void"
-
-
-class StoreMode(str, Enum):
-    """How a plugin expects its :class:`~r2x_core.store.DataStore`."""
-
-    FOLDER = "folder"
-    MANIFEST = "manifest"
-    INLINE = "inline"
 
 
 class IOSlot(BaseModel):

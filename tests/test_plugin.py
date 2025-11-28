@@ -1,9 +1,6 @@
 """Tests for the declarative plugin manifest."""
 
-import json
 import math
-import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -36,7 +33,6 @@ from r2x_core.plugin import (
     _upgrader_io,
 )
 from r2x_core.plugin_config import PluginConfig
-from r2x_core.serialization import export_schemas_for_documentation, get_pydantic_schema
 from r2x_core.upgrader import BaseUpgrader
 from r2x_core.upgrader_utils import UpgradeStep, UpgradeType
 from r2x_core.versioning import VersionReader
@@ -138,26 +134,6 @@ def test_upgrade_spec_normalises_paths():
     upgrader = manifest.get_plugin("demo.upgrader")
     assert upgrader.upgrade is not None
     assert upgrader.upgrade.steps[0].entry.endswith("touch_files")
-
-
-def test_schema_generation(tmp_path):
-    schema = get_pydantic_schema(PluginSpec)
-    assert schema["title"] == "PluginSpec"
-    output_file = tmp_path / "schemas.json"
-    export_schemas_for_documentation(str(output_file))
-    assert json.loads(output_file.read_text())["PluginManifest"]["title"] == "PluginManifest"
-
-
-def test_export_schemas_subset(tmp_path):
-    custom_models = [PluginManifest]
-    with tempfile.NamedTemporaryFile(delete=False) as fh:
-        fh.close()
-        try:
-            export_schemas_for_documentation(fh.name, custom_models)
-            data = json.loads(Path(fh.name).read_text())
-            assert list(data.keys()) == ["PluginManifest"]
-        finally:
-            os.unlink(fh.name)
 
 
 def test_parser_builder_defaults():

@@ -20,8 +20,6 @@ from loguru import logger
 from pydantic import BaseModel
 from rust_ok import Err, Ok, Result
 
-from r2x_core.serialization import Importable
-
 from .exceptions import UpgradeError
 from .versioning import VersionStrategy
 
@@ -68,7 +66,7 @@ class UpgradeStep(BaseModel):
     """
 
     name: str
-    func: Annotated[Callable[..., Any], Importable]
+    func: Annotated[Callable[..., Any], Any]
     target_version: str
     upgrade_type: UpgradeType
     priority: int = 100

@@ -10,6 +10,7 @@ from rust_ok import Err, Ok, Result, is_err, is_ok
 from . import h5_readers
 from .context import Context, ExporterContext, ParserContext, TranslationContext
 from .datafile import DataFile, FileInfo, JSONProcessing, ReaderConfig, TabularProcessing
+from .enums import ArgumentSource, ImplementationType, IOSlotKind, PluginConfigAsset, PluginKind, StoreMode
 from .exceptions import (
     CLIError,
     ComponentCreationError,
@@ -22,19 +23,14 @@ from .exporter import BaseExporter
 from .file_types import FileFormat, H5Format
 from .parser import BaseParser
 from .plugin import (
-    ArgumentSource,
     ArgumentSpec,
     ConfigSpec,
-    ImplementationType,
     InvocationSpec,
     IOContract,
     IOSlot,
-    IOSlotKind,
-    PluginKind,
     PluginManifest,
     PluginSpec,
     ResourceSpec,
-    StoreMode,
     StoreSpec,
     UpgradeSpec,
     UpgradeStepSpec,
@@ -91,6 +87,7 @@ __all__ = [
     "ParserContext",
     "ParserError",
     "PluginConfig",
+    "PluginConfigAsset",
     "PluginKind",
     "PluginManifest",
     "PluginSpec",

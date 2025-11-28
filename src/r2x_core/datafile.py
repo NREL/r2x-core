@@ -14,10 +14,10 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from rust_ok import Err, Ok, Result
 
 from .file_types import EXTENSION_MAPPING, FileFormat
 from .utils import validate_file_extension, validate_glob_pattern
+from .utils.file_operations import resolve_path
 
 
 def _validate_optional_file_extension(path: Path | None, info: ValidationInfo) -> Path | None:
@@ -288,10 +288,8 @@ class DataFile(BaseModel):
             msg = "Either fpath, relative_fpath, or glob must be set"
             raise ValueError(msg)
 
-        file_type_class = EXTENSION_MAPPING.get(extension)
-        if file_type_class is None:
-            msg = f"Unsupported file extension: {extension}"
-            raise ValueError(msg)
+        assert extension in EXTENSION_MAPPING, f"{extension=} not found on EXTENSION_MAPPING"
+        file_type_class = EXTENSION_MAPPING[extension]
 
         if self.info and self.info.is_timeseries and not file_type_class.supports_timeseries:
             msg = f"File type {file_type_class.__name__} does not support time series data"
@@ -299,116 +297,75 @@ class DataFile(BaseModel):
 
         return file_type_class()
 
-
-def create_data_files_from_records(
-    records: list[dict[str, Any]], folder_path: Path
-) -> Result[list[DataFile], list[ValidationError]]:
-    """Create DataFile instances from record dictionaries.
-
-    Resolves file paths relative to folder_path before validation. Collects
-    all validation errors rather than failing on the first error.
-
-    Parameters
-    ----------
-    records : list[dict[str, Any]]
-        List of dictionaries containing DataFile configuration.
-    folder_path : Path
-        Base folder for resolving relative paths.
-
-    Returns
-    -------
-    Result[list[DataFile], list[ValidationError]]
-        Ok containing list of DataFile instances, or Err containing all
-        validation errors encountered during processing.
-
-    See Also
-    --------
-    :class:`DataFile` : The model class being constructed.
-    :func:`resolve_data_file_path` : Function for path resolution.
-    """
-    data_files: list[DataFile] = []
-    errors: list[ValidationError] = []
-
-    for idx, record in enumerate(records):
-        info = record.get("info")
+    @classmethod
+    def from_record(cls, record: dict[str, Any], folder_path: Path) -> "DataFile":
+        """Build a DataFile from a single record dictionary."""
+        record_copy = dict(record)
+        info = record_copy.get("info")
         is_optional = bool(info.get("is_optional")) if isinstance(info, dict) else False
-        try:
-            resolved = resolve_data_file_path(
-                record["fpath"],
-                folder_path,
-                must_exist=not is_optional,
-            )
-            record["fpath"] = resolved
 
-            data_files.append(DataFile.model_validate(record))
+        raw_path = record_copy["fpath"]
+        resolved = cls._resolve_record_path(
+            raw_path,
+            folder_path,
+            must_exist=not is_optional,
+        )
+        record_copy["fpath"] = resolved
 
-        except (KeyError, TypeError) as exc:
-            errors.append(
-                ValidationError.from_exception_data(
-                    title=f"Record[{idx}] missing or invalid fpath",
-                    line_errors=[{"type": "value_error", "input": str(exc), "loc": ("fpath",)}],
+        return cls.model_validate(record_copy)
+
+    @classmethod
+    def from_records(cls, records: list[dict[str, Any]], folder_path: Path) -> list["DataFile"]:
+        """Construct multiple DataFile instances from JSON records."""
+        data_files: list[DataFile] = []
+        errors: list[ValidationError] = []
+
+        for idx, record in enumerate(records):
+            try:
+                data_files.append(cls.from_record(record, folder_path))
+
+            except (KeyError, TypeError) as exc:
+                errors.append(
+                    ValidationError.from_exception_data(
+                        title=f"Record[{idx}] missing or invalid fpath",
+                        line_errors=[{"type": "value_error", "input": str(exc), "loc": ("fpath",)}],
+                    )
                 )
-            )
 
-        except FileNotFoundError as exc:
-            errors.append(
-                ValidationError.from_exception_data(
-                    title=f"Record[{idx}] path resolution error",
-                    line_errors=[
-                        {"type": "value_error.path.not_found", "input": str(exc), "loc": ("fpath",)}
-                    ],
+            except FileNotFoundError as exc:
+                errors.append(
+                    ValidationError.from_exception_data(
+                        title=f"Record[{idx}] path resolution error",
+                        line_errors=[
+                            {"type": "value_error.path.not_found", "input": str(exc), "loc": ("fpath",)}
+                        ],
+                    )
                 )
+
+            except ValidationError as exc:
+                errors.append(exc)
+
+        if errors:
+            # NOTE: Why adding type ignore
+            # For some reason, line_errors should be of type "list[InitErrorDetails]", but we are returning
+            # "list[ErrorDetails]". I think this is not a potential bug in the future and will use ignore the type.
+            line_errors = [line for err in errors for line in err.errors()]
+            raise ValidationError.from_exception_data(
+                title="Invalid data file records",
+                line_errors=line_errors,  # type: ignore
             )
 
-        except ValidationError as exc:
-            errors.append(exc)
+        return data_files
 
-    if errors:
-        return Err(errors)
-
-    return Ok(data_files)
-
-
-def resolve_data_file_path(
-    raw_path: str | Path,
-    folder_path: Path,
-    *,
-    must_exist: bool = True,
-) -> Path:
-    """Resolve a file path relative or absolute to folder_path.
-
-    Converts relative paths to absolute using folder_path as the base.
-    Absolute paths are used as-is. When ``must_exist`` is True, a
-    FileNotFoundError is raised if the resolved path does not exist.
-
-    Parameters
-    ----------
-    raw_path : str | Path
-        Path to resolve (relative or absolute).
-    folder_path : Path
-        Base folder for resolving relative paths.
-    must_exist : bool, default True
-        When False, return the resolved path even if the file does not exist.
-
-    Returns
-    -------
-    Path
-        Resolved absolute path.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the resolved path does not exist and ``must_exist`` is True.
-
-    See Also
-    --------
-    :func:`create_data_files_from_records` : Uses this function for batch
-        path resolution.
-    """
-    path = Path(raw_path)
-    resolved = path if path.is_absolute() else folder_path / path
-
-    if must_exist and not resolved.exists():
-        raise FileNotFoundError(f"File not found: {resolved}")
-
-    return resolved
+    @staticmethod
+    def _resolve_record_path(
+        raw_path: str | Path,
+        folder_path: Path,
+        *,
+        must_exist: bool = True,
+    ) -> Path:
+        """Resolve a raw path into an absolute path with optional checking."""
+        result = resolve_path(raw_path, folder_path, must_exist=must_exist)
+        if result.is_err():
+            raise result.err()
+        return result.unwrap()

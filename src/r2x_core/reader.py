@@ -25,7 +25,7 @@ from typing import Any
 
 from loguru import logger
 
-from r2x_core.datafile_utils import get_file_path
+from r2x_core.datafile_utils import get_fpath
 
 from .datafile import DataFile
 from .exceptions import ReaderError
@@ -97,7 +97,7 @@ class DataReader:
         logger.debug("Starting reading for data_file={}", data_file.name)
         is_optional = data_file.info.is_optional if data_file.info else False  # By default files are no-opt
 
-        fpath_result = get_file_path(data_file, folder_path, info=data_file.info)
+        fpath_result = get_fpath(data_file, folder_path, info=data_file.info)
         if fpath_result.is_err():
             error = fpath_result.err()
             if isinstance(error, FileNotFoundError) and is_optional:

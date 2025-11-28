@@ -3,7 +3,6 @@
 from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
-from types import NotImplementedType
 from typing import Any
 
 import orjson
@@ -281,7 +280,7 @@ class System(InfrasysSystem):
                 )
             case _:
                 msg = f"{type(source)=} for function from_json. Valid types are: Path, str, bytes"
-                raise NotImplementedType(msg)
+                raise NotImplementedError(msg)
 
         for component in system.get_components(Component):
             if isinstance(component, units.HasPerUnit):
