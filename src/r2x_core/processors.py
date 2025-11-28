@@ -26,12 +26,12 @@ from typing import Any
 import polars as pl
 from loguru import logger
 from polars.datatypes.classes import DataTypeClass
+from rust_ok import Err, Ok, Result
 
 from r2x_core.types import JSONType
 
 from .datafile import DataFile, FileProcessing, JSONProcessing, TabularProcessing
 from .exceptions import ValidationError
-from .result import Err, Ok, Result
 
 # Regex to find simple placeholders
 _PLACEHOLDER_PATTERN = re.compile(r"\{([^}]+)\}")

@@ -5,10 +5,10 @@ from typing import Any
 
 import pytest
 from pydantic import BaseModel
+from rust_ok import Err, Ok, Result
 
 from r2x_core import BaseExporter, DataStore
 from r2x_core.exceptions import ExporterError
-from r2x_core.result import Err, Ok, Result
 from r2x_core.system import System
 
 

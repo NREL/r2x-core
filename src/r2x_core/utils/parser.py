@@ -4,8 +4,7 @@ from typing import Any, TypeVar
 
 from infrasys import Component
 from pydantic import ValidationError as PydanticValidationError
-
-from ..result import Err, Ok, Result
+from rust_ok import Err, Ok, Result
 
 T = TypeVar("T", bound=Component)
 

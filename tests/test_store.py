@@ -58,6 +58,34 @@ def test_datastore_from_mapping_file(tmp_path):
     assert "table" in store.list_data()
 
 
+def test_optional_file_missing_in_mapping(tmp_path):
+    from r2x_core import DataStore
+
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    required = inputs / "required.csv"
+    required.write_text("col\n1\n")
+
+    mapping_path = tmp_path / "file_mapping.json"
+    mapping_path.write_text(
+        json.dumps(
+            [
+                {"name": "required", "fpath": "inputs/required.csv"},
+                {
+                    "name": "optional",
+                    "fpath": "inputs/optional.csv",
+                    "info": {"is_optional": True},
+                },
+            ]
+        )
+    )
+
+    store = DataStore(path=mapping_path)
+
+    assert sorted(store.list_data()) == ["optional", "required"]
+    assert store.read_data("optional") is None
+
+
 def test_add_data_overwrite_datafile(data_store_example, folder_with_data):
     from r2x_core import DataFile
 
@@ -222,9 +250,9 @@ def test_from_plugin_config_missing_file_mapping(tmp_path, caplog):
     class DummyConfig(PluginConfig):
         pass
 
-    cfg = DummyConfig()
-    cfg.config_path = tmp_path / "config"
-    cfg.config_path.mkdir(parents=True, exist_ok=True)
+    config_dir = tmp_path / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    cfg = DummyConfig(config_path_override=config_dir)
 
     with caplog.at_level("WARNING"):
         store = DataStore.from_plugin_config(cfg, path=tmp_path)

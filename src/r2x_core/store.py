@@ -11,7 +11,7 @@ from typing import Any
 from loguru import logger
 from pydantic import ValidationError
 
-from .datafile import DataFile, FileProcessing, TabularProcessing, create_data_files_from_records
+from .datafile import DataFile, FileProcessing, TabularProcessing
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .utils import filter_valid_kwargs
@@ -208,7 +208,7 @@ class DataStore:
         DataStore
             New DataStore instance with data files from plugin config.
         """
-        json_fpath = plugin_config.file_mapping_path
+        json_fpath = plugin_config.fmap_path
         logger.info("Loading DataStore from plugin config: {}", type(plugin_config).__name__)
         logger.debug("File mapping path: {}", json_fpath)
         store = cls(path=path)
@@ -461,14 +461,9 @@ class DataStore:
             msg = f"JSON file `{mapping_path}` is not a JSON array."
             raise TypeError(msg)
 
-        result = create_data_files_from_records(data_files_json, folder_path=self.folder)
-        if result.is_err():
-            errors = result.err()
-            line_errors: list[Any] = [e for err in errors for e in err.errors()]
-            raise ValidationError.from_exception_data(
-                title=f"Invalid data files in {mapping_path}",
-                line_errors=line_errors,
-            )
+        try:
+            data_files = DataFile.from_records(data_files_json, folder_path=self.folder)
+        except ValidationError as exec:
+            raise exec
 
-        data_files = result.unwrap()
         self.add_data(*data_files)

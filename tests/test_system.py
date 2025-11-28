@@ -6,7 +6,13 @@ import pytest
 from infrasys import Component, SingleTimeSeries
 from infrasys.exceptions import ISFileExists
 
-from r2x_core import System
+from r2x_core import System, units
+
+
+class PerUnitComponentFixture(units.HasPerUnit, Component):
+    """Minimal HasPerUnit component for system tests."""
+
+    name: str
 
 
 @pytest.fixture
@@ -48,6 +54,24 @@ def test_system_str_representation(example_system):
     assert repr(system) == str(system)
 
 
+def test_system_str_shows_components(example_system):
+    """Ensure __str__ reports component count when present."""
+    system = example_system
+    system.add_components(Component(name="component"))
+    assert "components=1" in str(system)
+    assert "system_base=100.0" in str(system)
+
+
+def test_add_components_with_conflicting_system_base_raises():
+    """Ensure adding a HasPerUnit component with a different base raises."""
+    system = System(100.0, name="Conflicting")
+    component = PerUnitComponentFixture(name="HasPU")
+    component._system_base = 200.0
+
+    with pytest.raises(ValueError, match="already has _system_base"):
+        system.add_components(component)
+
+
 @pytest.mark.parametrize(
     "fname",
     ["system_json.json", Path("system.json")],
@@ -74,6 +98,21 @@ def test_to_json_with_no_args(example_system):
     json_deserialized = orjson.loads(json_str)
     assert "name" in json_deserialized
     assert json_deserialized["name"] == "TestSystem"
+
+
+def test_to_json_adds_system_block_when_data_overrides(example_system):
+    """Ensure custom data dict receives serialized system when missing."""
+    import orjson
+
+    system = example_system
+    payload = {"metadata": "value"}
+    output = system.to_json(data=payload)
+
+    assert isinstance(output, bytes)
+    json_data = orjson.loads(output)
+    assert json_data["metadata"] == "value"
+    assert "system" in json_data
+    assert json_data["system"]["name"] == "TestSystem"
 
 
 def test_roundtrip_serialization(tmp_path):
@@ -143,3 +182,37 @@ def test_to_json_bytes_with_time_series(caplog):
     assert deserialized_system.uuid == original_system.uuid
     component_deserialized = deserialized_system.get_component(Component, name="TestComponent")
     assert deserialized_system.has_time_series(component_deserialized)
+
+
+def test_from_json_bytes_missing_time_series_raises():
+    """Missing time series data in bytes should raise KeyError."""
+    with pytest.raises(KeyError, match="time series information"):
+        System.from_json(b'{"name":"NoTimeSeries"}')
+
+
+def test_from_json_bytes_missing_directory_raises():
+    """Missing time series directory entry should raise KeyError."""
+    import orjson
+
+    payload = {"name": "NoDirectory", "time_series": {"metadata": "exists"}}
+    with pytest.raises(KeyError, match="time series directory"):
+        System.from_json(orjson.dumps(payload))
+
+
+def test_from_json_with_invalid_source_type_raises():
+    """Non-str/path/bytes source should raise NotImplementedError."""
+    with pytest.raises(NotImplementedError):
+        System.from_json(123)
+
+
+def test_from_json_sets_system_base_on_has_per_unit_component():
+    """When deserializing, HasPerUnit components should get the system base."""
+    system = System(250.0, name="HasPUSystem")
+    component = PerUnitComponentFixture(name="HasPU")
+    system.add_components(component)
+
+    json_bytes = system.to_json()
+
+    loaded = System.from_json(json_bytes)
+    loaded_component = loaded.get_component(PerUnitComponentFixture, name="HasPU")
+    assert loaded_component._get_system_base() == loaded.base_power

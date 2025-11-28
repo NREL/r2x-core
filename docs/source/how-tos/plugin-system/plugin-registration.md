@@ -27,8 +27,8 @@ class MyModelConfig(PluginConfig):
 Extend `BaseParser` and implement the required abstract methods:
 
 ```python
-from r2x_core import BaseParser, Ok, Err, ParserError
-from r2x_core.result import Result
+from rust_ok import Err, Ok, Result
+from r2x_core import BaseParser, ParserError
 from infrasys.components import ACBus, ThermalStandard
 
 class MyModelParser(BaseParser):
@@ -66,8 +66,8 @@ class MyModelParser(BaseParser):
 Extend `BaseExporter` and implement the export logic:
 
 ```python
-from r2x_core import BaseExporter, Ok, Err, ExporterError
-from r2x_core.result import Result
+from rust_ok import Err, Ok, Result
+from r2x_core import BaseExporter, ExporterError
 from infrasys.components import ACBus
 import polars as pl
 

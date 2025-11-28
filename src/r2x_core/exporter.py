@@ -5,7 +5,7 @@ Example usage of :class:`BaseExporter`:
 Create a custom exporter by subclassing BaseExporter:
 
 >>> from r2x_core.exporter import BaseExporter
->>> from r2x_core.result import Ok
+>>> from rust_ok import Ok
 >>> class MyExporter(BaseExporter):
 ...     def prepare_export(self):
 ...         # Write files, transform data, etc.
@@ -23,7 +23,7 @@ Use with a data store for output files:
 >>> result = exporter.export()
 
 This module defines :class:`BaseExporter`, the template that coordinates
-export steps and returns a :class:`r2x_core.result.Result`.
+export steps and returns a :class:`rust_ok.Result`.
 """
 
 # ruff: noqa: D401
@@ -33,9 +33,9 @@ from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel
+from rust_ok import Err, Ok, Result
 
 from .exceptions import ExporterError
-from .result import Err, Ok, Result
 from .store import DataStore
 from .system import System
 
@@ -43,88 +43,88 @@ from .system import System
 class BaseExporter(ABC):
     """Base class for system exporters.
 
-    The :class:`BaseExporter` provides a template method pattern for exporting
-    :class:`System` objects. Subclasses must implement :meth:`prepare_export`
-    to perform the actual export work. Other hook methods are optional and can
-    be overridden to customize the export workflow.
+        The :class:`BaseExporter` provides a template method pattern for exporting
+        :class:`System` objects. Subclasses must implement :meth:`prepare_export`
+        to perform the actual export work. Other hook methods are optional and can
+        be overridden to customize the export workflow.
 
     Parameters
     ----------
-    config : BaseModel
-        Export configuration parameters. This is a positional-only parameter.
-    system : System
-        System object to export. This is a positional-only parameter.
-    data_store : DataStore | None, optional
-        Optional data store with output file paths. This is a keyword-only parameter.
-        Default is None.
-    **kwargs : Any
-        Additional keyword arguments exposed to subclasses. All kwargs are keyword-only.
+        config : BaseModel
+            Export configuration parameters. This is a positional-only parameter.
+        system : System
+            System object to export. This is a positional-only parameter.
+        data_store : DataStore | None, optional
+            Optional data store with output file paths. This is a keyword-only parameter.
+            Default is None.
+        **kwargs : Any
+            Additional keyword arguments exposed to subclasses. All kwargs are keyword-only.
 
     Attributes
     ----------
-    config : BaseModel
-        The export configuration instance.
-    system : System
-        The system being exported.
-    data_store : DataStore | None
-        The data store for output management.
+        config : BaseModel
+            The export configuration instance.
+        system : System
+            The system being exported.
+        data_store : DataStore | None
+            The data store for output management.
 
     Methods
     -------
-    export()
-        Execute the export workflow (template method).
-    setup_configuration()
-        Hook for exporter-specific configuration setup.
-    prepare_export()
-        Hook for actual export operation (abstract).
-    validate_export()
-        Hook for validation before export.
-    export_time_series()
-        Hook for exporting time series data.
-    postprocess_export()
-        Hook for post-processing after export.
+        export()
+            Execute the export workflow (template method).
+        setup_configuration()
+            Hook for exporter-specific configuration setup.
+        prepare_export()
+            Hook for actual export operation (abstract).
+        validate_export()
+            Hook for validation before export.
+        export_time_series()
+            Hook for exporting time series data.
+        postprocess_export()
+            Hook for post-processing after export.
 
     See Also
     --------
-    :class:`BaseParser` : Parser base class (inverse operation).
-    :class:`System` : System object being exported.
-    :class:`DataStore` : Data store for file management.
-    :class:`ExporterError` : Error during export.
+        :class:`BaseParser` : Parser base class (inverse operation).
+        :class:`System` : System object being exported.
+        :class:`DataStore` : Data store for file management.
+        :class:`ExporterError` : Error during export.
 
     Examples
     --------
-    Create a custom exporter and use it:
+        Create a custom exporter and use it:
 
-    >>> from r2x_core.exporter import BaseExporter
-    >>> from r2x_core.result import Ok
-    >>> from pathlib import Path
-    >>> class CSVExporter(BaseExporter):
-    ...     def prepare_export(self):
-    ...         output_dir = Path(self.config.output_dir)
-    ...         output_dir.mkdir(exist_ok=True)
-    ...         # Write CSV files
-    ...         for gen in self.system.generators:
-    ...             # Export generator data
-    ...             pass
-    ...         return Ok(None)
-    >>> exporter = CSVExporter(config, system)
-    >>> result = exporter.export()
+        >>> from r2x_core.exporter import BaseExporter
+    >>> from rust_ok import Ok
+        >>> from pathlib import Path
+        >>> class CSVExporter(BaseExporter):
+        ...     def prepare_export(self):
+        ...         output_dir = Path(self.config.output_dir)
+        ...         output_dir.mkdir(exist_ok=True)
+        ...         # Write CSV files
+        ...         for gen in self.system.generators:
+        ...             # Export generator data
+        ...             pass
+        ...         return Ok(None)
+        >>> exporter = CSVExporter(config, system)
+        >>> result = exporter.export()
 
     Notes
     -----
-    The signature uses PEP 570 positional-only (``/``) and keyword-only (``*``)
-    parameter separators:
+        The signature uses PEP 570 positional-only (``/``) and keyword-only (``*``)
+        parameter separators:
 
-    - ``config`` and ``system`` must be passed positionally
-    - ``data_store`` and any additional kwargs must be passed by keyword
+        - ``config`` and ``system`` must be passed positionally
+        - ``data_store`` and any additional kwargs must be passed by keyword
 
-    The export workflow follows this sequence:
+        The export workflow follows this sequence:
 
-    1. :meth:`setup_configuration` - Set up exporter configuration
-    2. :meth:`prepare_export` - Perform actual export (abstract)
-    3. :meth:`validate_export` - Validate export results
-    4. :meth:`export_time_series` - Export time series data
-    5. :meth:`postprocess_export` - Post-processing and cleanup
+        1. :meth:`setup_configuration` - Set up exporter configuration
+        2. :meth:`prepare_export` - Perform actual export (abstract)
+        3. :meth:`validate_export` - Validate export results
+        4. :meth:`export_time_series` - Export time series data
+        5. :meth:`postprocess_export` - Post-processing and cleanup
     """
 
     def __init__(
