@@ -2,6 +2,12 @@ name: Publish to PyPI
 on:
   release:
     types: [published, released]
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  UV_VERSION: "0.9.4"
 
 jobs:
   package:
