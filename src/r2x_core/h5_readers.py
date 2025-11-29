@@ -44,11 +44,14 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
     file_data = {}
     for key in h5_file:
         if key == "index_names":
-            # If index names are stored in a dataset in the H5 file, use them to
-            # rename relevant index data when attaching to the file_data dictionary
+            # Populate file_data using the actual index datasets referenced by
+            # index_names rather than assuming `index_<n>` always exists.
             index_names = [f"index_{name.decode()}" for name in h5_file["index_names"]]
             for index_num, index_name in enumerate(index_names):
-                file_data[index_name] = h5_file[f"index_{index_num}"]
+                dataset_key = index_name if index_name in h5_file else f"index_{index_num}"
+                if dataset_key not in h5_file:
+                    raise KeyError(f"Missing index dataset referenced by {index_name}")
+                file_data[index_name] = h5_file[dataset_key]
         else:
             file_data[key] = h5_file[key]
 
@@ -74,8 +77,10 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
             result = {f"{data_key}_col_{i}": data[:, i] for i in range(data.shape[1])}
 
     # Build column name mapping from index_names dataset if present
-    column_mapping = reader_kwargs.get("column_name_mapping", {})
+    column_mapping = reader_kwargs.get("column_name_mapping")
+    user_column_mapping = column_mapping is not None and len(column_mapping) > 0
     if not column_mapping:
+        column_mapping = {}
         index_names_key = reader_kwargs.get("index_names_key", "index_names")
         if index_names_key in h5_file:
             index_names = h5_file[index_names_key][:]
@@ -103,9 +108,10 @@ def configurable_h5_reader(h5_file: Any, **reader_kwargs: Any) -> dict[str, Any]
 
     for key in reader_kwargs.get("additional_keys", []):
         if key in h5_file:
-            # Use mapped name if available, otherwise format the key
+            # Use mapped name if available; respect user overrides without reformatting.
             if key in column_mapping:
-                col_name = _format_column_name(column_mapping[key])
+                mapped_name = column_mapping[key]
+                col_name = mapped_name if user_column_mapping else _format_column_name(mapped_name)
             else:
                 col_name = _format_column_name(key)
             result[col_name] = h5_file[key][:]
