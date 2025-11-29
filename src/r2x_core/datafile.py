@@ -328,7 +328,14 @@ class DataFile(BaseModel):
                 errors.append(
                     ValidationError.from_exception_data(
                         title=f"Record[{idx}] missing or invalid fpath",
-                        line_errors=[{"type": "value_error", "input": str(exc), "loc": ("fpath",)}],
+                        line_errors=[
+                            {
+                                "type": "value_error",
+                                "input": str(exc),
+                                "loc": ("fpath",),
+                                "ctx": {"error": str(exc)},
+                            }
+                        ],
                     )
                 )
 
@@ -337,7 +344,12 @@ class DataFile(BaseModel):
                     ValidationError.from_exception_data(
                         title=f"Record[{idx}] path resolution error",
                         line_errors=[
-                            {"type": "value_error.path.not_found", "input": str(exc), "loc": ("fpath",)}
+                            {
+                                "type": "value_error",
+                                "input": str(exc),
+                                "loc": ("fpath",),
+                                "ctx": {"error": str(exc)},
+                            }
                         ],
                     )
                 )
