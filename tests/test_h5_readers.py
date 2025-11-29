@@ -471,3 +471,28 @@ def test_h5_reader_respects_user_overrides_for_index_names():
 
     finally:
         tmp_path.unlink()
+
+
+def test_h5_reader_missing_index_dataset_raises_key_error():
+    """Ensure missing referenced index datasets raise KeyError (line 53)."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            columns = np.array([b"col1"], dtype="S")
+            data = np.array([[10.0], [20.0]])
+            f.create_dataset("columns", data=columns)
+            f.create_dataset("data", data=data)
+            # reference index_0 but do not create the dataset to trigger the error
+            f.create_dataset("index_names", data=np.array([b"0"], dtype="S"))
+
+        with h5py.File(str(tmp_path), "r") as f, pytest.raises(KeyError, match="index_0"):
+            configurable_h5_reader(
+                f,
+                data_key="data",
+                columns_key="columns",
+                datetime_key="index_0",
+            )
+    finally:
+        tmp_path.unlink()
