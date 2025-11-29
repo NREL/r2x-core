@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/NREL/r2x-core/compare/v0.2.2...v0.2.3) (2025-11-29)
+
+
+### Bug Fixes
+
+* H5_reader was not respecting reader_kwargs for index names ([#56](https://github.com/NREL/r2x-core/issues/56)) ([5bf709a](https://github.com/NREL/r2x-core/commit/5bf709ab1c8ae324e7841e84defec9c1e4e1110a))
+
 ## [0.2.2](https://github.com/NREL/r2x-core/compare/v0.2.1...v0.2.2) (2025-11-29)
 
 
