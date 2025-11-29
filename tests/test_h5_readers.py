@@ -431,3 +431,43 @@ def test_h5_reader_index_names_resolves_numeric_indices():
 
     finally:
         tmp_path.unlink()
+
+
+def test_h5_reader_respects_user_overrides_for_index_names():
+    """Ensure explicit column_name_mapping can override index dataset names."""
+    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        with h5py.File(str(tmp_path), "w") as f:
+            columns = np.array([b"col1", b"col2"], dtype="S")
+            data = np.array([[10.0, 20.0], [30.0, 40.0]])
+            dt_strings = np.array(["2024-01-01T00:00:00Z", "2024-01-01T01:00:00Z"], dtype="S")
+            years = np.array([2030, 2035])
+
+            f.create_dataset("columns", data=columns)
+            f.create_dataset("data", data=data)
+            f.create_dataset("index_datetime", data=dt_strings)
+            f.create_dataset("index_year", data=years)
+
+        with h5py.File(str(tmp_path), "r") as f:
+            result = configurable_h5_reader(
+                f,
+                data_key="data",
+                columns_key="columns",
+                datetime_key="index_datetime",
+                datetime_column_name="custom_datetime",
+                additional_keys=["index_year"],
+                column_name_mapping={
+                    "index_datetime": "custom_datetime",
+                    "index_year": "planning_year",
+                },
+            )
+
+        assert "custom_datetime" in result
+        assert "planning_year" in result
+        assert "solve_year" not in result
+        assert list(result["planning_year"]) == [2030, 2035]
+
+    finally:
+        tmp_path.unlink()
