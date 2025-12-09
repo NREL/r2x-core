@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/NREL/r2x-core/compare/v0.2.3...v0.2.4) (2025-12-09)
+
+
+### Bug Fixes
+
+* Adding more logging and deduplication logic for time series translations ([#62](https://github.com/NREL/r2x-core/issues/62)) ([841fbdc](https://github.com/NREL/r2x-core/commit/841fbdc23265b6b870195c2198d16ea23f69f39b))
+
 ## [0.2.3](https://github.com/NREL/r2x-core/compare/v0.2.2...v0.2.3) (2025-11-29)
 
 
