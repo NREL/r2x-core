@@ -52,7 +52,7 @@ classifiers = [
 ]
 dependencies = [
     "h5py>=3.13.0,<4.0.0",
-    "infrasys>=1.0.0rc2,<2.0.0",
+    "infrasys>=1.0.0rc3,<2.0.0",
     "loguru>=0.7.3,<0.8.0",
     "packaging>=24.0,<26.0",
     "polars>=1.33.1,<2.0.0",

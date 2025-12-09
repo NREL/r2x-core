@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from sqlite3 import Connection
 from typing import TYPE_CHECKING, NamedTuple, cast
 from uuid import UUID
 
@@ -18,6 +19,57 @@ class TransferStats(NamedTuple):
     transferred: int
     updated: int
     children_remapped: int
+
+
+UNIQUE_TS_COLUMNS: tuple[str, ...] = (
+    "owner_uuid",
+    "owner_type",
+    "owner_category",
+    "time_series_uuid",
+    "name",
+    "time_series_type",
+    "features",
+)
+
+
+def _main_db_path(conn: Connection) -> str | None:
+    """Return filesystem path for the main SQLite database, if present."""
+    try:
+        for _, name, path in conn.execute("PRAGMA database_list").fetchall():
+            if name == "main" and path:
+                return str(path)
+    except Exception:
+        return None
+    return None
+
+
+def _ts_columns(conn: Connection) -> list[str]:
+    """Return ordered column names excluding the autoincrement primary key."""
+    rows = conn.execute("PRAGMA table_info(time_series_associations)").fetchall()
+    return [row[1] for row in rows if row[1] != "id"]
+
+
+def _deduplicate_ts_associations(conn: Connection, unique_cols: tuple[str, ...]) -> int:
+    """Remove duplicate association rows using the unique key columns."""
+    group_by = ",".join(unique_cols)
+    before = conn.total_changes
+    conn.execute(
+        f"""
+        DELETE FROM time_series_associations
+        WHERE rowid NOT IN (
+            SELECT MIN(rowid)
+            FROM time_series_associations
+            GROUP BY {group_by}
+        )
+        """
+    )
+    return conn.total_changes - before
+
+
+def _count_ts_associations(conn: Connection) -> int:
+    """Return total rows in time series associations."""
+    count = conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[0]
+    return int(count)
 
 
 def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
@@ -36,6 +88,7 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
 
         uuid_to_type = {str(uuid): type(comp).__name__ for uuid, comp in uuid_map.items()}
 
+        tgt_metadata.execute("DROP TABLE IF EXISTS target_components")
         tgt_metadata.execute("CREATE TEMP TABLE target_components (uuid TEXT PRIMARY KEY, type TEXT)")
         tgt_metadata.executemany("INSERT INTO target_components VALUES (?, ?)", list(uuid_to_type.items()))
 
@@ -50,23 +103,55 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
             if parent_uuid in uuid_to_type
         ]
 
-        # Always create child_mapping table (even if empty) to avoid SQL errors
+        tgt_metadata.execute("DROP TABLE IF EXISTS child_mapping")
         tgt_metadata.execute(
             "CREATE TEMP TABLE child_mapping (child_uuid TEXT, parent_uuid TEXT, parent_type TEXT)"
         )
         if child_remapping:
             tgt_metadata.executemany("INSERT INTO child_mapping VALUES (?, ?, ?)", child_remapping)
 
-        src_rows = src_metadata.execute("SELECT * FROM time_series_associations").fetchall()
+        removed_duplicates = _deduplicate_ts_associations(tgt_metadata, UNIQUE_TS_COLUMNS)
+        if removed_duplicates:
+            logger.warning("Removed {} duplicate time series association rows", removed_duplicates)
 
-        if src_rows:
-            placeholders = ",".join(["?"] * len(src_rows[0]))
-            tgt_metadata.executemany(
-                f"INSERT OR IGNORE INTO time_series_associations VALUES ({placeholders})", src_rows
-            )
-            transferred = len(src_rows)
+        initial_count = _count_ts_associations(tgt_metadata)
+
+        columns = _ts_columns(tgt_metadata)
+        column_csv = ",".join(columns)
+        placeholders = ",".join(["?"] * len(columns))
+
+        transferred = 0
+        src_db_path = _main_db_path(src_metadata)
+
+        if src_db_path:
+            tgt_metadata.execute("ATTACH DATABASE ? AS src_ts", (src_db_path,))
+            try:
+                tgt_metadata.execute(
+                    f"""
+                    INSERT INTO time_series_associations ({column_csv})
+                    SELECT {column_csv}
+                    FROM src_ts.time_series_associations s
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM time_series_associations t
+                        WHERE t.owner_uuid = s.owner_uuid
+                          AND t.owner_type = s.owner_type
+                          AND t.owner_category = s.owner_category
+                          AND t.time_series_uuid = s.time_series_uuid
+                          AND t.name = s.name
+                          AND t.time_series_type = s.time_series_type
+                          AND t.features = s.features
+                    )
+                    """
+                )
+            finally:
+                tgt_metadata.execute("DETACH DATABASE src_ts")
         else:
-            transferred = 0
+            src_rows = src_metadata.execute(f"SELECT {column_csv} FROM time_series_associations").fetchall()
+            if src_rows:
+                tgt_metadata.executemany(
+                    f"INSERT OR IGNORE INTO time_series_associations ({column_csv}) VALUES ({placeholders})",
+                    src_rows,
+                )
 
         result = tgt_metadata.execute("""
             WITH owner_resolution AS (
@@ -88,6 +173,30 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
 
         updated = result.rowcount
         children_remapped = len(child_remapping) if child_remapping else 0
+
+        removed_after_update = _deduplicate_ts_associations(tgt_metadata, UNIQUE_TS_COLUMNS)
+        if removed_after_update:
+            logger.warning(
+                "Removed {} duplicate time series association rows after remapping", removed_after_update
+            )
+
+        tgt_metadata.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_ts_owner_series_unique
+            ON time_series_associations (
+                owner_uuid,
+                owner_type,
+                owner_category,
+                time_series_uuid,
+                name,
+                time_series_type,
+                features
+            )
+            """
+        )
+
+        final_count = _count_ts_associations(tgt_metadata)
+        transferred = max(0, final_count - initial_count)
 
     # We need to rebuild the time series to have the objects in memory.
     loader = cast(
