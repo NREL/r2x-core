@@ -394,7 +394,7 @@ wheels = [
 
 [[package]]
 name = "infrasys"
-version = "1.0.0rc2"
+version = "1.0.0rc3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "h5py" },
@@ -408,9 +408,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/60/796cb8f7e0cc61efa6917887c888c652d5994d1ecf43f7f4f2aebb39ab91/infrasys-1.0.0rc2.tar.gz", hash = "sha256:beee0c74434096ee6a3c4e104beb7178ec6dd9d8b2ba87d6aa145c9f677baa2d", size = 183773, upload-time = "2025-10-10T20:40:55.835Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/f4/62024091d174a66f4c3e80ec87783675130a3382200ac70bc651051cc60c/infrasys-1.0.0rc3.tar.gz", hash = "sha256:c99350d9b54fc6333dc4a4d07f283a52a0e783011b9f51d8496e870a47aa8a97", size = 189785, upload-time = "2025-12-07T20:06:37.268Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/80/c4948871b08fecaaac28d2bd2f70352783e3fe7de3579490f8b165e0f7c3/infrasys-1.0.0rc2-py3-none-any.whl", hash = "sha256:68270f3754c07cc4db2294308bbdebe1492d0e3bbf088bd4c107b5b075f634ec", size = 81877, upload-time = "2025-10-10T20:40:54.39Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/4f/9e7e5e1a4a7fc21f55eb5fc0b6c594e87921b42ceed209ea4089ca1fbb66/infrasys-1.0.0rc3-py3-none-any.whl", hash = "sha256:f3a1202ef80508dd60b3eb636403375cd3c9f5340ef2a3710bf6d0969a538db8", size = 85037, upload-time = "2025-12-07T20:06:35.6Z" },
 ]
 
 [[package]]
@@ -1198,7 +1198,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "h5py", specifier = ">=3.13.0,<4.0.0" },
-    { name = "infrasys", specifier = ">=1.0.0rc2,<2.0.0" },
+    { name = "infrasys", specifier = ">=1.0.0rc3,<2.0.0" },
     { name = "loguru", specifier = ">=0.7.3,<0.8.0" },
     { name = "packaging", specifier = ">=24.0,<26.0" },
     { name = "polars", specifier = ">=1.33.1,<2.0.0" },

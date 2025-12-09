@@ -217,6 +217,17 @@ def test_preprocess_rule_getters_resolves_registry_names():
     assert resolved["field"] is GETTER_REGISTRY[unique_name]
 
 
+def test_preprocess_rule_getters_logs_missing_registry_name(caplog):
+    """Unregistered getter name emits a warning when falling back to attr lookup."""
+    from r2x_core.getters import _preprocess_rule_getters
+
+    caplog.set_level("WARNING")
+    result = _preprocess_rule_getters({"field": "missing_registry_getter"})
+
+    assert result.is_ok()
+    assert any("missing_registry_getter" in record.message for record in caplog.records)
+
+
 def test_preprocess_rule_getters_builds_attr_getter():
     """String path not in registry becomes attribute getter."""
     from r2x_core.getters import _preprocess_rule_getters
