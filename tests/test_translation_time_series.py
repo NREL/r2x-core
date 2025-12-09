@@ -45,3 +45,61 @@ def test_time_series_transfer_is_idempotent(context_example: TranslationContext)
     assert first_result.time_series_transferred == initial_count
     assert second_result.transferred == 0
     assert final_count == initial_count
+
+
+def test_time_series_transfer_deduplicates_rows(context_example: TranslationContext, caplog):
+    """Duplicate associations are removed and do not change totals."""
+    apply_rules_to_context(context_example)
+
+    with context_example.target_system.open_time_series_store(mode="a") as store:
+        conn = store.metadata_conn
+        base_count = conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[0]
+        conn.execute(
+            """
+            INSERT INTO time_series_associations (
+                time_series_uuid, time_series_type, initial_timestamp, resolution, horizon,
+                interval, window_count, length, name, owner_uuid, owner_type, owner_category,
+                features, scaling_factor_multiplier, metadata_uuid, units
+            )
+            SELECT
+                time_series_uuid, time_series_type, initial_timestamp, resolution, horizon,
+                interval, window_count, length, name, owner_uuid, owner_type, owner_category,
+                features, scaling_factor_multiplier, metadata_uuid, units
+            FROM time_series_associations
+            LIMIT 1
+            """
+        )
+
+    caplog.set_level("WARNING")
+    stats = transfer_time_series_metadata(context_example)
+
+    with context_example.target_system.open_time_series_store(mode="r") as store:
+        final_count = store.metadata_conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[
+            0
+        ]
+
+    assert stats.transferred == 0
+    assert final_count == base_count
+    assert any("duplicate time series association" in record.message for record in caplog.records)
+
+
+def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_example: TranslationContext):
+    """When no DB path is available, transfer still succeeds via SELECT/INSERT path."""
+    apply_rules_to_context(context_example)
+
+    with context_example.target_system.open_time_series_store(mode="r") as store:
+        initial_count = store.metadata_conn.execute(
+            "SELECT COUNT(*) FROM time_series_associations"
+        ).fetchone()[0]
+
+    monkeypatch.setattr("r2x_core.time_series._main_db_path", lambda _conn: None)
+    stats = transfer_time_series_metadata(context_example)
+
+    with context_example.target_system.open_time_series_store(mode="r") as store:
+        final_count = store.metadata_conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[
+            0
+        ]
+
+    assert stats.transferred == 0
+    assert stats.updated >= 0
+    assert final_count == initial_count
