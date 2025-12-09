@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import sqlite3
+from uuid import uuid4
+
 from fixtures.target_system import NodeComponent
 
 from r2x_core import TranslationContext, apply_rules_to_context
-from r2x_core.time_series import transfer_time_series_metadata
+from r2x_core.time_series import _main_db_path, transfer_time_series_metadata
 
 
 def test_time_series_transfer_via_fixture_context(context_example: TranslationContext):
@@ -54,6 +57,7 @@ def test_time_series_transfer_deduplicates_rows(context_example: TranslationCont
     with context_example.target_system.open_time_series_store(mode="a") as store:
         conn = store.metadata_conn
         base_count = conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[0]
+        conn.execute("DROP INDEX IF EXISTS idx_ts_owner_series_unique")
         conn.execute(
             """
             INSERT INTO time_series_associations (
@@ -62,7 +66,7 @@ def test_time_series_transfer_deduplicates_rows(context_example: TranslationCont
                 features, scaling_factor_multiplier, metadata_uuid, units
             )
             SELECT
-                time_series_uuid, time_series_type, initial_timestamp, resolution, horizon,
+                time_series_uuid, time_series_type, initial_timestamp, resolution || '_dup', horizon,
                 interval, window_count, length, name, owner_uuid, owner_type, owner_category,
                 features, scaling_factor_multiplier, metadata_uuid, units
             FROM time_series_associations
@@ -80,7 +84,7 @@ def test_time_series_transfer_deduplicates_rows(context_example: TranslationCont
 
     assert stats.transferred == 0
     assert final_count == base_count
-    assert any("duplicate time series association" in record.message for record in caplog.records)
+    assert any("duplicate time series association rows" in record.message for record in caplog.records)
 
 
 def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_example: TranslationContext):
@@ -103,3 +107,77 @@ def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_ex
     assert stats.transferred == 0
     assert stats.updated >= 0
     assert final_count == initial_count
+
+
+def test_time_series_transfer_uses_attach_path(tmp_path, monkeypatch, context_example: TranslationContext):
+    """ATTACH-based bulk copy path is exercised when a DB path is available."""
+    apply_rules_to_context(context_example)
+
+    def _copy_src_to_temp(conn):
+        dst = tmp_path / "src_ts.db"
+        with sqlite3.connect(dst) as dst_con:
+            conn.backup(dst_con)
+        return str(dst)
+
+    monkeypatch.setattr("r2x_core.time_series._main_db_path", _copy_src_to_temp)
+    stats = transfer_time_series_metadata(context_example)
+
+    assert stats.transferred >= 0
+
+
+def test_time_series_transfer_logs_post_remap_cleanup(
+    monkeypatch, context_example: TranslationContext, caplog
+):
+    """Post-remap dedupe path logs when rows are removed."""
+    apply_rules_to_context(context_example)
+
+    parent = next(context_example.target_system.get_components(NodeComponent))
+    parent_uuid = str(parent.uuid)
+    child_uuid = str(uuid4())
+
+    assoc_con = context_example.source_system._component_mgr._associations._con
+    assoc_con.execute(
+        "INSERT INTO component_associations VALUES (?, ?, ?, ?, ?)",
+        (None, child_uuid, "ChildComponent", parent_uuid, type(parent).__name__),
+    )
+    assoc_con.commit()
+
+    call_counts = {"count": 0}
+
+    def _fake_dedup(conn, cols):
+        call_counts["count"] += 1
+        # First call (pre-insert) does nothing, second call (post-update) reports removals.
+        return 0 if call_counts["count"] == 1 else 1
+
+    monkeypatch.setattr("r2x_core.time_series._deduplicate_ts_associations", _fake_dedup)
+
+    caplog.set_level("WARNING")
+    stats = transfer_time_series_metadata(context_example)
+
+    assert stats.updated >= 0
+    assert call_counts["count"] >= 2
+    assert any("after remapping" in record.message for record in caplog.records)
+
+
+def test_main_db_path_handles_errors():
+    """_main_db_path returns None if the connection errors."""
+
+    class FailingConn:
+        def execute(self, *_args, **_kwargs):
+            raise RuntimeError("boom")
+
+    assert _main_db_path(FailingConn()) is None
+
+
+def test_main_db_path_returns_path():
+    """_main_db_path returns stringified path when PRAGMA data exists."""
+
+    class Conn:
+        def execute(self, _query):
+            class Cursor:
+                def fetchall(self):
+                    return [(0, "main", "/tmp/test.db")]
+
+            return Cursor()
+
+    assert _main_db_path(Conn()) == "/tmp/test.db"

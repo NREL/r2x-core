@@ -128,7 +128,7 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
             try:
                 tgt_metadata.execute(
                     f"""
-                    INSERT INTO time_series_associations ({column_csv})
+                    INSERT OR IGNORE INTO time_series_associations ({column_csv})
                     SELECT {column_csv}
                     FROM src_ts.time_series_associations s
                     WHERE NOT EXISTS (
@@ -144,7 +144,10 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
                     """
                 )
             finally:
-                tgt_metadata.execute("DETACH DATABASE src_ts")
+                try:
+                    tgt_metadata.execute("DETACH DATABASE src_ts")
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning("Could not detach src_ts during time series transfer: {}", exc)
         else:
             src_rows = src_metadata.execute(f"SELECT {column_csv} FROM time_series_associations").fetchall()
             if src_rows:
@@ -171,7 +174,7 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
             WHERE owner_uuid IN (SELECT original_uuid FROM owner_resolution)
         """)
 
-        updated = result.rowcount
+        updated = max(result.rowcount if result.rowcount is not None else 0, 0)
         children_remapped = len(child_remapping) if child_remapping else 0
 
         removed_after_update = _deduplicate_ts_associations(tgt_metadata, UNIQUE_TS_COLUMNS)
