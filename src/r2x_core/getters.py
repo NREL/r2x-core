@@ -63,6 +63,13 @@ def _preprocess_rule_getters(getters_dict: dict[str, Any]) -> Result[dict[str, A
             if getter in GETTER_REGISTRY:
                 resolved[field] = GETTER_REGISTRY[getter]
             else:
+                if "." not in getter:
+                    logger.warning(
+                        "Getter '{}' for field '{}' not found in registry; ensure it is imported before loading rules. "
+                        "Falling back to attribute lookup.",
+                        getter,
+                        field,
+                    )
                 resolved[field] = _make_attr_getter(getter.split("."))
         else:
             return Err(TypeError(f"Invalid getter type for '{field}': {type(getter).__name__}"))
