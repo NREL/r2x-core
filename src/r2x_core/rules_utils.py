@@ -189,6 +189,10 @@ def _evaluate_rule_filter(rule_filter: RuleFilter, component: Any) -> bool:
         except (TypeError, ValueError):
             return False
         return cand_num >= threshold
+    if rule_filter.op == "startswith":
+        return any(str(candidate).startswith(val) for val in values)
+    if rule_filter.op == "not_startswith":
+        return all(not str(candidate).startswith(val) for val in values)
     return False
 
 
