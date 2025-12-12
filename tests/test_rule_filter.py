@@ -98,3 +98,23 @@ def test_apply_rules_respects_filter_exclude(source_system):
     stations = list(target_system.get_components(StationComponent))
     assert converted == 0
     assert not stations
+
+
+def test_rule_filter_startswith():
+    """Test that 'startswith' operator works for RuleFilter."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="kind", op="startswith", values=["ga"])
+    assert _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+    assert not _evaluate_rule_filter(filt, _Dummy(kind="coal"))
+
+
+def test_rule_filter_not_startswith():
+    """Test that 'not_startswith' operator works for RuleFilter."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="kind", op="not_startswith", values=["ga"])
+    assert _evaluate_rule_filter(filt, _Dummy(kind="coal"))
+    assert not _evaluate_rule_filter(filt, _Dummy(kind="gas"))
