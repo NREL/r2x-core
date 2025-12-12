@@ -156,6 +156,37 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
                     src_rows,
                 )
 
+        # Remove rows that would become duplicates after remapping
+        tgt_metadata.execute("""
+            WITH owner_resolution AS (
+                SELECT
+                    ts.rowid as rowid,
+                    ts.owner_uuid as original_uuid,
+                    COALESCE(tc_direct.uuid, cm.parent_uuid) as resolved_uuid,
+                    ts.time_series_type,
+                    ts.name,
+                    ts.resolution,
+                    ts.features,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY
+                            COALESCE(tc_direct.uuid, cm.parent_uuid),
+                            ts.time_series_type,
+                            ts.name,
+                            ts.resolution,
+                            ts.features
+                        ORDER BY ts.rowid
+                    ) as rn
+                FROM time_series_associations ts
+                LEFT JOIN target_components tc_direct ON ts.owner_uuid = tc_direct.uuid
+                LEFT JOIN child_mapping cm ON ts.owner_uuid = cm.child_uuid
+                WHERE tc_direct.uuid IS NOT NULL OR cm.parent_uuid IS NOT NULL
+            )
+            DELETE FROM time_series_associations
+            WHERE rowid IN (
+                SELECT rowid FROM owner_resolution WHERE rn > 1
+            )
+        """)
+
         result = tgt_metadata.execute("""
             WITH owner_resolution AS (
                 SELECT
