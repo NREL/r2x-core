@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, PrivateAttr, model_validator
 
 from .context import ContextT
 
@@ -20,17 +20,24 @@ class RuleFilter(BaseModel):
     """Declarative predicate for selecting source components."""
 
     field: str | None = None
-    op: Literal["eq", "neq", "in", "not_in", "geq"] | None = None
+    op: Literal["eq", "neq", "in", "not_in", "geq", "startswith", "not_startswith"] | None = None
     values: list[Any] | None = None
+    prefixes: list[str] | None = None
     any_of: list[RuleFilter] | None = None
     all_of: list[RuleFilter] | None = None
     casefold: bool = True
     on_missing: Literal["include", "exclude"] = "exclude"
+    _normalized_prefixes: list[str] | None = PrivateAttr(None)
 
     @model_validator(mode="after")
     def _validate_structure(self) -> RuleFilter:
         """Ensure the filter is either a leaf or a composition."""
-        is_leaf = self.field is not None or self.op is not None or self.values is not None
+        is_leaf = (
+            self.field is not None
+            or self.op is not None
+            or self.values is not None
+            or self.prefixes is not None
+        )
         has_children = bool(self.any_of) or bool(self.all_of)
 
         if is_leaf and has_children:
@@ -45,10 +52,19 @@ class RuleFilter(BaseModel):
                 raise ValueError("RuleFilter.field is required for leaf filters")
             if self.op is None:
                 raise ValueError("RuleFilter.op is required for leaf filters")
-            if not self.values:
+            if not (self.values or self.prefixes):
                 raise ValueError("RuleFilter.values must contain at least one value")
-            if self.op == "geq" and len(self.values) != 1:
+            if self.op == "geq" and len(self.values or []) != 1:
                 raise ValueError("RuleFilter.geq expects exactly one comparison value")
+            if self.op in {"startswith", "not_startswith"}:
+                prefix_values = self.prefixes if self.prefixes else self.values
+                if not prefix_values:
+                    raise ValueError(
+                        "RuleFilter.prefixes must provide at least one entry for prefix operations"
+                    )
+                if any(not isinstance(prefix, str) for prefix in prefix_values):
+                    raise ValueError("RuleFilter.prefixes entries must be strings")
+                object.__setattr__(self, "values", prefix_values)
 
         return self
 
@@ -57,6 +73,16 @@ class RuleFilter(BaseModel):
         from .rules_utils import _evaluate_rule_filter
 
         return _evaluate_rule_filter(self, component)
+
+    def normalized_prefixes(self) -> list[str]:
+        """Return the cached prefix values ready for prefix comparisons."""
+        if self._normalized_prefixes is None:
+            prefixes: list[str] = []
+            for value in self.values or []:
+                normalized = value.casefold() if self.casefold else value
+                prefixes.append(normalized)
+            self._normalized_prefixes = prefixes
+        return self._normalized_prefixes
 
 
 class RuleLike(Protocol[ContextT]):

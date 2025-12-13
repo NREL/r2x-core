@@ -98,3 +98,47 @@ def test_apply_rules_respects_filter_exclude(source_system):
     stations = list(target_system.get_components(StationComponent))
     assert converted == 0
     assert not stations
+
+
+def test_rule_filter_startswith():
+    """Test that 'startswith' operator works for RuleFilter."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="kind", op="startswith", values=["ga"])
+    assert _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+    assert not _evaluate_rule_filter(filt, _Dummy(kind="coal"))
+
+
+def test_rule_filter_not_startswith():
+    """Test that 'not_startswith' operator works for RuleFilter."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="kind", op="not_startswith", values=["ga"])
+    assert _evaluate_rule_filter(filt, _Dummy(kind="coal"))
+    assert not _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+
+
+def test_apply_rules_respects_filter_prefix(source_system):
+    """Rule filters with prefixes control conversion in the executor."""
+    from r2x_core import RuleFilter
+
+    converted, target_system = _run_rule_with_filter(
+        RuleFilter(field="name", op="startswith", prefixes=["plant_"]),
+        source_system,
+    )
+    stations = list(target_system.get_components(StationComponent))
+    assert converted == 1
+    assert stations and stations[0].name == "plant_alpha"
+
+
+def test_apply_rules_respects_filter_not_prefix(source_system):
+    """Negative prefix filters block matching components."""
+    from r2x_core import RuleFilter
+
+    converted, _ = _run_rule_with_filter(
+        RuleFilter(field="name", op="not_startswith", prefixes=["plant_"]),
+        source_system,
+    )
+    assert converted == 0
