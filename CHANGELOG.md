@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/NREL/r2x-core/compare/v0.2.4...v0.3.0) (2025-12-13)
+
+
+### Features
+
+* add new rules to filter starbuses in s2p translation ([#64](https://github.com/NREL/r2x-core/issues/64)) ([7c81ea1](https://github.com/NREL/r2x-core/commit/7c81ea168b9ba5eeb734c31f62069c5b6f4be2d6))
+
 ## [0.2.4](https://github.com/NREL/r2x-core/compare/v0.2.3...v0.2.4) (2025-12-09)
 
 
