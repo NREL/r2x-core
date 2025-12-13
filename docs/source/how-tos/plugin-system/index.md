@@ -8,4 +8,5 @@ Learn how to work with the R2X Core plugin system.
 plugin-standards
 plugin-registration
 plugin-usage
+rule-filters
 ```

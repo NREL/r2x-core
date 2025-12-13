@@ -168,31 +168,35 @@ def _evaluate_rule_filter(rule_filter: RuleFilter, component: Any) -> bool:
     if attr is None:
         return rule_filter.on_missing == "include"
 
-    candidate = str(attr).casefold() if rule_filter.casefold and isinstance(attr, str) else attr
+    candidate_for_general = str(attr).casefold() if rule_filter.casefold and isinstance(attr, str) else attr
     values = [
         str(val).casefold() if rule_filter.casefold and isinstance(val, str) else val
         for val in rule_filter.values
     ]
 
     if rule_filter.op == "eq":
-        return candidate == values[0]
+        return candidate_for_general == values[0]
     if rule_filter.op == "neq":
-        return candidate != values[0]
+        return candidate_for_general != values[0]
     if rule_filter.op == "in":
-        return candidate in values
+        return candidate_for_general in values
     if rule_filter.op == "not_in":
-        return candidate not in values
+        return candidate_for_general not in values
     if rule_filter.op == "geq":
         try:
-            cand_num = float(candidate)
+            cand_num = float(candidate_for_general)
             threshold = float(values[0])
         except (TypeError, ValueError):
             return False
         return cand_num >= threshold
-    if rule_filter.op == "startswith":
-        return any(str(candidate).startswith(val) for val in values)
-    if rule_filter.op == "not_startswith":
-        return all(not str(candidate).startswith(val) for val in values)
+    if rule_filter.op in {"startswith", "not_startswith"}:
+        candidate_str = str(attr)
+        if rule_filter.casefold:
+            candidate_str = candidate_str.casefold()
+        prefixes = rule_filter.normalized_prefixes()
+        if rule_filter.op == "startswith":
+            return any(candidate_str.startswith(prefix) for prefix in prefixes)
+        return all(not candidate_str.startswith(prefix) for prefix in prefixes)
     return False
 
 
