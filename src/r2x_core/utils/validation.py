@@ -18,6 +18,14 @@ def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dic
     return {k: v for k, v in kwargs.items() if k in valid_params}
 
 
+def filter_kwargs_by_signatures(kwargs: dict[str, Any], *callables: Callable[..., Any]) -> dict[str, Any]:
+    """Filter kwargs to those accepted by the provided callables."""
+    valid_params: set[str] = set()
+    for callable_obj in callables:
+        valid_params.update(inspect.signature(callable_obj).parameters.keys())
+    return {k: v for k, v in kwargs.items() if k in valid_params}
+
+
 def validate_glob_pattern(pattern: str | None) -> str | None:
     """Validate that a string is a valid glob pattern.
 
