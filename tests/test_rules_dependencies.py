@@ -109,6 +109,36 @@ def test_topological_sort_simple_dependency():
     assert sorted_rules[1].name == "rule_b"
 
 
+def test_topological_sort_unnamed_rules_follow_dependencies():
+    """Unnamed rules respect dependencies on named rules."""
+    from r2x_core import Rule
+    from r2x_core.rules_executor import _sort_rules_by_dependencies
+
+    rule_a = Rule(
+        source_type="A",
+        target_type="B",
+        version=1,
+        field_map={"f": "f"},
+        name="rule_a",
+    )
+
+    unnamed_rule = Rule(
+        source_type="B",
+        target_type="C",
+        version=1,
+        field_map={"f": "f"},
+        depends_on=["rule_a"],
+    )
+
+    rules = [unnamed_rule, rule_a]
+    result = _sort_rules_by_dependencies(rules)
+
+    assert result.is_ok()
+    sorted_rules = result.unwrap()
+    assert sorted_rules[0].name == "rule_a"
+    assert sorted_rules[1] is unnamed_rule
+
+
 def test_topological_sort_complex_dependencies():
     """Rules are sorted with complex dependency graph."""
     from r2x_core import Rule
