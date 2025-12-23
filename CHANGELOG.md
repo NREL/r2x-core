@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/NREL/r2x-core/compare/v0.3.0...v0.3.1) (2025-12-23)
+
+
+### Bug Fixes
+
+* Sorting of rules without name and dependency ([#68](https://github.com/NREL/r2x-core/issues/68)) ([52df559](https://github.com/NREL/r2x-core/commit/52df5598e97aba56620d0795da900ca8884f7e60))
+
 ## [0.3.0](https://github.com/NREL/r2x-core/compare/v0.2.4...v0.3.0) (2025-12-13)
 
 
