@@ -12,6 +12,7 @@ from infrasys.utils.sqlite import backup
 from loguru import logger
 
 from . import units
+from .utils import filter_kwargs_by_signatures
 from .utils.file_operations import get_r2x_cache_path
 
 
@@ -72,10 +73,12 @@ class System(InfrasysSystem):
             Additional keyword arguments passed to infrasys.System (e.g., description,
             auto_add_composed_components).
         """
+        merged_kwargs = dict(kwargs)
         if name is not None:
-            kwargs["name"] = name
+            merged_kwargs["name"] = name
 
-        super().__init__(**kwargs)
+        super_kwargs = filter_kwargs_by_signatures(merged_kwargs, InfrasysSystem)
+        super().__init__(**super_kwargs)
 
         self.base_power = system_base
 

@@ -57,3 +57,20 @@ def test_system_with_auto_add_composed():
     system = System(name="TestSystem", auto_add_composed_components=False)
     assert not system.base_power
     assert system.name == "TestSystem"
+
+
+def test_system_accepts_infrasys_kwargs():
+    """System forwards Infrasys System kwargs such as uuid and description."""
+    import uuid
+
+    system_uuid = uuid.uuid4()
+    system = System(
+        name="TestSystem",
+        description="A test system",
+        auto_add_composed_components=False,
+        uuid=system_uuid,
+    )
+
+    assert system.description == "A test system"
+    assert system.uuid == system_uuid
+    assert system.auto_add_composed_components is False

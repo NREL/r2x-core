@@ -151,6 +151,24 @@ def test_parser_skip_validation(sample_config, sample_data_store):
     assert parser.skip_validation is True
 
 
+def test_parser_passes_system_kwargs(sample_config, sample_data_store):
+    """BaseParser forwards allowed kwargs to System creation."""
+    with patch("r2x_core.parser.System") as mock_system_class:
+        mock_system_class.return_value = Mock()
+        parser = MockParser(
+            sample_config,
+            data_store=sample_data_store,
+            description="custom description",
+            uuid="123e4567-e89b-12d3-a456-426614174000",
+        )
+
+        mock_system_class.assert_called_once()
+        system_call_kwargs = mock_system_class.call_args.kwargs
+        assert system_call_kwargs["description"] == "custom description"
+        assert system_call_kwargs["uuid"] == "123e4567-e89b-12d3-a456-426614174000"
+        assert parser.system is mock_system_class.return_value
+
+
 def test_validation_error_stops_build(sample_data_store):
     """Test that validation errors prevent system build."""
     config = MockModelConfig(model_year=2019, scenario="test")  # Invalid year

@@ -258,5 +258,18 @@ def _sort_rules_by_dependencies(rules: list[Rule]) -> Result[list[Rule], ValueEr
         unsorted = set(named_rules.keys()) - set(sorted_names)
         return Err(ValueError(f"Circular dependencies detected in rules: {', '.join(unsorted)}"))
 
-    sorted_rules = unnamed_rules + [named_rules[name] for name in sorted_names]
+    unnamed_no_deps = [rule for rule in unnamed_rules if not rule.depends_on]
+    unnamed_with_deps = [rule for rule in unnamed_rules if rule.depends_on]
+
+    sorted_rules: list[Rule] = unnamed_no_deps + [named_rules[name] for name in sorted_names]
+
+    for rule in unnamed_with_deps:
+        deps = rule.depends_on or []
+        for dep in deps:
+            if dep not in named_rules:
+                return Err(ValueError(f"Rule depends on unknown rule '{dep}'"))
+        dep_indices = [sorted_rules.index(named_rules[dep]) for dep in deps]
+        insert_index = max(dep_indices, default=-1) + 1
+        sorted_rules.insert(insert_index, rule)
+
     return Ok(sorted_rules)

@@ -42,6 +42,7 @@ from typing import IO, Any, TypeVar
 
 from infrasys import Component
 from infrasys.exceptions import ISAlreadyAttached
+from infrasys.system import System as InfrasysSystem
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
@@ -49,7 +50,7 @@ from .exceptions import ComponentCreationError, ParserError
 from .plugin_config import PluginConfig
 from .store import DataStore
 from .system import System
-from .utils import create_component, filter_valid_kwargs
+from .utils import create_component, filter_kwargs_by_signatures
 
 T = TypeVar("T", bound=Component)
 StdinPayload = IO[str] | IO[bytes] | str | bytes | None
@@ -230,7 +231,10 @@ class BaseParser(ABC):
 
         if "name" in kwargs and not system_name:
             system_name = kwargs.pop("name")
-        self._system = System(name=system_name, **filter_valid_kwargs(System, kwargs))
+        self._system = System(
+            name=system_name,
+            **filter_kwargs_by_signatures(kwargs, System, InfrasysSystem),
+        )
 
     @property
     def config(self) -> PluginConfig | None:
