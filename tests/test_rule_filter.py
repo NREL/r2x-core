@@ -142,3 +142,35 @@ def test_apply_rules_respects_filter_not_prefix(source_system):
         source_system,
     )
     assert converted == 0
+
+
+def test_rule_filter_matches_endswith():
+    """Leaf filters with endswith operator work as expected."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="name", op="endswith", values=["alpha"])
+    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+
+
+def test_rule_filter_matches_startswith():
+    """Leaf filters with startswith operator work as expected."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="name", op="startswith", values=["plant_"])
+    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
+    assert _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
+
+
+def test_rule_filter_matches_not_startswith():
+    """Leaf filters with not_startswith operator work as expected."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="name", op="not_startswith", values=["plant_"])
+    assert _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
