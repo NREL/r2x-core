@@ -195,8 +195,6 @@ def _evaluate_rule_filter(rule_filter: RuleFilter, component: Any) -> bool:
         return all(not str(candidate).startswith(val) for val in values)
     if rule_filter.op == "endswith":
         return any(str(candidate).endswith(val) for val in values)
-    if rule_filter.op == "not_endswith":
-        return all(not str(candidate).endswith(val) for val in values)
     return False
 
 
