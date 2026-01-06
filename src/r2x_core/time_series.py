@@ -131,7 +131,8 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
                     INSERT OR IGNORE INTO time_series_associations ({column_csv})
                     SELECT {column_csv}
                     FROM src_ts.time_series_associations s
-                    WHERE NOT EXISTS (
+                    WHERE s.owner_uuid IN (SELECT uuid FROM target_components)
+                    AND NOT EXISTS (
                         SELECT 1 FROM time_series_associations t
                         WHERE t.owner_uuid = s.owner_uuid
                           AND t.owner_type = s.owner_type
@@ -150,10 +151,12 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
                     logger.warning("Could not detach src_ts during time series transfer: {}", exc)
         else:
             src_rows = src_metadata.execute(f"SELECT {column_csv} FROM time_series_associations").fetchall()
-            if src_rows:
+            target_uuids = set(uuid_to_type.keys())
+            filtered_rows = [row for row in src_rows if row[columns.index("owner_uuid")] in target_uuids]
+            if filtered_rows:
                 tgt_metadata.executemany(
                     f"INSERT OR IGNORE INTO time_series_associations ({column_csv}) VALUES ({placeholders})",
-                    src_rows,
+                    filtered_rows,
                 )
 
         # Remove rows that would become duplicates after remapping
