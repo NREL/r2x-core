@@ -56,3 +56,33 @@ def test_rule_hashable():
     rule_set = {rule1, rule2}
     # Both should hash the same, so set has only 1 element
     assert len(rule_set) == 1
+
+
+def test_rule_post_init_multiple_sources_and_targets():
+    """Rule cannot have both multiple sources and multiple targets."""
+    import pytest
+
+    from r2x_core import Rule
+
+    with pytest.raises(NotImplementedError, match="cannot have both multiple sources and multiple targets"):
+        Rule(source_type=["A", "B"], target_type=["X", "Y"], version=1, field_map={})
+
+
+def test_rule_post_init_multifield_mapping_without_getter():
+    """Multi-field mapping for target requires a getter function."""
+    import pytest
+
+    from r2x_core import Rule
+
+    with pytest.raises(ValueError, match="requires a getter function"):
+        Rule(source_type="A", target_type="B", version=1, field_map={"target": ["a", "b"]})
+
+
+def test_rule_post_init_filter_type_error():
+    """Rule.filter must be a RuleFilter."""
+    import pytest
+
+    from r2x_core import Rule
+
+    with pytest.raises(TypeError, match="must be a RuleFilter"):
+        Rule(source_type="A", target_type="B", version=1, field_map={}, filter="not_a_filter")
