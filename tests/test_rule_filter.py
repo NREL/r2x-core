@@ -142,3 +142,145 @@ def test_apply_rules_respects_filter_not_prefix(source_system):
         source_system,
     )
     assert converted == 0
+
+
+def test_rule_filter_matches_endswith():
+    """Leaf filters with endswith operator work as expected, including casefold."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    # Standard case
+    filt = RuleFilter(field="name", op="endswith", values=["alpha"])
+    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+
+    # Casefolded match
+    filt_casefold = RuleFilter(field="name", op="endswith", values=["ALPHA"])
+    assert _evaluate_rule_filter(filt_casefold, _Dummy(name="plant_alpha"))
+
+    # Casefold disabled
+    filt_nocase = RuleFilter(field="name", op="endswith", values=["ALPHA"], casefold=False)
+    assert not _evaluate_rule_filter(filt_nocase, _Dummy(name="plant_alpha"))
+
+
+def test_rule_filter_matches_startswith():
+    """Leaf filters with startswith operator work as expected."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="name", op="startswith", values=["plant_"])
+    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
+    assert _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
+
+
+def test_rule_filter_matches_not_startswith():
+    """Leaf filters with not_startswith operator work as expected."""
+    from r2x_core import RuleFilter
+    from r2x_core.rules_utils import _evaluate_rule_filter
+
+    filt = RuleFilter(field="name", op="not_startswith", values=["plant_"])
+    assert _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
+    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+
+
+def test_rulefilter_model_validator_leaf_and_children_error():
+    """RuleFilter cannot mix leaf and composition."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="cannot mix field/op/values with any_of/all_of"):
+        RuleFilter(
+            field="kind", op="eq", values=["gas"], any_of=[RuleFilter(field="kind", op="eq", values=["coal"])]
+        )
+
+
+def test_rulefilter_model_validator_requires_leaf_or_composition():
+    """RuleFilter requires either leaf or composition."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="requires field/op/values or any_of/all_of"):
+        RuleFilter()
+
+
+def test_rulefilter_model_validator_both_any_of_and_all_of_error():
+    """RuleFilter cannot set both any_of and all_of."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="cannot set both any_of and all_of"):
+        RuleFilter(
+            any_of=[RuleFilter(field="kind", op="eq", values=["coal"])],
+            all_of=[RuleFilter(field="kind", op="eq", values=["gas"])],
+        )
+
+
+def test_rulefilter_model_validator_leaf_field_required():
+    """RuleFilter.field required for leaf filters."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="field is required for leaf filters"):
+        RuleFilter(op="eq", values=["gas"])
+
+
+def test_rulefilter_model_validator_leaf_op_required():
+    """RuleFilter.op required for leaf filters."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="op is required for leaf filters"):
+        RuleFilter(field="kind", values=["gas"])
+
+
+def test_rulefilter_model_validator_leaf_values_required():
+    """RuleFilter.values or prefixes required for leaf filters."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="must contain at least one value"):
+        RuleFilter(field="kind", op="eq")
+
+
+def test_rulefilter_model_validator_geq_one_value():
+    """RuleFilter.geq expects exactly one comparison value."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError, match="expects exactly one comparison value"):
+        RuleFilter(field="capacity", op="geq", values=[1, 2])
+
+
+def test_rulefilter_model_validator_prefixes_type():
+    """RuleFilter.prefixes entries must be strings."""
+    import pytest
+
+    from r2x_core import RuleFilter
+
+    with pytest.raises(ValueError) as _:
+        RuleFilter(field="name", op="startswith", prefixes=[123])
+
+
+def test_rulefilter_normalized_prefixes_casefold():
+    """normalized_prefixes returns casefolded values if casefold=True."""
+    from r2x_core import RuleFilter
+
+    filt = RuleFilter(field="name", op="startswith", values=["Plant_A"], casefold=True)
+    assert filt.normalized_prefixes() == ["plant_a"]
+
+
+def test_rulefilter_normalized_prefixes_no_casefold():
+    """normalized_prefixes returns original values if casefold=False."""
+    from r2x_core import RuleFilter
+
+    filt = RuleFilter(field="name", op="startswith", values=["Plant_A"], casefold=False)
+    assert filt.normalized_prefixes() == ["Plant_A"]
