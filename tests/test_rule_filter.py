@@ -145,13 +145,22 @@ def test_apply_rules_respects_filter_not_prefix(source_system):
 
 
 def test_rule_filter_matches_endswith():
-    """Leaf filters with endswith operator work as expected."""
+    """Leaf filters with endswith operator work as expected, including casefold."""
     from r2x_core import RuleFilter
     from r2x_core.rules_utils import _evaluate_rule_filter
 
+    # Standard case
     filt = RuleFilter(field="name", op="endswith", values=["alpha"])
     assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
     assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+
+    # Casefolded match
+    filt_casefold = RuleFilter(field="name", op="endswith", values=["ALPHA"])
+    assert _evaluate_rule_filter(filt_casefold, _Dummy(name="plant_alpha"))
+
+    # Casefold disabled
+    filt_nocase = RuleFilter(field="name", op="endswith", values=["ALPHA"], casefold=False)
+    assert not _evaluate_rule_filter(filt_nocase, _Dummy(name="plant_alpha"))
 
 
 def test_rule_filter_matches_startswith():
@@ -257,9 +266,8 @@ def test_rulefilter_model_validator_prefixes_type():
 
     from r2x_core import RuleFilter
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError) as _:
         RuleFilter(field="name", op="startswith", prefixes=[123])
-    print(f"Actual error: {excinfo.value}")
 
 
 def test_rulefilter_normalized_prefixes_casefold():
