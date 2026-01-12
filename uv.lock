@@ -1283,11 +1283,11 @@ wheels = [
 
 [[package]]
 name = "rust-ok"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/97/e4/d4ba4f6371bb3d2aa43e755bbba1c826e04250dbe21d0bbc31118762171c/rust_ok-0.1.0.tar.gz", hash = "sha256:65061f2720da9668ac773d41c1bbb26c136ac44ae64825fcc30ded7da906304c", size = 4592, upload-time = "2025-11-24T17:09:29.531Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/8f/e643edeb4dea1b4d81608dfc74b8167cd75b5b3480f2b61825967f2563d3/rust_ok-0.2.0.tar.gz", hash = "sha256:746657212646531e110f00a088ff37d6acd001e7e61ba4eb419608e76e828478", size = 5024, upload-time = "2025-12-17T20:01:31.589Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/2d/0d77828ee2d53d3d7255027243d6544dc79611564383ac372bf61ed5132d/rust_ok-0.1.0-py3-none-any.whl", hash = "sha256:1d5798151644a26a1ae1140dece1494f632f017b9eff8fb1c43feb9a7b9c1223", size = 6879, upload-time = "2025-11-24T17:09:24.892Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/f6/48495688584487d1223df5934ea9c0a7ca1717a68f0aa853821acd19ad82/rust_ok-0.2.0-py3-none-any.whl", hash = "sha256:41bec094856ada5ac0b8001e0833ad9bb3002d9e55153f3201dda933f8652812", size = 7001, upload-time = "2025-12-17T20:01:30.586Z" },
 ]
 
 [[package]]
