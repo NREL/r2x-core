@@ -165,6 +165,36 @@ Call exposed functions directly with explicit arguments:
 Success: original
 ```
 
+### Advanced: Using Python 3.12 Generic Type Syntax
+
+For more sophisticated type-aware usage, you can leverage Python 3.12's generic syntax with a helper registry:
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from rust_ok import Ok, Result
+>>> from typing import TypeVar, Generic
+
+>>> C = TypeVar("C", bound=PluginConfig)
+
+>>> class RenameConfig(PluginConfig):
+...     suffix: str = "_updated"
+
+>>> @expose_plugin
+... def rename_system(system: System, config: C) -> Result[System, str]:
+...     """Rename system with configurable suffix."""
+...     system.name = f"{system.name}{config.suffix}"
+...     return Ok(system)
+
+>>> # Type-aware usage with generic syntax
+>>> config: RenameConfig = RenameConfig(suffix="_v2")
+>>> system = System(name="my_system")
+>>> result = rename_system(system, config)
+
+>>> # Config type is properly tracked through the call
+>>> result.unwrap().name
+'my_system_v2'
+```
+
 ## CLI Registration via Entry Points
 
 To make your function discoverable by the Rust CLI, register it as an entry point in your package's `pyproject.toml`:
