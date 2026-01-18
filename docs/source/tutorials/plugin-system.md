@@ -1,13 +1,16 @@
 # Plugin System
 
-The r2x plugin system uses a **capability-based design** where plugins implement only the hooks they need. The plugin lifecycle runs hooks in a fixed order, skipping any that aren't implemented.
+The r2x plugin system uses a capability-based design where plugins implement only the hooks
+they need. The plugin lifecycle runs hooks in a fixed order, skipping any that aren't
+implemented. This approach provides remarkable flexibility because plugins do only what they
+need—whether that's building systems from scratch, transforming existing systems,
+translating between formats, or exporting results.
 
-This approach provides:
-
-- **Flexibility**: Plugins do only what they need (build, transform, translate, export)
-- **Clarity**: Required context fields are declared via type hints
-- **Discoverability**: ast-grep can extract plugin config types and capabilities
-- **Type Safety**: Generic `Plugin[ConfigT]` provides typed config access
+Required context fields are declared through type hints on properties, making it immediately
+clear what each plugin needs to function. The ast-grep tool can automatically extract plugin
+config types and their capabilities by analyzing the plugin structure, enabling discovery and
+documentation generation. The generic `Plugin[ConfigT]` class provides type-safe access to
+configuration, catching configuration errors at runtime through Pydantic validation.
 
 ## Creating a Simple Plugin
 
@@ -178,13 +181,13 @@ result.system.name
 
 ## Plugin Capabilities (Inferred from Hooks)
 
-Plugin capabilities are automatically inferred from which hooks are implemented:
-
-- **Build plugin**: Implements `on_build()` - Creates systems from data
-- **Transform plugin**: Implements `on_transform()` - Modifies existing systems
-- **Translate plugin**: Implements `on_translate()` - Converts source→target format
-- **Export plugin**: Implements `on_export()` - Writes systems to files
-- **Multi-capability plugin**: Implements multiple hooks
+Plugin capabilities are automatically inferred from which hooks are implemented. A build
+plugin implements `on_build()` to create systems from data. A transform plugin implements
+`on_transform()` to modify existing systems in-place. A translate plugin implements
+`on_translate()` to convert from a source system format to a target system format. An export
+plugin implements `on_export()` to write systems to files in various formats. More complex
+workflows combine multiple capabilities—a plugin can both translate and export, or validate
+and transform, depending on what the workflow requires.
 
 ### Example: Multi-Capability Plugin
 
@@ -215,13 +218,14 @@ result.target_system.name
 
 ## Configuration with Type Safety
 
-Plugin config types are extracted via generics, enabling:
+Plugin config types are extracted via generics, enabling type-safe access to plugin-specific
+fields. The ast-grep discovery tool can automatically analyze plugin classes to extract config
+schemas. Automatic validation happens through Pydantic, catching configuration errors before
+plugins execute.
 
-- Type-safe access to plugin-specific fields
-- ast-grep discovery of config schemas
-- Automatic validation via Pydantic
-
-### Required vs Optional Config Fields
+Config fields can be either required or optional. Fields without defaults are required and
+must be provided when instantiating the config. Fields with defaults are optional and will
+use their default values if not provided:
 
 ```python
 from r2x_core import PluginConfig
@@ -245,16 +249,23 @@ except Exception as e:
 True
 ```
 
+Pydantic validates all fields during instantiation, so configuration errors are caught
+immediately rather than later during plugin execution when they would be harder to debug.
+
 ## Plugin Discovery
 
-Plugins can be discovered using ast-grep rules that extract:
+Plugins can be discovered using ast-grep rules that extract detailed metadata about each
+plugin. The discovery process reads the config type from the generic parameter
+(e.g., `class MyPlugin(Plugin[MyConfig])`), determining what configuration the plugin accepts.
+It identifies implemented hooks by scanning for method names like `on_validate`, `on_build`,
+`on_transform`, `on_translate`, `on_export`, and `on_cleanup`. Required context fields are
+inferred from non-Optional property return types—a property returning `System` requires a
+system, while `System | None` makes it optional. The config schema is extracted directly from
+Pydantic field definitions, enabling full documentation generation without parsing the plugin
+code.
 
-1. **Config type** from generic parameter: `class MyPlugin(Plugin[MyConfig])`
-2. **Implemented hooks** from method names: `on_validate`, `on_build`, etc.
-3. **Required context fields** from non-Optional property return types
-4. **Config schema** from Pydantic field definitions
-
-See {doc}`./plugin-discovery` for complete discovery rules.
+See {doc}`./plugin-discovery` for the complete ast-grep discovery rules that make this
+automated analysis possible.
 
 ## Passing Context Through Pipelines
 
@@ -345,16 +356,27 @@ sorted(MyPlugin.get_implemented_hooks())
 
 ## Best Practices
 
-1. **Implement only needed hooks** - Don't implement hooks you don't need
-2. **Use type hints for context fields** - Indicate required vs optional via return types
-3. **Validate early** - Use `on_validate()` to catch errors before heavy operations
-4. **Clean up resources** - Use `on_cleanup()` for resource management
-5. **Use evolve() for pipelines** - Efficiently pass context between plugins
-6. **Return specific errors** - Use appropriate exception types for better error handling
-7. **Document config fields** - Add docstrings to config classes for discoverability
+When designing plugins, implement only the hooks you actually need. Adding unnecessary hooks
+creates complexity and makes testing harder. Use type hints on context properties to clearly
+indicate what each plugin requires—this makes dependencies explicit and enables the discovery
+system to work properly.
+
+Validate configuration and inputs early in the `on_validate()` hook before any expensive
+operations. This catches errors immediately rather than failing partway through a long
+computation. Use the `on_cleanup()` hook to properly release resources like database
+connections, file handles, or temporary files, ensuring clean shutdown even if errors occur.
+
+When chaining plugins together in pipelines, use the `evolve()` method to efficiently pass
+context forward. This is more memory-efficient than creating new contexts from scratch.
+Return specific exception types rather than generic `Exception` so callers can handle
+different error conditions appropriately. Finally, add docstrings to config classes to help
+with discoverability and so the discovery system can extract meaningful documentation about
+what configuration each plugin accepts.
 
 ## Next Steps
 
-- See {doc}`./plugin-context` for detailed context usage patterns
-- See {doc}`./plugin-discovery` for ast-grep plugin discovery
-- Check `tests/test_plugin*.py` for additional examples
+For detailed patterns on how to use plugin context effectively in complex workflows, see
+{doc}`./plugin-context`. To understand how to automatically discover and analyze plugins in
+your codebase using ast-grep, see {doc}`./plugin-discovery`. Additional examples of working
+plugins can be found in `tests/test_plugin*.py`, covering edge cases and advanced patterns
+not shown in this introduction.
