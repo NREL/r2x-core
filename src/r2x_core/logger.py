@@ -49,7 +49,7 @@ JSON_LEVEL_NAMES = {
 }
 DEFAULT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.{ms}"
 
-_verbosity = 0
+_verbosity: int = 0
 _console: Any | None = None
 
 
