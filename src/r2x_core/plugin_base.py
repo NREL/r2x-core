@@ -342,71 +342,38 @@ class Plugin(ABC, Generic[ConfigT]):
         plugin_name = type(self).__name__
         logger.info("Running plugin: {}", plugin_name)
 
-        on_validate = getattr(self, "on_validate", None)
-        if callable(on_validate):
-            logger.debug("{}: on_validate", plugin_name)
-            result = on_validate()
-            if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} validation failed: {result.error}")
+        # Hook configuration: (hook_name, phase_name, log_level, context_attr)
+        # context_attr is the attribute to update in self._ctx with result (if any)
+        hooks_config = [
+            ("on_validate", "validation", "debug", None),
+            ("on_prepare", "prepare", "debug", None),
+            ("on_upgrade", "upgrade", "info", "system"),
+            ("on_build", "build", "info", "system"),
+            ("on_transform", "transform", "info", "system"),
+            ("on_translate", "translate", "info", "target_system"),
+            ("on_export", "export", "info", None),
+            ("on_cleanup", "cleanup", "debug", None),
+        ]
 
-        on_prepare = getattr(self, "on_prepare", None)
-        if callable(on_prepare):
-            logger.debug("{}: on_prepare", plugin_name)
-            result = on_prepare()
-            if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} prepare failed: {result.error}")
+        for hook_name, phase_name, log_level, ctx_attr in hooks_config:
+            hook = getattr(self, hook_name, None)
+            if not callable(hook):
+                continue
 
-        on_upgrade = getattr(self, "on_upgrade", None)
-        if callable(on_upgrade):
-            logger.info("{}: on_upgrade", plugin_name)
-            result = on_upgrade()
-            if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} upgrade failed: {result.error}")
-            assert isinstance(result, Ok), "Result should be Ok after error check"
-            system_result = result.value
-            self._ctx.system = system_result
+            # Log at appropriate level
+            if log_level == "debug":
+                logger.debug("{}: {}", plugin_name, hook_name)
+            else:
+                logger.info("{}: {}", plugin_name, hook_name)
 
-        on_build = getattr(self, "on_build", None)
-        if callable(on_build):
-            logger.info("{}: on_build", plugin_name)
-            result = on_build()
-            if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} build failed: {result.error}")
-            assert isinstance(result, Ok), "Result should be Ok after error check"
-            system_result = result.value
-            self._ctx.system = system_result
+            result = hook()
 
-        on_transform = getattr(self, "on_transform", None)
-        if callable(on_transform):
-            logger.info("{}: on_transform", plugin_name)
-            result = on_transform()
             if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} transform failed: {result.error}")
-            assert isinstance(result, Ok), "Result should be Ok after error check"
-            system_result = result.value
-            self._ctx.system = system_result
+                raise PluginError(f"{plugin_name} {phase_name} failed: {result.error}")
 
-        on_translate = getattr(self, "on_translate", None)
-        if callable(on_translate):
-            logger.info("{}: on_translate", plugin_name)
-            result = on_translate()
-            if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} translate failed: {result.error}")
-            assert isinstance(result, Ok), "Result should be Ok after error check"
-            target_result = result.value
-            self._ctx.target_system = target_result
-
-        on_export = getattr(self, "on_export", None)
-        if callable(on_export):
-            logger.info("{}: on_export", plugin_name)
-            result = on_export()
-            if isinstance(result, Err):
-                raise PluginError(f"{plugin_name} export failed: {result.error}")
-
-        on_cleanup = getattr(self, "on_cleanup", None)
-        if callable(on_cleanup):
-            logger.debug("{}: on_cleanup", plugin_name)
-            result = on_cleanup()
+            # Update context if this hook produces a result
+            if ctx_attr and isinstance(result, Ok):
+                setattr(self._ctx, ctx_attr, result.value)
 
         logger.info("Plugin {} completed successfully", plugin_name)
         return self._ctx

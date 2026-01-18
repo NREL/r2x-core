@@ -288,7 +288,9 @@ class DataFile(BaseModel):
             msg = "Either fpath, relative_fpath, or glob must be set"
             raise ValueError(msg)
 
-        assert extension in EXTENSION_MAPPING, f"{extension=} not found on EXTENSION_MAPPING"
+        if extension not in EXTENSION_MAPPING:
+            msg = f"{extension=} not found on EXTENSION_MAPPING"
+            raise ValueError(msg)
         file_type_class = EXTENSION_MAPPING[extension]
 
         if self.info and self.info.is_timeseries and not file_type_class.supports_timeseries:

@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
-from pydantic import ValidationError
 
 from .datafile import DataFile, FileProcessing, TabularProcessing
 from .plugin_config import PluginConfig
@@ -478,9 +477,5 @@ class DataStore:
             msg = f"JSON file `{mapping_path}` is not a JSON array."
             raise TypeError(msg)
 
-        try:
-            data_files = DataFile.from_records(data_files_json, folder_path=self.folder)
-        except ValidationError as exec:
-            raise exec
-
+        data_files = DataFile.from_records(data_files_json, folder_path=self.folder)
         self.add_data(data_files)

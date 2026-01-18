@@ -162,7 +162,8 @@ def _evaluate_rule_filter(component: Any, *, rule_filter: RuleFilter) -> bool:
     if rule_filter.all_of is not None:
         return all(_evaluate_rule_filter(component, rule_filter=child) for child in rule_filter.all_of)
 
-    assert rule_filter.field is not None and rule_filter.op is not None and rule_filter.values is not None
+    if rule_filter.field is None or rule_filter.op is None or rule_filter.values is None:
+        raise ValueError("RuleFilter must have field, op, and values for leaf filters")
 
     attr = getattr(component, rule_filter.field, None)
     if attr is None:

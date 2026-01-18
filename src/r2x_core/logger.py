@@ -29,6 +29,16 @@ LEVEL_COLORS = {
     "ERROR": "color(169)",  # pink/magenta
     "CRITICAL": "color(169) reverse",  # inverted pink
 }
+
+# Verbosity level constants
+VERBOSITY_TRACE = 2
+VERBOSITY_INFO = 1
+DEFAULT_LOG_LEVEL = "WARNING"
+
+_VERBOSITY_TO_LEVEL = {
+    VERBOSITY_TRACE: "TRACE",
+    VERBOSITY_INFO: "INFO",
+}
 JSON_LEVEL_NAMES = {
     "TRACE": "TRACE",
     "DEBUG": "DEBUG",
@@ -178,12 +188,7 @@ def setup_logging(verbosity: int = 0) -> None:
 
     logger.enable("r2x_core")
 
-    if verbosity >= 2:
-        level = "TRACE"
-    elif verbosity == 1:
-        level = "INFO"
-    else:
-        level = "WARNING"
+    level = _VERBOSITY_TO_LEVEL.get(verbosity, DEFAULT_LOG_LEVEL)
 
     logger.remove()
     logger.add(

@@ -211,9 +211,9 @@ class TestValidateFileExtension:
         assert "FileFormat" in error_msg
 
     def test_validate_file_extension_none_info_assertion(self):
-        """Test validate_file_extension with None info raises AssertionError."""
+        """Test validate_file_extension with None info raises ValueError."""
         path = Path("data.csv")
-        with pytest.raises(AssertionError, match="Pydantic validation context is missing"):
+        with pytest.raises(ValueError, match="Pydantic validation context is missing"):
             validate_file_extension(path, info=None)  # type: ignore[arg-type]
 
     def test_validate_file_extension_path_with_directory(self):

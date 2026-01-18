@@ -117,8 +117,10 @@ def validate_file_extension(path: Path, *, info: "ValidationInfo") -> Path:
     This function is intended for use as a Pydantic model validator (e.g.,
     with `@field_validator` or `AfterValidator`) and should not be called directly.
     """
-    assert info is not None, "Pydantic validation context is missing."
-    assert isinstance(path, Path)
+    if info is None:
+        raise ValueError("Pydantic validation context is missing.")
+    if not isinstance(path, Path):
+        raise TypeError(f"Expected Path, got {type(path).__name__}")
     ext = path.suffix.lower()
     if ext not in EXTENSION_MAPPING:
         msg = f"{ext=} not found on `EXTENSION_MAPPING`. "

@@ -30,9 +30,8 @@ def get_fpath(
         Err(ValueError) if configuration is invalid or multiple files match.
         Err(FileNotFoundError) if file is not found.
     """
-    assert any((data_file.glob, data_file.relative_fpath, data_file.fpath)), (
-        "DataFile must have fpath, relative_fpath, or glob"
-    )
+    if not any((data_file.glob, data_file.relative_fpath, data_file.fpath)):
+        raise ValueError("DataFile must have fpath, relative_fpath, or glob")
 
     if data_file.glob is not None:
         return resolve_glob_pattern(data_file.glob, search_dir=folder_path)

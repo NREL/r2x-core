@@ -295,11 +295,7 @@ def pl_cast_schema(
     cast_exprs = []
     for col, type_str in (proc_spec.column_schema or {}).items():
         if col in data_frame.collect_schema().names():
-            try:
-                polars_type = _get_polars_type(type_str)
-            except ValueError:
-                # Re-raise so callers/tests can observe the failure
-                raise
+            polars_type = _get_polars_type(type_str)
             cast_exprs.append(pl.col(col).cast(polars_type))
 
     if not cast_exprs:
@@ -333,23 +329,19 @@ def pl_apply_filters(
 def pl_select_columns(
     data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
-    """Select specific columns (index + value columns)."""
+    """Select specific columns."""
     if not proc_spec or not proc_spec.select_columns:
         return data_frame
 
-    cols_to_select = []
-    if proc_spec.set_index:
-        cols_to_select.extend(proc_spec.select_columns)
-    cols_to_select.extend(proc_spec.select_columns)
+    # Use dict.fromkeys to maintain order while removing duplicates
+    cols_to_select = list(dict.fromkeys(proc_spec.select_columns))
 
-    unique_cols = list(
-        dict.fromkeys(col for col in cols_to_select if col in data_frame.collect_schema().names())
-    )
-    if not unique_cols:
+    valid_cols = [col for col in cols_to_select if col in data_frame.collect_schema().names()]
+    if not valid_cols:
         return data_frame
 
-    logger.trace("Selecting {} columns from {}", len(unique_cols), data_file.name)
-    return data_frame.select(unique_cols)
+    logger.trace("Selecting {} columns from {}", len(valid_cols), data_file.name)
+    return data_frame.select(valid_cols)
 
 
 def json_rename_keys(json_data: JSONType, *, data_file: DataFile, proc_spec: JSONProcessing) -> JSONType:
