@@ -93,7 +93,7 @@ def test_register_custom_transformation(reader_example):
     def custom_transform(data_file, data):
         return data
 
-    reader_example.register_custom_transformation(str, custom_transform)
+    reader_example.register_custom_transformation(str, transform_func=custom_transform)
 
 
 def test_read_with_reader_kwargs(reader_example, sample_csv, tmp_path):

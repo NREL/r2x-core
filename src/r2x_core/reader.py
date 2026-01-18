@@ -162,6 +162,7 @@ class DataReader:
     def register_custom_transformation(
         self,
         data_types: type | tuple[type, ...],
+        *,
         transform_func: Callable[[DataFile, Any], Any],
     ) -> None:
         """Register a custom transformation function.
@@ -179,6 +180,6 @@ class DataReader:
         >>> def my_transform(data_file: DataFile, data: MyClass) -> MyClass:
         ...     # Custom logic here
         ...     return data
-        >>> reader.register_custom_transformation(MyClass, my_transform)
+        >>> reader.register_custom_transformation(MyClass, transform_func=my_transform)
         """
-        register_transformation(data_types, transform_func)
+        register_transformation(data_types, func=transform_func)

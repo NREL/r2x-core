@@ -52,7 +52,7 @@ def test_pl_apply_filters_single_value(sample_csv: Path):
     proc_spec = TabularProcessing(filter_by={"name": "Alice"})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert len(result) == 1
     assert result["name"][0] == "Alice"
@@ -64,7 +64,7 @@ def test_pl_apply_filters_list_values(sample_csv: Path):
     proc_spec = TabularProcessing(filter_by={"name": ["Alice", "Bob"]})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert len(result) == 2
     names = set(result["name"].to_list())
@@ -77,7 +77,7 @@ def test_pl_apply_filters_multiple_conditions(sample_csv: Path):
     proc_spec = TabularProcessing(filter_by={"retire_year": 2036, "age": 30})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert len(result) == 1
     assert result["name"][0] == "Alice"
@@ -89,7 +89,7 @@ def test_pl_drop_columns_removes_existing(sample_csv: Path):
     proc_spec = TabularProcessing(drop_columns=["city", "score"])
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_drop_columns(df_file, lf, proc_spec).collect()
+    result = pl_drop_columns(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert "city" not in result.columns
     assert "score" not in result.columns
@@ -103,7 +103,7 @@ def test_pl_drop_columns_noop_on_missing(sample_csv: Path):
     proc_spec = TabularProcessing(drop_columns=["nonexistent"])
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_drop_columns(df_file, lf, proc_spec).collect()
+    result = pl_drop_columns(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert set(result.columns) == set(pl.scan_csv(sample_csv).collect().columns)
 
@@ -114,7 +114,7 @@ def test_pl_rename_columns_renames_existing(sample_csv: Path):
     proc_spec = TabularProcessing(column_mapping={"name": "person_name", "age": "person_age"})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_rename_columns(df_file, lf, proc_spec).collect()
+    result = pl_rename_columns(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert "person_name" in result.columns
     assert "person_age" in result.columns
@@ -128,7 +128,7 @@ def test_pl_rename_columns_noop_on_missing(sample_csv: Path):
     proc_spec = TabularProcessing(column_mapping={"nonexistent": "new_name"})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_rename_columns(df_file, lf, proc_spec).collect()
+    result = pl_rename_columns(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert set(result.columns) == set(pl.scan_csv(sample_csv).collect().columns)
 
@@ -139,7 +139,7 @@ def test_pl_cast_schema_casts_columns(sample_csv: Path):
     proc_spec = TabularProcessing(column_schema={"age": "int32", "retire_year": "int32"})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_cast_schema(df_file, lf, proc_spec).collect()
+    result = pl_cast_schema(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert result.schema["age"] == pl.Int32
     assert result.schema["retire_year"] == pl.Int32
@@ -152,7 +152,7 @@ def test_pl_cast_schema_unsupported_type_raises(sample_csv: Path):
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
     with pytest.raises(ValueError, match="Unsupported data type"):
-        pl_cast_schema(df_file, lf, proc_spec).collect()
+        pl_cast_schema(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
 
 def test_pl_pivot_on_unpivots_columns(sample_csv: Path):
@@ -161,7 +161,7 @@ def test_pl_pivot_on_unpivots_columns(sample_csv: Path):
     proc_spec = TabularProcessing(pivot_on="year")
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_pivot_on(df_file, lf, proc_spec).collect()
+    result = pl_pivot_on(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert result.columns == ["year"]
     assert result.height == 3
@@ -174,7 +174,7 @@ def test_json_rename_keys_renames_keys(sample_json_file: Path):
     proc_spec = JSONProcessing(key_mapping={"name": "person_name", "age": "person_age"})
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_rename_keys(df_file, data, proc_spec)
+    result = json_rename_keys(data, data_file=df_file, proc_spec=proc_spec)
     assert isinstance(result, dict)
 
     assert "person_name" in result
@@ -190,7 +190,7 @@ def test_json_apply_filters_filters_by_value(sample_json_file: Path):
     proc_spec = JSONProcessing(filter_by={"age": 30})
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_apply_filters(df_file, data, proc_spec)
+    result = json_apply_filters(data, data_file=df_file, proc_spec=proc_spec)
 
     assert "age" in result
 
@@ -201,7 +201,7 @@ def test_json_apply_filters_filters_list_values(sample_json_file: Path):
     proc_spec = JSONProcessing(filter_by={"name": ["Alice", "Bob"]})
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_apply_filters(df_file, data, proc_spec)
+    result = json_apply_filters(data, data_file=df_file, proc_spec=proc_spec)
 
     assert "name" in result
 
@@ -212,7 +212,7 @@ def test_json_select_keys_keeps_specified_keys(sample_json_file: Path):
     proc_spec = JSONProcessing(select_keys=["name", "score"])
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_select_keys(df_file, data, proc_spec)
+    result = json_select_keys(data, data_file=df_file, proc_spec=proc_spec)
     assert isinstance(result, dict)
 
     assert set(result.keys()) == {"name", "score"}
@@ -226,7 +226,7 @@ def test_json_apply_filters_with_no_match(sample_json_file: Path):
     proc_spec = JSONProcessing(filter_by={"age": 30})
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_apply_filters(df_file, data, proc_spec)
+    result = json_apply_filters(data, data_file=df_file, proc_spec=proc_spec)
 
     # Should not match - returns dict as-is or filtered
     assert isinstance(result, dict)
@@ -242,7 +242,7 @@ def test_json_apply_filters_with_list_of_dicts(sample_json_file: Path):
     proc_spec = JSONProcessing(filter_by={"age": 30})
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_apply_filters(df_file, data, proc_spec)
+    result = json_apply_filters(data, data_file=df_file, proc_spec=proc_spec)
     assert isinstance(result, list)
 
     assert len(result) == 2
@@ -260,7 +260,7 @@ def test_pl_select_columns_with_index(sample_csv: Path):
 
     from r2x_core.processors import pl_select_columns
 
-    result = pl_select_columns(df_file, lf, proc_spec).collect()
+    result = pl_select_columns(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert set(result.columns) == {"name", "age"}
 
@@ -273,7 +273,7 @@ def test_pl_select_columns_empty_selection(sample_csv: Path):
 
     from r2x_core.processors import pl_select_columns
 
-    result = pl_select_columns(df_file, lf, proc_spec)
+    result = pl_select_columns(lf, data_file=df_file, proc_spec=proc_spec)
 
     # Should return unchanged - verify by collecting and checking
     assert result.collect().equals(lf.collect())
@@ -285,7 +285,7 @@ def test_pl_apply_filters_no_filters(sample_csv: Path):
     proc_spec = TabularProcessing(filter_by=None)
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_apply_filters(df_file, lf, proc_spec)
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec)
 
     # Should return unchanged - verify by collecting and checking
     assert result.collect().equals(lf.collect())
@@ -298,7 +298,7 @@ def test_pl_drop_columns_all_removed(sample_csv: Path):
     proc_spec = TabularProcessing(drop_columns=schema_names)
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_drop_columns(df_file, lf, proc_spec).collect()
+    result = pl_drop_columns(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert len(result.columns) == 0
 
@@ -309,7 +309,7 @@ def test_pl_cast_schema_invalid_column(sample_csv: Path):
     proc_spec = TabularProcessing(column_schema={"nonexistent": "int32"})
     df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
 
-    result = pl_cast_schema(df_file, lf, proc_spec).collect()
+    result = pl_cast_schema(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert result is not None
 
@@ -372,7 +372,7 @@ def test_json_select_columns_with_nested_list(sample_json_file: Path):
     proc_spec = JSONProcessing(select_keys=["name", "city"])
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_select_columns(df_file, data, proc_spec)
+    result = json_select_columns(data, data_file=df_file, proc_spec=proc_spec)
 
     assert len(result) == 2
     assert all(isinstance(item, dict) and set(item.keys()) == {"name", "city"} for item in result)
@@ -388,7 +388,7 @@ def test_json_rename_keys_with_list(sample_json_file: Path):
     proc_spec = JSONProcessing(key_mapping={"name": "person_name", "age": "years"})
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_rename_keys(df_file, data, proc_spec)
+    result = json_rename_keys(data, data_file=df_file, proc_spec=proc_spec)
 
     assert len(result) == 2
     assert all("person_name" in item for item in result)
@@ -405,7 +405,7 @@ def test_json_drop_columns_with_list(sample_json_file: Path):
     proc_spec = JSONProcessing(drop_keys=["city"])
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
-    result = json_drop_columns(df_file, data, proc_spec)
+    result = json_drop_columns(data, data_file=df_file, proc_spec=proc_spec)
 
     assert len(result) == 2
     assert all("city" not in item for item in result)
@@ -456,7 +456,7 @@ def test_pl_apply_filters_datetime_single_year(sample_csv: Path):
     proc_spec = TabularProcessing(filter_by={"date": 2020})
     df_file = DataFile(name="test", fpath=csv_file, proc_spec=proc_spec)
 
-    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert result is not None
 
@@ -469,6 +469,6 @@ def test_pl_apply_filters_datetime_multiple_years(sample_csv: Path):
     proc_spec = TabularProcessing(filter_by={"year": [2020, 2021]})
     df_file = DataFile(name="test", fpath=csv_file, proc_spec=proc_spec)
 
-    result = pl_apply_filters(df_file, lf, proc_spec).collect()
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert result is not None
