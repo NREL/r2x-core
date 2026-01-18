@@ -554,6 +554,222 @@ plugins = discover_plugins(Path('plugins/'))
 print(json.dumps(plugins, indent=2))
 ```
 
+## Example: Discovery JSON with Mixed Plugins
+
+Here's what a complete plugin discovery result looks like with both class-based and function-based plugins:
+
+```json
+{
+  "plugins": {
+    "ReEDSParser": {
+      "type": "class",
+      "file": "src/plugins/reeds_parser.py",
+      "line": 45,
+      "class_name": "ReEDSParser",
+      "config_type": "ReEDSConfig",
+      "hooks": [
+        "on_validate",
+        "on_build"
+      ],
+      "required_context": [
+        "config",
+        "store"
+      ],
+      "config_schema": {
+        "model_year": {
+          "type": "int",
+          "required": true,
+          "description": "Target model year"
+        },
+        "scenario": {
+          "type": "str",
+          "required": false,
+          "default": "base",
+          "description": "Scenario name"
+        },
+        "input_folder": {
+          "type": "str",
+          "required": true,
+          "description": "Path to input data"
+        },
+        "skip_buses": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Skip bus components"
+        }
+      }
+    },
+    "PlexosExporter": {
+      "type": "class",
+      "file": "src/plugins/plexos_exporter.py",
+      "line": 23,
+      "class_name": "PlexosExporter",
+      "config_type": "PlexosExportConfig",
+      "hooks": [
+        "on_validate",
+        "on_export"
+      ],
+      "required_context": [
+        "config",
+        "system",
+        "store"
+      ],
+      "config_schema": {
+        "output_dir": {
+          "type": "str",
+          "required": true,
+          "description": "Output directory path"
+        },
+        "compress": {
+          "type": "bool",
+          "required": false,
+          "default": true,
+          "description": "Compress output files"
+        },
+        "format": {
+          "type": "str",
+          "required": false,
+          "default": "xml",
+          "enum": ["xml", "json", "parquet"],
+          "description": "Output format"
+        },
+        "export_timeseries": {
+          "type": "object",
+          "required": false,
+          "description": "Time series export settings",
+          "properties": {
+            "enabled": {
+              "type": "bool",
+              "default": true,
+              "description": "Enable time series export"
+            },
+            "frequency": {
+              "type": "str",
+              "default": "hourly",
+              "enum": ["hourly", "daily", "monthly"],
+              "description": "Export frequency"
+            },
+            "interpolate_missing": {
+              "type": "bool",
+              "default": false,
+              "description": "Interpolate missing values"
+            }
+          }
+        }
+      }
+    },
+    "normalize_units": {
+      "type": "function",
+      "file": "src/plugins/transforms.py",
+      "line": 87,
+      "function_name": "normalize_units",
+      "config_type": "NormalizeUnitsConfig",
+      "decorator": "@expose_plugin",
+      "config_schema": {
+        "base_unit": {
+          "type": "str",
+          "required": true,
+          "enum": ["MW", "kW", "W"],
+          "description": "Base unit for normalization"
+        },
+        "tolerance": {
+          "type": "float",
+          "required": false,
+          "default": 0.01,
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Tolerance threshold for unit matching"
+        },
+        "strict_mode": {
+          "type": "bool",
+          "required": false,
+          "default": false,
+          "description": "Fail on unit mismatch instead of warning"
+        }
+      }
+    },
+    "filter_by_threshold": {
+      "type": "function",
+      "file": "src/plugins/transforms.py",
+      "line": 145,
+      "function_name": "filter_by_threshold",
+      "config_type": "ThresholdFilterConfig",
+      "decorator": "@expose_plugin",
+      "config_schema": {
+        "threshold": {
+          "type": "float",
+          "required": true,
+          "minimum": 0.0,
+          "description": "Threshold value for filtering"
+        },
+        "operation": {
+          "type": "str",
+          "required": false,
+          "default": "greater_than",
+          "enum": ["greater_than", "less_than", "equal", "between"],
+          "description": "Comparison operation"
+        },
+        "criteria": {
+          "type": "object",
+          "required": false,
+          "description": "Filtering criteria",
+          "properties": {
+            "apply_to_components": {
+              "type": "array",
+              "items": {"type": "string"},
+              "default": [],
+              "description": "Component types to filter"
+            },
+            "match_all": {
+              "type": "bool",
+              "default": true,
+              "description": "Match all criteria (AND) vs any (OR)"
+            }
+          }
+        },
+        "exclude_components": {
+          "type": "array",
+          "items": {"type": "string"},
+          "default": [],
+          "description": "Component names to exclude from filtering"
+        }
+      }
+    }
+  },
+  "summary": {
+    "total_plugins": 4,
+    "class_based": 2,
+    "function_based": 2,
+    "config_types": 4,
+    "total_hooks": 4,
+    "implemented_hooks": [
+      "on_validate",
+      "on_build",
+      "on_export"
+    ]
+  }
+}
+```
+
+This JSON shows:
+
+**Class-Based Plugins (2)**:
+- `ReEDSParser`: Parser with config and hooks
+- `PlexosExporter`: Exporter with nested config (export_timeseries object)
+
+**Function-Based Plugins (2)**:
+- `normalize_units`: Transform with simple config
+- `filter_by_threshold`: Transform with nested criteria and exclude list
+
+**Key Features**:
+- Type field distinguishes class vs function plugins
+- Function plugins have decorator field
+- Nested objects shown as nested properties
+- Enums and constraints (minimum, maximum, enum values)
+- Array fields with items type
+- Descriptions for all fields
+
 ## Integration with CLI
 
 The discovery system enables auto-generated CLI help:
