@@ -216,9 +216,154 @@ know their data. Format conversion between different HDF5 structures belongs in
 external tools. Model-specific logic defeats the purpose of a generic,
 configuration-driven approach.
 
+## Power System Data in HDF5
+
+Power system models (ReEDS, PLEXOS, SWITCH, Sienna, etc.) store results as time series data
+in HDF5 format. Understanding the structure of power system outputs is key to configuring
+the reader correctly.
+
+### Common Power System Data Characteristics
+
+**Temporal Granularity**: Power system models typically output at hourly or sub-hourly
+intervals. ReEDS produces 8760 hourly records per year. PLEXOS can generate 5-minute
+interval data (105,120 intervals per year). Multi-year simulations stack these intervals.
+
+**Spatial Aggregation**: Data is aggregated by geographic regions, zones, buses, or
+generation units depending on the model. ReEDS uses ~134 consistent regions. PLEXOS uses
+bus-level granularity. Different output types (generation, demand, prices) may have
+different spatial definitions within the same model.
+
+**Multiple Output Metrics**: A single HDF5 file often contains many related outputs:
+generation by resource type, transmission flows, nodal prices, reserve margins, etc. Each
+metric may have different spatial or temporal resolution.
+
+**Scenario and Year Metadata**: Power system models typically run multiple scenarios
+(different policy assumptions) and multiple years. The output file includes metadata
+identifying the scenario, base year, and solve year for each record.
+
+**Timezone Handling**: Most power system models use a reference timezone (often UTC or a
+specific regional timezone). HDF5 stores datetime strings with explicit timezone
+information. The reader strips timezones by default because most power system analysis
+uses a single consistent timezone throughout.
+
+### Typical Power System HDF5 Layout
+
+```
+power_system_results.h5
+├── time_series_metric_1/
+│   ├── data                    # 2D array (time × space)
+│   ├── columns                 # Spatial dimension names
+│   ├── timestamps              # Temporal dimension
+│   └── metadata_columns        # Scenario, year, or other attributes
+├── time_series_metric_2/
+│   ├── data
+│   ├── columns
+│   ├── timestamps
+│   └── metadata_columns
+├── ...
+└── attributes/
+    ├── scenario_name
+    ├── base_year
+    ├── version
+    └── description
+```
+
+Different power system models use different naming conventions:
+
+- ReEDS: `hourly_demand`, `hourly_generation`, `hourly_curtailment`
+- PLEXOS: Hierarchical groups like `Solution/Generator Output`, `Solution/Price`
+- SWITCH: Flat structure with names like `dispatch_zone_power_mw`
+- Sienna: Time series stored with resource-specific names
+
+All require configuration to tell r2x-core where to find data, column definitions, and
+temporal information.
+
 ## Examples of File Structures
 
-### Energy Model Time Series
+### ReEDS Hourly Time Series
+
+ReEDS (Regional Energy Deployment System) structures its hourly time series output in HDF5 with the following layout:
+
+```
+reeds_hourly_data.h5
+├── hourly_demand/
+│   ├── data (8760 x 134)          # Hourly generation, 134 regions
+│   ├── columns (134,)             # Region/zone IDs
+│   ├── timestamps (8760,)         # ISO 8601 UTC timestamps
+│   └── year (8760,)               # Solve year for each hour
+├── hourly_curtailment/
+│   ├── data (8760 x 134)          # Curtailment by region
+│   ├── columns (134,)
+│   ├── timestamps (8760,)
+│   └── year (8760,)
+└── metadata/
+    ├── scenario_name               # Scenario identifier
+    ├── regions (134,)              # Full region names
+    └── base_year                   # Reference year
+```
+
+**Characteristics**:
+
+- Multiple datasets representing different output types (generation, demand, curtailment, etc.)
+- Shared column definitions (same regions/zones across all output types)
+- Datetime stored as ISO 8601 strings with UTC timezone
+- Year metadata to support multi-year simulations
+- Region names as both column indices and full descriptive names
+
+**Configuration for ReEDS Generation Data**:
+
+```python
+reader_kwargs = {
+    "data_key": "hourly_demand/data",
+    "columns_key": "hourly_demand/columns",
+    "datetime_key": "hourly_demand/timestamps",
+    "additional_keys": ["hourly_demand/year"],
+    "strip_timezone": True
+}
+```
+
+### PLEXOS Interval Output
+
+PLEXOS (energy market and operations model) stores interval-based results with this structure:
+
+```
+plexos_results.h5
+├── Solution/
+│   ├── Generator Output (8760 x 500)    # Generation by unit
+│   ├── Generator Output_names (500,)    # Generator names
+│   ├── Generator Output_regions (500,)  # Region identifiers
+│   ├── Price (8760 x 50)                # LMP by bus
+│   ├── Price_names (50,)                # Bus names
+│   ├── Period (8760,)                   # Period identifiers
+│   └── Interval (8760,)                 # Interval timestamps
+└── Information/
+    ├── run_id
+    ├── description
+    └── model_version
+```
+
+**Characteristics**:
+
+- Hierarchical structure with Solution and Information groups
+- Multiple metrics with separate column definitions
+- Mixed temporal identifiers (Period + Interval)
+- Generator/unit-level granularity rather than aggregated regions
+- Model metadata stored separately
+
+**Configuration for PLEXOS Generation Output**:
+
+```python
+reader_kwargs = {
+    "data_key": "Solution/Generator Output",
+    "columns_key": "Solution/Generator Output_names",
+    "datetime_key": "Solution/Interval",
+    "additional_keys": ["Solution/Generator Output_regions", "Solution/Period"],
+    "strip_timezone": True,
+    "datetime_column_name": "interval"
+}
+```
+
+### Generic Energy Model Time Series
 
 ```
 file.h5
@@ -277,8 +422,20 @@ reader_kwargs = {}
 ## Summary
 
 The HDF5 reader achieves flexibility through configuration rather than code. The
-library remains model-agnostic with no hardcoded knowledge of specific formats.
-Users control everything through configuration parameters. The approach works
-seamlessly with JSON configuration files and is self-documenting. A single code
-path handles all formats, making the system maintainable. New formats need only
-new configuration, never code changes.
+library remains model-agnostic with no hardcoded knowledge of specific power system
+models (ReEDS, PLEXOS, SWITCH, Sienna, etc.) or any other data format. Users control
+everything through configuration parameters. The approach works seamlessly with JSON
+configuration files and is self-documenting. A single code path handles all formats
+and power system models, making the system maintainable. New power system models,
+formats, or file structures need only new configuration, never code changes.
+
+### Practical Workflow
+
+1. **Understand your file**: Explore the HDF5 file structure using tools like `h5py` or `h5dump`
+2. **Identify key locations**: Note where data, column names, and datetime information are stored
+3. **Write configuration**: Create `reader_kwargs` that maps these locations
+4. **Test reading**: Verify the configuration produces the expected DataFrame
+5. **Version control**: Store configuration with your translation code for reproducibility
+
+The configuration becomes documentation of your power system model's file structure,
+making it easy for others to understand and reproduce your translation pipeline.
