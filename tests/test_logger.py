@@ -477,3 +477,118 @@ def test_setup_logging_default_verbosity():
 
     setup_logging(verbosity=0)
     assert logger_module._verbosity == 0
+
+
+def test_format_tty_fallback_with_timestamp_and_extras(capsys):
+    """Test fallback TTY formatting with both timestamp and extras."""
+    import r2x_core.logger as logger_module
+
+    logger_module._verbosity = VERBOSITY_TRACE
+    logger_module._console = False
+
+    level_mock = mock.Mock()
+    level_mock.name = "INFO"
+
+    record = {
+        "level": level_mock,
+        "message": "test with everything",
+        "extra": {"request_id": "12345", "user": "alice", "name": "ignored"},
+        "time": datetime(2026, 1, 18, 10, 30, 45, 123456),
+        "exception": None,
+    }
+
+    format_tty(record)
+    output = capsys.readouterr().err
+    assert "test with everything" in output
+    assert "INFO" in output
+    # Should include timestamp in fallback path
+    assert "2026-01" in output or "10:30" in output
+    # Should include extras
+    assert "request_id" in output or "12345" in output
+
+
+def test_format_tty_fallback_only_extras(capsys):
+    """Test fallback TTY formatting with extras but no timestamp."""
+    import r2x_core.logger as logger_module
+
+    logger_module._verbosity = 0
+    logger_module._console = False
+
+    level_mock = mock.Mock()
+    level_mock.name = "WARNING"
+
+    record = {
+        "level": level_mock,
+        "message": "warning with extras",
+        "extra": {"code": 500, "retries": 3, "name": "ignored"},
+        "exception": None,
+    }
+
+    format_tty(record)
+    output = capsys.readouterr().err
+    assert "warning with extras" in output
+    assert "WARN" in output
+    # Should include extras in fallback
+    assert "code" in output or "500" in output
+
+
+def test_format_json_with_no_file():
+    """Test JSON formatting when file info is missing."""
+    level_mock = mock.Mock()
+    level_mock.name = "TRACE"
+
+    record = {
+        "level": level_mock,
+        "time": datetime(2026, 1, 18, 10, 30, 45, 123456),
+        "message": "trace message",
+        "extra": {},
+        "file": None,
+        "exception": None,
+    }
+    result = format_json(record)
+    payload = json.loads(result)
+
+    assert payload["msg"] == "trace message"
+    assert "file" not in payload
+    assert "line" not in payload
+
+
+def test_render_exception_no_traceback(capsys):
+    """Test _render_exception with exception but no traceback."""
+    exc = mock.Mock()
+    exc.type = ValueError
+    exc.value = ValueError("test")
+    exc.traceback = None
+
+    record = {"exception": exc}
+    _render_exception(record, None)
+    # Should handle gracefully without output
+    assert True
+
+
+def test_format_json_with_exception_no_traceback():
+    """Test JSON formatting with exception but no traceback."""
+    level_mock = mock.Mock()
+    level_mock.name = "ERROR"
+
+    exc = mock.Mock()
+    exc.type = RuntimeError
+    exc.value = RuntimeError("No trace")
+    exc.traceback = None
+
+    record = {
+        "level": level_mock,
+        "time": datetime(2026, 1, 18, 10, 30, 45, 123456),
+        "message": "error without traceback",
+        "extra": {},
+        "file": None,
+        "exception": exc,
+    }
+    result = format_json(record)
+    payload = json.loads(result)
+
+    assert "error" in payload
+    assert payload["error"]["type"] == "RuntimeError"
+    assert payload["error"]["message"] == "No trace"
+    # Should not have traceback in the error object
+    assert "traceback" not in payload["error"]

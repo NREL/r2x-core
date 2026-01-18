@@ -38,6 +38,26 @@ the string representation of values, not their underlying storage. This
 separation ensures that calculations always work with consistent values while
 allowing flexible reporting.
 
+```python
+from r2x_core import set_unit_system, UnitSystem
+
+# Create a generator with a 100 MW base
+gen = Generator(name="Gen1", p_max=0.5)  # 0.5 pu = 50 MW
+
+# Internal storage is always 0.5 (device-base pu)
+print(gen.p_max)  # Output: 0.5
+
+# Change display mode - underlying value unchanged
+set_unit_system(UnitSystem.NATURAL_UNITS)
+print(gen)  # Display shows: 50.0 MW
+
+set_unit_system(UnitSystem.DEVICE_BASE)
+print(gen)  # Display shows: 0.5 pu
+
+# Value accessed programmatically is always the same
+assert gen.p_max == 0.5  # Always true, regardless of display mode
+```
+
 ```{important}
 Internal storage is always in device-base per-unit. Display modes (device-base, natural units, system-base) affect only the string representation when printing or generating reports. Calculations always operate on the consistent internal representation.
 ```
@@ -53,6 +73,39 @@ automatically convert input values to the correct internal representation.
 Invalid inputs are caught during construction rather than producing silent
 errors during calculation.
 
+```python
+from typing import Annotated
+from r2x_core import HasUnits, Unit
+from pydantic import BaseModel
+
+class Generator(HasUnits, BaseModel):
+    name: str
+    base_power: float  # In MW
+    # Power output as per-unit (normalized to base_power)
+    p_max: Annotated[float, Unit("pu", base="base_power")]
+    # Voltage rating in absolute units
+    voltage_kv: Annotated[float, Unit("kV")]
+
+# Type-safe inputs - automatic conversion
+gen1 = Generator(
+    name="Gen1",
+    base_power=100.0,
+    p_max=0.8,  # 0.8 pu
+    voltage_kv=13.8
+)
+
+# Natural unit input - automatic conversion
+gen2 = Generator(
+    name="Gen2",
+    base_power=50.0,
+    p_max={"value": 40.0, "unit": "MW"},  # Converts to 0.8 pu (40/50)
+    voltage_kv=13.8
+)
+
+# Both generators have same internal representation
+assert gen1.p_max == gen2.p_max == 0.8  # True
+```
+
 ### Composability and Inheritance
 
 Components can inherit from either `HasUnits` or `HasPerUnit` depending on
@@ -62,6 +115,36 @@ components with fixed units or quantities that do not participate in system-wide
 normalization. The `HasPerUnit` class extends `HasUnits` to add system-base
 tracking through a private `_system_base` attribute. This hierarchical design
 allows components to opt into exactly the features they need.
+
+```python
+from typing import Annotated
+from r2x_core import HasUnits, HasPerUnit, Unit
+from pydantic import BaseModel
+
+# Standalone component without system integration
+class Transformer(HasUnits, BaseModel):
+    name: str
+    impedance: Annotated[float, Unit("ohm")]  # Fixed unit, no per-unit
+    x_r_ratio: float  # Dimensionless quantity
+
+# Transformers don't need system base
+transformer = Transformer(
+    name="TX1",
+    impedance=0.05,
+    x_r_ratio=2.0
+)
+
+# System-integrated component
+class Generator(HasPerUnit, BaseModel):
+    name: str
+    base_power: float
+    p_max: Annotated[float, Unit("pu", base="base_power")]
+    # Can access system base when added to a system
+
+# Generators can use system-base display when added to a System
+gen = Generator(name="Gen1", base_power=100.0, p_max=0.8)
+# gen._system_base is set when added to a System
+```
 
 ```{tip}
 Use `HasUnits` for standalone components that don't need system integration. Use `HasPerUnit` when components will be added to a `System` and need system-base display capabilities.
@@ -80,6 +163,42 @@ quantity (such as "MVA" or "kV") and an optional reference to a base field for
 per-unit calculations. When a field has no base reference, it stores absolute
 quantities in the specified unit. When a base reference is provided, the field
 stores per-unit values calculated relative to that base.
+
+```python
+from typing import Annotated
+from r2x_core import Unit
+
+# Specification without base - stores absolute quantity
+voltage: Annotated[float, Unit("kV")]
+
+# Specification with base - stores per-unit value
+# Stored as: input_value / base_mva
+power_mva: Annotated[float, Unit("MVA", base="base_mva")]
+
+# Usage in a component
+from r2x_core import HasUnits
+from pydantic import BaseModel
+
+class Bus(HasUnits, BaseModel):
+    name: str
+    base_mva: float = 100.0
+
+    # Absolute voltage
+    voltage_kv: Annotated[float, Unit("kV")]
+
+    # Per-unit power
+    p_mva: Annotated[float, Unit("MVA", base="base_mva")]
+
+# Natural unit input auto-conversion
+bus = Bus(
+    name="Bus1",
+    voltage_kv=138.0,
+    p_mva={"value": 50.0, "unit": "MVA"}  # 50/100 = 0.5 pu internally
+)
+
+print(bus.p_mva)  # Output: 0.5 (stored as per-unit)
+print(bus.voltage_kv)  # Output: 138.0 (stored as absolute)
+```
 
 The specification integrates with Pydantic's validation system through the
 `__get_pydantic_core_schema__` method. This integration allows natural unit

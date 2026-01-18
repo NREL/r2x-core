@@ -2,15 +2,21 @@
 
 ## Overview
 
-r2x-core's data management system ({py:class}`~r2x_core.DataStore`, {py:class}`~r2x_core.DataFile`, {py:class}`~r2x_core.DataReader`) embodies three core design principles: configuration-driven workflows, lazy evaluation, and composable processing. Understanding these principles helps you build maintainable, debuggable data pipelines.
+r2x-core's data management system ({py:class}`~r2x_core.DataStore`,
+{py:class}`~r2x_core.DataFile`, {py:class}`~r2x_core.DataReader`) embodies three
+core design principles: configuration-driven workflows, lazy evaluation, and
+composable processing. Understanding these principles helps you build
+maintainable, debuggable data pipelines.
 
 ## Configuration-Driven Approach
 
-The core insight is: **data workflows should be expressed as configuration, not code**. This separation enables several benefits:
+The core insight is: **data workflows should be expressed as configuration, not
+code**. This separation enables several benefits:
 
 ### Reproducibility
 
-When your data transformations are defined in JSON/YAML, they become version-controllable artifacts alongside your code. You can:
+When your data transformations are defined in JSON/YAML, they become
+version-controllable artifacts alongside your code. You can:
 
 - Track changes to data workflows in git
 - Associate data configurations with specific code versions
@@ -30,19 +36,35 @@ repo/
 
 ### Flexibility Without Redeployment
 
-In deployment scenarios, particularly cloud-native ones, the ability to change which files are processed or how they're transformed at runtime is invaluable. You can update the configuration and restart the application, and the data pipeline adapts immediately. This eliminates the need to recompile or redeploy code just to handle a new data source or adjust a transformation rule.
+In deployment scenarios, particularly cloud-native ones, the ability to change
+which files are processed or how they're transformed at runtime is invaluable.
+You can update the configuration and restart the application, and the data
+pipeline adapts immediately. This eliminates the need to recompile or redeploy
+code just to handle a new data source or adjust a transformation rule.
 
 ### Separation of Concerns
 
-Data engineers who understand data schemas and business logic (but may not know Python) can configure data files. Python developers focus on the parser logic. The JSON configuration becomes a contract between teams.
+Data engineers who understand data schemas and business logic (but may not know
+Python) can configure data files. Python developers focus on the parser logic.
+The JSON configuration becomes a contract between teams.
 
 ## Lazy Evaluation
 
-{py:class}`~r2x_core.DataStore` uses lazy evaluation: data is read and processed only when requested.
+{py:class}`~r2x_core.DataStore` uses lazy evaluation: data is read and processed
+only when requested.
 
 ### Why Lazy?
 
-Lazy evaluation provides several practical benefits. First, efficiency: large projects often configure hundreds of data files but only need a subset in any given run. Without lazy evaluation, you'd pay the cost of reading all files upfront, which is wasteful. Second, error localization: if a data file is broken, you discover it only when you try to read it. This is actually desirable in some workflows where you want to continue processing even if certain optional files fail. Third, composition: you can create a DataStore with all possible data files, then selectively read what you need based on runtime parameters like solver year, region, or scenario. This pattern enables flexible, parameterized workflows without configuration duplication.
+Lazy evaluation provides several practical benefits. First, efficiency: large
+projects often configure hundreds of data files but only need a subset in any
+given run. Without lazy evaluation, you'd pay the cost of reading all files
+upfront, which is wasteful. Second, error localization: if a data file is
+broken, you discover it only when you try to read it. This is actually desirable
+in some workflows where you want to continue processing even if certain optional
+files fail. Third, composition: you can create a DataStore with all possible
+data files, then selectively read what you need based on runtime parameters like
+solver year, region, or scenario. This pattern enables flexible, parameterized
+workflows without configuration duplication.
 
 ### Example
 
@@ -58,15 +80,19 @@ data2 = store.read_data("file2")  # File2 loaded now
 # Files 3-50 are never touched
 ```
 
-This is distinct from eager loading, where all files would be read at initialization time.
+This is distinct from eager loading, where all files would be read at
+initialization time.
 
 ## Composable Processing
 
-Data transformations (filtering, column selection, pivoting, etc.) are expressed declaratively through {py:class}`~r2x_core.TabularProcessing` and {py:class}`~r2x_core.JSONProcessing` objects. These compose naturally:
+Data transformations (filtering, column selection, pivoting, etc.) are expressed
+declaratively through {py:class}`~r2x_core.TabularProcessing` and
+{py:class}`~r2x_core.JSONProcessing` objects. These compose naturally:
 
 ### Processing Pipeline Order
 
-1. **File Selection**: Locate the file (absolute path, relative path, or glob pattern)
+1. **File Selection**: Locate the file (absolute path, relative path, or glob
+   pattern)
 2. **Reading**: Use reader (default or custom) with specified kwargs
 3. **Transformations**: Apply processing operations in sequence:
    - Column/key selection
@@ -78,7 +104,12 @@ Data transformations (filtering, column selection, pivoting, etc.) are expressed
    - Value replacement
    - Null handling
 
-Each step builds on previous ones. The design ensures transformations are readable (looking at a processing spec tells you exactly what happens to the data), debuggable (if something's wrong, each transformation step can be tested independently), reusable (a processing spec can be applied to multiple similar files), and version-controllable (processing pipelines are data, not code, so they live in config files and track with git history).
+Each step builds on previous ones. The design ensures transformations are
+readable (looking at a processing spec tells you exactly what happens to the
+data), debuggable (if something's wrong, each transformation step can be tested
+independently), reusable (a processing spec can be applied to multiple similar
+files), and version-controllable (processing pipelines are data, not code, so
+they live in config files and track with git history).
 
 ### Example
 
@@ -100,11 +131,13 @@ data_file = DataFile(
 )
 ```
 
-When you read this file, the exact transformation sequence is clear. You can debug by disabling each step and observing the effect.
+When you read this file, the exact transformation sequence is clear. You can
+debug by disabling each step and observing the effect.
 
 ## Configuration Validation
 
-{py:class}`~r2x_core.DataStore` uses Pydantic models for validation. This catches errors early:
+{py:class}`~r2x_core.DataStore` uses Pydantic models for validation. This
+catches errors early:
 
 ```python
 # Bad config: file doesn't exist, glob is invalid, etc.
@@ -115,11 +148,14 @@ store = DataStore("config.json")
 store.add_data(bad_file)  # Raises ValidationError with clear message
 ```
 
-This "fail fast" approach saves debugging time. Configuration errors surface immediately with helpful error messages, not mysterious failures deep in data processing.
+This "fail fast" approach saves debugging time. Configuration errors surface
+immediately with helpful error messages, not mysterious failures deep in data
+processing.
 
 ## Placeholders and Runtime Parameterization
 
-Lazy evaluation enables another pattern: runtime parameterization through placeholders:
+Lazy evaluation enables another pattern: runtime parameterization through
+placeholders:
 
 ```python
 processing = TabularProcessing(
@@ -130,23 +166,28 @@ processing = TabularProcessing(
 data = store.read_data("file", placeholders={"solve_year": 2024})
 ```
 
-This allows a single DataStore configuration to work across multiple years, scenarios, or regions without modification.
+This allows a single DataStore configuration to work across multiple years,
+scenarios, or regions without modification.
 
 ## Trade-offs and Design Decisions
 
 ### Why Not Automatic Discovery?
 
-You might ask: why not automatically discover CSV files and create DataFile configs? The answer is intentionality. Automatic discovery is convenient for one-off scripts but problematic in production:
+You might ask: why not automatically discover CSV files and create DataFile
+configs? The answer is intentionality. Automatic discovery is convenient for
+one-off scripts but problematic in production:
 
 - Brittle: Adding a file to a folder unexpectedly changes behavior
 - Unclear: You can't see at a glance which files are being processed
 - Problematic: Temporary or debug files might get accidentally included
 
-By requiring explicit configuration, you get clarity and control at the cost of slightly more setup.
+By requiring explicit configuration, you get clarity and control at the cost of
+slightly more setup.
 
 ### Why Separate Reader Config from File Path?
 
-{py:class}`~r2x_core.ReaderConfig` lets you specify how to read a file independently of where it is. This enables:
+{py:class}`~r2x_core.ReaderConfig` lets you specify how to read a file
+independently of where it is. This enables:
 
 - Using different reader functions for similar files
 - Passing reader-specific kwargs (CSV delimiter, HDF5 dataset name, etc.)
@@ -166,7 +207,8 @@ Python APIs are also provided for programmatic creation.
 ## See Also
 
 - {doc}`../how-tos/manage-datastores` - How-to guide for DataStore
-- {doc}`../how-tos/configure-data-files` - How-to guide for DataFile and transformations
+- {doc}`../how-tos/configure-data-files` - How-to guide for DataFile and
+  transformations
 - {py:class}`~r2x_core.DataStore` - API reference
 - {py:class}`~r2x_core.DataFile` - API reference
 - {py:class}`~r2x_core.DataReader` - API reference

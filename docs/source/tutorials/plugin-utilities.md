@@ -1,6 +1,8 @@
 # Plugin Developer Utilities
 
-R2X Core provides a collection of utilities to help plugin developers work with components, validation, and data export. These utilities are now part of the public API and available for direct import.
+R2X Core provides a collection of utilities to help plugin developers work with
+components, validation, and data export. These utilities are now part of the
+public API and available for direct import.
 
 ## Available Utilities
 
@@ -20,7 +22,8 @@ from r2x_core import (
 
 #### `components_to_records()`
 
-Convert system components to a list of dictionary records with optional filtering, field selection, and key mapping.
+Convert system components to a list of dictionary records with optional
+filtering, field selection, and key mapping.
 
 **Signature:**
 
@@ -36,9 +39,13 @@ def components_to_records(
 **Parameters:**
 
 - `system` (System): The R2X system containing components to extract
-- `filter_func` (optional): Function that accepts a component and returns bool. If provided, only components where `filter_func(component)` returns `True` are included
-- `fields` (optional): List of field names to include. If None, all fields are included
-- `key_mapping` (optional): Dictionary mapping field names to new key names in the output records
+- `filter_func` (optional): Function that accepts a component and returns bool.
+  If provided, only components where `filter_func(component)` returns `True` are
+  included
+- `fields` (optional): List of field names to include. If None, all fields are
+  included
+- `key_mapping` (optional): Dictionary mapping field names to new key names in
+  the output records
 
 **Returns:**
 
@@ -69,7 +76,8 @@ records = components_to_records(
 
 #### `export_components_to_csv()`
 
-Export components from the system to a CSV file with optional filtering and field selection.
+Export components from the system to a CSV file with optional filtering and
+field selection.
 
 **Signature:**
 
@@ -88,10 +96,12 @@ def export_components_to_csv(
 
 - `system` (System): The R2X system containing components to export
 - `file_path` (Path | str): Output path for the CSV file
-- `filter_func` (optional): Function to filter components (same as `components_to_records`)
+- `filter_func` (optional): Function to filter components (same as
+  `components_to_records`)
 - `fields` (optional): List of field names to include in the CSV
 - `key_mapping` (optional): Dictionary mapping field names to CSV column names
-- `**dict_writer_kwargs`: Additional arguments passed to `csv.DictWriter` (e.g., `quoting`, `delimiter`)
+- `**dict_writer_kwargs`: Additional arguments passed to `csv.DictWriter` (e.g.,
+  `quoting`, `delimiter`)
 
 **Example:**
 
@@ -123,7 +133,8 @@ export_components_to_csv(
 
 #### `create_component()`
 
-Create and validate a component instance with optional validation skipping and support for recovery from validation errors.
+Create and validate a component instance with optional validation skipping and
+support for recovery from validation errors.
 
 **Signature:**
 
@@ -139,13 +150,16 @@ def create_component(
 **Parameters:**
 
 - `component_class` (type[T]): The component class to instantiate
-- `skip_none` (bool, default True): Whether to skip fields with None values when creating the component
-- `skip_validation` (bool, default False): Skip Pydantic validation when creating components (faster but less safe)
+- `skip_none` (bool, default True): Whether to skip fields with None values when
+  creating the component
+- `skip_validation` (bool, default False): Skip Pydantic validation when
+  creating components (faster but less safe)
 - `**field_values`: Field values to pass to the component constructor
 
 **Returns:**
 
-- `Result[T, PydanticValidationError]`: Returns `Ok(component)` if validation succeeds, or `Err(error)` if validation fails
+- `Result[T, PydanticValidationError]`: Returns `Ok(component)` if validation
+  succeeds, or `Err(error)` if validation fails
 
 **Example:**
 
@@ -174,7 +188,8 @@ result = create_component(
 
 #### `getter()`
 
-Decorator for registering getter functions that can be used in rules. Getters provide a way to extract or compute values from a translation context.
+Decorator for registering getter functions that can be used in rules. Getters
+provide a way to extract or compute values from a translation context.
 
 **Signature:**
 
@@ -215,12 +230,14 @@ def get_bus_voltage(bus: Bus) -> float:
 **Parameters:**
 
 - `func` (optional): The function to decorate (when used without parentheses)
-- `name` (optional keyword-only): Custom name for registering the getter (required when using parentheses)
+- `name` (optional keyword-only): Custom name for registering the getter
+  (required when using parentheses)
 
 **Raises:**
 
 - `ValueError`: If a getter with the same name is already registered
-- `TypeError`: If name is specified without parentheses, or if the first argument is not callable
+- `TypeError`: If name is specified without parentheses, or if the first
+  argument is not callable
 
 **Example:**
 
@@ -242,7 +259,8 @@ def get_capacity(gen) -> float:
 
 #### `transfer_time_series_metadata()`
 
-Transfer time series metadata from a source system to a target system, handling component UUID mapping and deduplication.
+Transfer time series metadata from a source system to a target system, handling
+component UUID mapping and deduplication.
 
 **Signature:**
 
@@ -252,23 +270,27 @@ def transfer_time_series_metadata(context: PluginContext) -> TimeSeriesTransferR
 
 **Parameters:**
 
-- `context` (PluginContext): The plugin context containing both source and target systems
+- `context` (PluginContext): The plugin context containing both source and
+  target systems
 
 **Returns:**
 
-- `TimeSeriesTransferResult` (dataclass): Statistics about the transfer with fields:
+- `TimeSeriesTransferResult` (dataclass): Statistics about the transfer with
+  fields:
   - `transferred: int` - Number of new time series transferred
   - `updated: int` - Number of time series with updated owner mappings
   - `children_remapped: int` - Number of child component associations remapped
 
 **Description:**
 
-This function handles the complex process of transferring time series metadata between systems:
+This function handles the complex process of transferring time series metadata
+between systems:
 
 1. Maps components between source and target systems by UUID
 2. Transfers time series associations to the target system
 3. Handles deduplication of associations
-4. Remaps child component references to their parent components in the target system
+4. Remaps child component references to their parent components in the target
+   system
 5. Ensures unique indexes are maintained
 
 **Example:**
@@ -369,8 +391,10 @@ def safe_create_components(component_data_list, component_class) -> ComponentBat
 These utilities follow R2X Core's design principles:
 
 - **Result-based error handling**: Functions that can fail return `Result` types
-- **Functional composition**: Filter functions allow flexible component selection
-- **Type safety**: Strong typing support throughout with generics where appropriate
+- **Functional composition**: Filter functions allow flexible component
+  selection
+- **Type safety**: Strong typing support throughout with generics where
+  appropriate
 - **Performance**: Utilities are optimized for common plugin development tasks
 - **Logging**: Integration with loguru for debugging and diagnostics
 
