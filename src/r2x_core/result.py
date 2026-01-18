@@ -10,6 +10,22 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
+class RuleApplicationStats:
+    """Statistics from applying a single transformation rule."""
+
+    converted: int
+    skipped: int
+
+
+@dataclass(frozen=True, slots=True)
+class ConversionOption:
+    """A possible type conversion with version."""
+
+    target_type: str
+    version: int
+
+
+@dataclass(frozen=True, slots=True)
 class RuleResult:
     """Result of applying a single transformation rule."""
 

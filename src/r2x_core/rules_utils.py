@@ -10,17 +10,16 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
-from .context import ContextT
+from .plugin_context import PluginContext
 
 if TYPE_CHECKING:
-    from .context import TranslationContext
     from .rules import Rule, RuleFilter, RuleLike
 
 
 _COMPONENT_TYPE_CACHE: dict[str, type] = {}
 
 
-def _resolve_component_type(type_name: str, context: TranslationContext) -> Result[type, TypeError]:
+def _resolve_component_type(type_name: str, context: PluginContext) -> Result[type, TypeError]:
     """Resolve a component type name to a class.
 
     Uses cache to avoid repeated module imports for the same type.
@@ -30,8 +29,8 @@ def _resolve_component_type(type_name: str, context: TranslationContext) -> Resu
     ----------
     type_name : str
         Name of the component type to resolve
-    context : TranslationContext
-        Translation context to get models from config
+    context : PluginContext
+        Plugin context to get models from config
 
     Returns
     -------
@@ -67,10 +66,10 @@ def _create_target_component(target_class: type, kwargs: dict[str, Any]) -> Any:
     return target_class(**kwargs)
 
 
-def _make_attr_getter(chain: list[str]) -> Callable[[TranslationContext, Any], Result[Any, ValueError]]:
+def _make_attr_getter(chain: list[str]) -> Callable[[PluginContext, Any], Result[Any, ValueError]]:
     """Create a getter that safely walks nested attributes and returns a Result."""
 
-    def _getter(_: TranslationContext, src: Any) -> Result[Any, ValueError]:
+    def _getter(_: PluginContext, src: Any) -> Result[Any, ValueError]:
         """Extract attributes."""
         val = src
         for attr in chain:
@@ -85,10 +84,10 @@ def _make_attr_getter(chain: list[str]) -> Callable[[TranslationContext, Any], R
 def _build_target_fields(
     rule: Rule,
     source_component: Any,
-    context: TranslationContext,
+    context: PluginContext,
 ) -> Result[dict[str, Any], ValueError]:
     """Build field map for the target component."""
-    return build_component_kwargs(rule, source_component, context)
+    return build_component_kwargs(source_component, rule=rule, context=context)
 
 
 def _as_attr_source(source_component: Any) -> Any:
@@ -99,20 +98,18 @@ def _as_attr_source(source_component: Any) -> Any:
 
 
 def build_component_kwargs(
-    rule: RuleLike[ContextT],
-    source_component: Any,
-    context: ContextT,
+    source_component: Any, *, rule: RuleLike, context: PluginContext
 ) -> Result[dict[str, Any], ValueError]:
     """Construct kwargs for instantiating a target component.
 
     Parameters
     ----------
-    rule : RuleLike
-        Object exposing field_map, getters, and defaults.
     source_component : Any
         Source object or parser record providing attributes referenced by the rule.
-    context : Context
-        Active context passed to getters (TranslationContext or custom).
+    rule : RuleLike
+        Object exposing field_map, getters, and defaults.
+    context : PluginContext
+        Active context passed to getters.
     """
     source_obj = _as_attr_source(source_component)
     field_map = getattr(rule, "field_map", {})

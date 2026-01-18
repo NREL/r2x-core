@@ -10,7 +10,7 @@ from .utils import audit_file, resolve_glob_pattern
 
 
 def get_fpath(
-    data_file: DataFile, folder_path: Path, info: FileInfo | None
+    data_file: DataFile, *, folder_path: Path, info: FileInfo | None = None
 ) -> Result[Path, ValueError | FileNotFoundError]:
     """Get the resolved file path (absolute, relative, or glob), validated with audit.
 
@@ -35,7 +35,7 @@ def get_fpath(
     )
 
     if data_file.glob is not None:
-        return resolve_glob_pattern(folder_path, data_file.glob)
+        return resolve_glob_pattern(data_file.glob, search_dir=folder_path)
     if data_file.relative_fpath is not None:
         fpath = folder_path / Path(data_file.relative_fpath)
         logger.trace("Resolved relative_fpath={} for file={}", fpath, data_file.name)

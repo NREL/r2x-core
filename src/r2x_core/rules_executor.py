@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
 from infrasys import Component, SupplementalAttribute
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
-from .context import TranslationContext
-from .result import RuleResult, TranslationResult
+from .plugin_context import PluginContext
+from .result import RuleApplicationStats, RuleResult, TranslationResult
 from .rules import Rule
+
+if TYPE_CHECKING:
+    pass
 from .rules_utils import (
     _build_target_fields,
     _create_target_component,
@@ -23,13 +27,13 @@ from .system_utils import _iter_system_components
 from .time_series import transfer_time_series_metadata
 
 
-def apply_rules_to_context(context: TranslationContext) -> TranslationResult:
-    """Apply all transformation rules defined in a TranslationContext.
+def apply_rules_to_context(context: PluginContext) -> TranslationResult:
+    """Apply all transformation rules defined in a PluginContext.
 
     Parameters
     ----------
-    context : TranslationContext
-        The translation context containing rules and systems
+    context : PluginContext
+        The plugin context containing rules and systems
 
     Returns
     -------
@@ -57,20 +61,20 @@ def apply_rules_to_context(context: TranslationContext) -> TranslationResult:
 
     for rule in sorted_rules:
         logger.debug("Applying rule: {}", rule)
-        result = apply_single_rule(rule, context)
+        result = apply_single_rule(rule, context=context)
 
         match result:
-            case Ok((converted, skipped)):
+            case Ok(stats):
                 rule_results.append(
                     RuleResult(
                         rule=rule,
-                        converted=converted,
-                        skipped=skipped,
+                        converted=stats.converted,
+                        skipped=stats.skipped,
                         success=True,
                         error=None,
                     )
                 )
-                total_converted += converted
+                total_converted += stats.converted
                 successful_rules += 1
             case Err(_):
                 error = str(result.err())
@@ -99,7 +103,7 @@ def apply_rules_to_context(context: TranslationContext) -> TranslationResult:
     )
 
 
-def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[int, int], ValueError]:
+def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleApplicationStats, ValueError]:
     """Apply one transformation rule across matching components.
 
     Handles both single and multiple source/target types. Fails fast on any error.
@@ -108,19 +112,22 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
     ----------
     rule : Rule
         The transformation rule to apply
-    context : TranslationContext
-        The translation context containing systems and configuration
+    context : PluginContext
+        The plugin context containing systems and configuration
 
     Returns
     -------
-    Result[tuple[int, int], ValueError]
-        Ok with (converted, 0) if all succeed, or Err with first error encountered
+    Result[RuleApplicationStats, ValueError]
+        Ok with stats if all succeed, or Err with first error encountered
 
     """
     converted = 0
     should_regenerate_uuid = len(rule.get_target_types()) > 1
 
     read_system = context.target_system if rule.system == "target" else context.source_system
+    if read_system is None:
+        return Err(ValueError(f"System '{rule.system}' is not set in context"))
+    assert read_system is not None  # Type guard for type checker
 
     for source_type in rule.get_source_types():
         source_class_result = _resolve_component_type(source_type, context)
@@ -128,12 +135,13 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
             logger.error("Failed to resolve source type '{}': {}", source_type, source_class_result.err())
             return Err(ValueError(str(source_class_result.err())))
 
-        source_class = source_class_result.unwrap()
-        filter_func = None
-        if rule.filter:
-            filter_func = lambda comp: _evaluate_rule_filter(rule.filter, comp)  # noqa: E731
+        source_class = cast(type[Component], source_class_result.unwrap())
+        filter_func: Callable[[Any], bool] | None = None
+        if rule.filter is not None:
+            rule_filter = rule.filter
+            filter_func = lambda comp: _evaluate_rule_filter(rule_filter, comp)  # noqa: E731, B023
 
-        for src_component in _iter_system_components(read_system, source_class, filter_func=filter_func):  # type: Any
+        for src_component in _iter_system_components(read_system, source_class, filter_func=filter_func):
             source_component = cast(Any, src_component)
             for target_type in rule.get_target_types():
                 result = _convert_component(
@@ -154,14 +162,14 @@ def apply_single_rule(rule: Rule, context: TranslationContext) -> Result[tuple[i
                 converted += 1
 
     logger.debug("Rule {}: {} converted", rule, converted)
-    return Ok((converted, 0))
+    return Ok(RuleApplicationStats(converted=converted, skipped=0))
 
 
 def _convert_component(
     rule: Rule,
     source_component: Any,
     target_type: str,
-    context: TranslationContext,
+    context: PluginContext,
     regenerate_uuid: bool,
 ) -> Result[Any, ValueError]:
     """Convert a single source component to a target type.
@@ -177,8 +185,8 @@ def _convert_component(
         The source component to convert
     target_type : str
         The target component type name
-    context : TranslationContext
-        The translation context
+    context : PluginContext
+        The plugin context
     regenerate_uuid : bool
         Whether to generate a new UUID (for multiple targets)
 
@@ -233,7 +241,7 @@ def _is_supplemental_attribute(component: Component) -> bool:
 def _attach_component(
     component: Any,
     source_component: Any,
-    context: TranslationContext,
+    context: PluginContext,
 ) -> Result[None, ValueError]:
     """Attach a component to the target system.
 
@@ -247,14 +255,16 @@ def _attach_component(
         The component or supplemental attribute to attach
     source_component : Any
         The source component that was converted
-    context : TranslationContext
-        The translation context
+    context : PluginContext
+        The plugin context
 
     Returns
     -------
     Result[None, ValueError]
         Ok if attachment succeeds, Err otherwise
     """
+    if context.target_system is None:
+        return Err(ValueError("target_system must be set in context"))
     if not _is_supplemental_attribute(component):
         context.target_system.add_component(component)
         return Ok(None)

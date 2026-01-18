@@ -75,7 +75,7 @@ class UpgradeStep(BaseModel):
 
 
 def shall_we_upgrade(
-    step: UpgradeStep, current_version: str, strategy: VersionStrategy | None = None
+    step: UpgradeStep, *, current_version: str, strategy: VersionStrategy | None = None
 ) -> Result[bool, UpgradeError]:
     """Determine if upgrade step should execute based on version constraints.
 
@@ -130,7 +130,9 @@ def shall_we_upgrade(
     return Ok(True)
 
 
-def run_upgrade_step(step: UpgradeStep, data: Any, upgrader_context: Any | None = None) -> Result[Any, str]:
+def run_upgrade_step(
+    data: Any, *, step: UpgradeStep, upgrader_context: Any | None = None
+) -> Result[Any, str]:
     r"""Execute a single upgrade transformation on data.
 
     Applies the upgrade function defined in the step, automatically detecting
@@ -139,10 +141,10 @@ def run_upgrade_step(step: UpgradeStep, data: Any, upgrader_context: Any | None 
 
     Parameters
     ----------
-    step : UpgradeStep
-        The upgrade step to execute with func, name, and target_version.
     data : Any
         Input data to be upgraded by the step function.
+    step : UpgradeStep
+        The upgrade step to execute with func, name, and target_version.
     upgrader_context : Any | None
         Optional context object passed to the upgrade function if it accepts
         upgrader_context as a parameter (detected via inspect.signature).

@@ -3,21 +3,23 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Any, cast
 from uuid import uuid4
 
 from fixtures.target_system import NodeComponent
 
-from r2x_core import TranslationContext, apply_rules_to_context
+from r2x_core import PluginContext, apply_rules_to_context
 from r2x_core.time_series import _main_db_path, transfer_time_series_metadata
 
 
-def test_time_series_transfer_via_fixture_context(context_example: TranslationContext):
+def test_time_series_transfer_via_fixture_context(context_example: PluginContext):
     """Translation applies fixture rules and transfers time series metadata."""
     result = apply_rules_to_context(context_example)
 
     assert result.time_series_transferred > 0
 
     target_system = context_example.target_system
+    assert target_system is not None
     node_components = list(target_system.get_components(NodeComponent))
     assert node_components, "Expected translated NodeComponent instances"
 
@@ -29,18 +31,20 @@ def test_time_series_transfer_via_fixture_context(context_example: TranslationCo
         assert keys
 
 
-def test_time_series_transfer_is_idempotent(context_example: TranslationContext):
+def test_time_series_transfer_is_idempotent(context_example: PluginContext):
     """Re-running metadata transfer does not duplicate associations."""
     first_result = apply_rules_to_context(context_example)
+    target_system = context_example.target_system
+    assert target_system is not None
 
-    with context_example.target_system.open_time_series_store(mode="r") as store:
+    with target_system.open_time_series_store(mode="r") as store:
         initial_count = store.metadata_conn.execute(
             "SELECT COUNT(*) FROM time_series_associations"
         ).fetchone()[0]
 
     second_result = transfer_time_series_metadata(context_example)
 
-    with context_example.target_system.open_time_series_store(mode="r") as store:
+    with target_system.open_time_series_store(mode="r") as store:
         final_count = store.metadata_conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[
             0
         ]
@@ -50,11 +54,13 @@ def test_time_series_transfer_is_idempotent(context_example: TranslationContext)
     assert final_count == initial_count
 
 
-def test_time_series_transfer_deduplicates_rows(context_example: TranslationContext, caplog):
+def test_time_series_transfer_deduplicates_rows(context_example: PluginContext, caplog):
     """Duplicate associations are removed and do not change totals."""
     apply_rules_to_context(context_example)
+    target_system = context_example.target_system
+    assert target_system is not None
 
-    with context_example.target_system.open_time_series_store(mode="a") as store:
+    with target_system.open_time_series_store(mode="a") as store:
         conn = store.metadata_conn
         base_count = conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[0]
         conn.execute("DROP INDEX IF EXISTS idx_ts_owner_series_unique")
@@ -77,7 +83,7 @@ def test_time_series_transfer_deduplicates_rows(context_example: TranslationCont
     caplog.set_level("WARNING")
     stats = transfer_time_series_metadata(context_example)
 
-    with context_example.target_system.open_time_series_store(mode="r") as store:
+    with target_system.open_time_series_store(mode="r") as store:
         final_count = store.metadata_conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[
             0
         ]
@@ -87,11 +93,13 @@ def test_time_series_transfer_deduplicates_rows(context_example: TranslationCont
     assert any("duplicate time series association rows" in record.message for record in caplog.records)
 
 
-def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_example: TranslationContext):
+def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_example: PluginContext):
     """When no DB path is available, transfer still succeeds via SELECT/INSERT path."""
     apply_rules_to_context(context_example)
+    target_system = context_example.target_system
+    assert target_system is not None
 
-    with context_example.target_system.open_time_series_store(mode="r") as store:
+    with target_system.open_time_series_store(mode="r") as store:
         initial_count = store.metadata_conn.execute(
             "SELECT COUNT(*) FROM time_series_associations"
         ).fetchone()[0]
@@ -99,7 +107,7 @@ def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_ex
     monkeypatch.setattr("r2x_core.time_series._main_db_path", lambda _conn: None)
     stats = transfer_time_series_metadata(context_example)
 
-    with context_example.target_system.open_time_series_store(mode="r") as store:
+    with target_system.open_time_series_store(mode="r") as store:
         final_count = store.metadata_conn.execute("SELECT COUNT(*) FROM time_series_associations").fetchone()[
             0
         ]
@@ -109,7 +117,7 @@ def test_time_series_transfer_falls_back_without_db_path(monkeypatch, context_ex
     assert final_count == initial_count
 
 
-def test_time_series_transfer_uses_attach_path(tmp_path, monkeypatch, context_example: TranslationContext):
+def test_time_series_transfer_uses_attach_path(tmp_path, monkeypatch, context_example: PluginContext):
     """ATTACH-based bulk copy path is exercised when a DB path is available."""
     apply_rules_to_context(context_example)
 
@@ -125,17 +133,19 @@ def test_time_series_transfer_uses_attach_path(tmp_path, monkeypatch, context_ex
     assert stats.transferred >= 0
 
 
-def test_time_series_transfer_logs_post_remap_cleanup(
-    monkeypatch, context_example: TranslationContext, caplog
-):
+def test_time_series_transfer_logs_post_remap_cleanup(monkeypatch, context_example: PluginContext, caplog):
     """Post-remap dedupe path logs when rows are removed."""
     apply_rules_to_context(context_example)
+    source_system = context_example.source_system
+    target_system = context_example.target_system
+    assert source_system is not None
+    assert target_system is not None
 
-    parent = next(context_example.target_system.get_components(NodeComponent))
+    parent = next(iter(target_system.get_components(NodeComponent)))
     parent_uuid = str(parent.uuid)
     child_uuid = str(uuid4())
 
-    assoc_con = context_example.source_system._component_mgr._associations._con
+    assoc_con = source_system._component_mgr._associations._con
     assoc_con.execute(
         "INSERT INTO component_associations VALUES (?, ?, ?, ?, ?)",
         (None, child_uuid, "ChildComponent", parent_uuid, type(parent).__name__),
@@ -166,7 +176,7 @@ def test_main_db_path_handles_errors():
         def execute(self, *_args, **_kwargs):
             raise RuntimeError("boom")
 
-    assert _main_db_path(FailingConn()) is None
+    assert _main_db_path(cast(Any, FailingConn())) is None
 
 
 def test_main_db_path_returns_path():
@@ -180,4 +190,4 @@ def test_main_db_path_returns_path():
 
             return Cursor()
 
-    assert _main_db_path(Conn()) == "/tmp/test.db"
+    assert _main_db_path(cast(Any, Conn())) == "/tmp/test.db"

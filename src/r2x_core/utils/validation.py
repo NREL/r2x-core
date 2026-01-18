@@ -11,11 +11,30 @@ if TYPE_CHECKING:
     from pydantic import ValidationInfo
 
 
-def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Filter kwargs to only include valid parameters for the given function."""
+def filter_kwargs_for(func: Callable[..., Any], *, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Filter kwargs to only include valid parameters for the given function.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to filter kwargs for
+    kwargs : dict[str, Any]
+        The keyword arguments to filter
+
+    Returns
+    -------
+    dict[str, Any]
+        Filtered kwargs containing only valid parameters
+    """
     sig = inspect.signature(func)
     valid_params = set(sig.parameters.keys())
     return {k: v for k, v in kwargs.items() if k in valid_params}
+
+
+# Backward compatibility alias
+def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Filter function kwargs, maintaining backward compatibility."""
+    return filter_kwargs_for(func, kwargs=kwargs)
 
 
 def filter_kwargs_by_signatures(kwargs: dict[str, Any], *callables: Callable[..., Any]) -> dict[str, Any]:

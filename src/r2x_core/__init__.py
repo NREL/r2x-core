@@ -8,43 +8,31 @@ from loguru import logger
 from rust_ok import Err, Ok, Result, is_err, is_ok
 
 from . import h5_readers
-from .context import Context, ExporterContext, ParserContext, TranslationContext
+from .component_utils import components_to_records, export_components_to_csv
 from .datafile import DataFile, FileInfo, JSONProcessing, ReaderConfig, TabularProcessing
 from .enums import ArgumentSource, ImplementationType, IOSlotKind, PluginConfigAsset, PluginKind, StoreMode
 from .exceptions import (
     CLIError,
     ComponentCreationError,
-    ExporterError,
-    ParserError,
+    PluginError,
     UpgradeError,
     ValidationError,
 )
-from .exporter import BaseExporter
 from .file_types import FileFormat, H5Format
-from .parser import BaseParser
-from .plugin import (
-    ArgumentSpec,
-    ConfigSpec,
-    InvocationSpec,
-    IOContract,
-    IOSlot,
-    PluginManifest,
-    PluginSpec,
-    ResourceSpec,
-    StoreSpec,
-    UpgradeSpec,
-    UpgradeStepSpec,
-)
+from .getters import getter
+from .plugin_base import Plugin
 from .plugin_config import PluginConfig
+from .plugin_context import PluginContext
 from .reader import DataReader
 from .result import RuleResult, TranslationResult
 from .rules import Rule, RuleFilter
 from .rules_executor import apply_rules_to_context, apply_single_rule
 from .store import DataStore
 from .system import System
+from .time_series import transfer_time_series_metadata
 from .units import HasPerUnit, HasUnits, Unit, UnitSystem, get_unit_system, set_unit_system
-from .upgrader import PluginUpgrader
 from .upgrader_utils import UpgradeStep, UpgradeType, run_upgrade_step
+from .utils.parser import create_component
 from .versioning import GitVersioningStrategy, SemanticVersioningStrategy, VersionReader, VersionStrategy
 
 __version__ = version("r2x_core")
@@ -58,70 +46,57 @@ logger.disable("r2x_core")
 # Public API
 __all__ = [
     "ArgumentSource",
-    "ArgumentSpec",
-    "BaseExporter",
-    "BaseParser",
     "CLIError",
     "ComponentCreationError",
-    "ConfigSpec",
-    "Context",
     "DataFile",
     "DataReader",
     "DataStore",
     "Err",
-    "ExporterContext",
-    "ExporterError",
     "FileFormat",
     "FileInfo",
     "GitVersioningStrategy",
     "H5Format",
     "HasPerUnit",
     "HasUnits",
-    "IOContract",
-    "IOSlot",
     "IOSlotKind",
     "ImplementationType",
-    "InvocationSpec",
     "JSONProcessing",
     "Ok",
-    "ParserContext",
-    "ParserError",
+    "Plugin",
     "PluginConfig",
     "PluginConfigAsset",
+    "PluginContext",
+    "PluginError",
     "PluginKind",
-    "PluginManifest",
-    "PluginSpec",
-    "PluginUpgrader",
     "ReaderConfig",
-    "ResourceSpec",
     "Result",
     "Rule",
     "RuleFilter",
     "RuleResult",
     "SemanticVersioningStrategy",
     "StoreMode",
-    "StoreSpec",
     "System",
     "TabularProcessing",
-    "TranslationContext",
     "TranslationResult",
     "Unit",
     "UnitSystem",
     "UpgradeError",
-    "UpgradeSpec",
     "UpgradeStep",
-    "UpgradeStepSpec",
     "UpgradeType",
     "ValidationError",
     "VersionReader",
     "VersionStrategy",
     "apply_rules_to_context",
     "apply_single_rule",
-    "evaluate_rule_filter",
+    "components_to_records",
+    "create_component",
+    "export_components_to_csv",
     "get_unit_system",
+    "getter",
     "h5_readers",
     "is_err",
     "is_ok",
     "run_upgrade_step",
     "set_unit_system",
+    "transfer_time_series_metadata",
 ]

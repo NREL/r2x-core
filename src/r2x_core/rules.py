@@ -8,12 +8,10 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from pydantic import BaseModel, PrivateAttr, model_validator
 
-from .context import ContextT
+from .plugin_context import PluginContext
 
 if TYPE_CHECKING:
     from rust_ok import Result
-
-    from .context import TranslationContext
 
 
 class RuleFilter(BaseModel):
@@ -85,7 +83,7 @@ class RuleFilter(BaseModel):
         return self._normalized_prefixes
 
 
-class RuleLike(Protocol[ContextT]):
+class RuleLike(Protocol):
     """Minimal interface required to build kwargs for a target component."""
 
     @property
@@ -94,7 +92,7 @@ class RuleLike(Protocol[ContextT]):
         ...
 
     @property
-    def getters(self) -> Mapping[str, Callable[[ContextT, Any], Result[Any, ValueError]] | str]:
+    def getters(self) -> Mapping[str, Callable[[PluginContext, Any], Result[Any, ValueError]] | str]:
         """Mapping of target field names to getter callables."""
         ...
 
@@ -112,7 +110,7 @@ class Rule:
     target_type: str | list[str]
     version: int
     field_map: dict[str, str | list[str]] = field(default_factory=dict)
-    getters: dict[str, Callable[[TranslationContext, Any], Result[Any, ValueError]] | str] = field(
+    getters: dict[str, Callable[[PluginContext, Any], Result[Any, ValueError]] | str] = field(
         default_factory=dict
     )
     defaults: dict[str, Any] = field(default_factory=dict)

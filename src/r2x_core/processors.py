@@ -135,7 +135,7 @@ def substitute_placeholders(
 
 
 def process_tabular_data(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
     """Apply tabular data transformations sequentially.
 
@@ -144,10 +144,10 @@ def process_tabular_data(
 
     Parameters
     ----------
-    data_file : DataFile
-        File configuration providing context for logging and validation.
     data_frame : pl.LazyFrame
         Input tabular data in lazy evaluation mode.
+    data_file : DataFile
+        File configuration providing context for logging and validation.
     proc_spec : TabularProcessing
         Processing specification defining transformations to apply.
 
@@ -179,7 +179,7 @@ def process_tabular_data(
     return output_data
 
 
-def process_json_data(data_file: DataFile, json_data: JSONType, proc_spec: JSONProcessing) -> JSONType:
+def process_json_data(json_data: JSONType, *, data_file: DataFile, proc_spec: JSONProcessing) -> JSONType:
     """Apply JSON data transformations sequentially.
 
     Executes a pipeline of transformations (rename_keys, drop_columns, select_columns,
@@ -188,10 +188,10 @@ def process_json_data(data_file: DataFile, json_data: JSONType, proc_spec: JSONP
 
     Parameters
     ----------
-    data_file : DataFile
-        File configuration providing context for logging and validation.
     json_data : JSONType
         Input JSON data (dict, list of dicts, or nested structures).
+    data_file : DataFile
+        File configuration providing context for logging and validation.
     proc_spec : JSONProcessing
         Processing specification defining transformations to apply.
 
@@ -510,7 +510,7 @@ def transform_xml_data(data: Any, data_file: DataFile) -> Any:
     return data
 
 
-TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[[DataFile, Any, Any], Any]] = {
+TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[..., Any]] = {
     pl.LazyFrame: process_tabular_data,
     dict: process_json_data,
     # We can add more as needed: tuple: transform_xml_data, etc.
@@ -518,8 +518,9 @@ TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[[DataFile, Any, Any], An
 
 
 def apply_processing(
-    data_file: DataFile,
     data: Any,
+    *,
+    data_file: DataFile,
     proc_spec: FileProcessing | None,
     placeholders: dict[str, Any] | None = None,
 ) -> Result[Any, ValueError | ValidationError]:
@@ -527,10 +528,10 @@ def apply_processing(
 
     Parameters
     ----------
-    data_file : DataFile
-        Configuration with transformation instructions.
     data : Any
         Raw data to transform.
+    data_file : DataFile
+        Configuration with transformation instructions.
     proc_spec : FileProcessing | None
         Processing specification (TabularProcessing or JSONProcessing).
     placeholders : dict[str, Any] | None
@@ -564,7 +565,7 @@ def apply_processing(
 
     for registered_types, transform_func in TRANSFORMATIONS.items():
         if isinstance(data, registered_types):
-            return Ok(transform_func(data_file, data, proc_spec))
+            return Ok(transform_func(data, data_file=data_file, proc_spec=proc_spec))
 
     logger.debug("No transformation for type {} in {}", type(data).__name__, data_file.name)
     return Ok(data)
@@ -669,4 +670,4 @@ def pl_build_filter_expr(column: str, value: Any) -> pl.Expr:
         return col_expr.cast(pl.Utf8).is_in(value)
 
     value = str(value)
-    return col_expr.cast(pl.Utf8) == value  # type: ignore[no-any-return]
+    return col_expr.cast(pl.Utf8) == value

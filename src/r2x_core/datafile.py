@@ -59,7 +59,7 @@ class FileInfo(BaseModel):
     units: Annotated[str | None, Field(description="Units for single-column data")] = None
 
 
-class ReaderConfig(BaseModel):  # type: ignore
+class ReaderConfig(BaseModel):
     """Reader configuration for file loading.
 
     Specifies how to read the data file, including keyword arguments for
@@ -267,7 +267,7 @@ class DataFile(BaseModel):
 
         return self
 
-    @computed_field  # type: ignore
+    @computed_field
     @property
     def file_type(self) -> FileFormat:
         """Computed file type based on file extension."""
@@ -377,7 +377,7 @@ class DataFile(BaseModel):
         must_exist: bool = True,
     ) -> Path:
         """Resolve a raw path into an absolute path with optional checking."""
-        result = resolve_path(raw_path, folder_path, must_exist=must_exist)
+        result = resolve_path(raw_path, base_folder=folder_path, must_exist=must_exist)
         if result.is_err():
             raise result.err()
         return result.unwrap()

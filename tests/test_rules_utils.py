@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, cast
 
 import pytest
 from fixtures.source_system import BusComponent
@@ -45,7 +46,7 @@ def test_make_attr_getter_traverses_chain():
         inner = Inner()
 
     getter = _make_attr_getter(["inner", "value"])
-    result = getter(None, Outer())
+    result = getter(cast(Any, None), Outer())
 
     assert result.is_ok()
     assert result.unwrap() == 99
@@ -182,7 +183,7 @@ def test_build_component_kwargs_from_parser_record(context_example):
         },
     )
 
-    result = build_component_kwargs(rule, record, context_example)
+    result = build_component_kwargs(record, rule=rule, context=context_example)
 
     assert result.is_ok()
     kwargs = result.unwrap()

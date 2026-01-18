@@ -16,8 +16,8 @@ cd r2x-core
 # Install with development dependencies
 uv sync --dev
 
-# Install pre-commit hooks
-uv run pre-commit install
+# Install prek hooks
+uv run prek install
 ```
 
 ### How to run tests
@@ -40,8 +40,8 @@ uv run pytest -vvl
 Ensure code quality and consistency:
 
 ```console
-# Run pre-commit checks on all files
-uv run pre-commit run --all-files
+# Run prek checks on all files
+uv run prek run --all-files
 
 # Run type checking
 uv run mypy --config-file=pyproject.toml src/
@@ -95,7 +95,7 @@ Follow these steps to contribute:
 4. **Run tests and checks**:
    ```console
    uv run pytest
-   uv run pre-commit run --all-files
+   uv run prek run --all-files
    ```
 5. **Commit your changes** using conventional commit format:
    ```console
@@ -229,12 +229,12 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-### Pre-commit Hooks
+### Prek Hooks
 
-Install pre-commit hooks to automatically run checks:
+Install prek hooks to automatically run checks:
 
 ```bash
-uv run pre-commit install
+uv run prek install
 ```
 
 This will run linting and formatting before each commit.

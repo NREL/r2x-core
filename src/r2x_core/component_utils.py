@@ -80,6 +80,7 @@ def components_to_records(
 
 def export_components_to_csv(
     system: System,
+    *,
     file_path: Path | str,
     filter_func: Callable[[Component], bool] | None = None,
     fields: list[str] | None = None,
@@ -93,6 +94,8 @@ def export_components_to_csv(
 
     Parameters
     ----------
+    system : System
+        The system to export components from
     file_path : PathLike
         Output CSV file path.
     filter_func : Callable, optional
@@ -109,13 +112,14 @@ def export_components_to_csv(
     --------
     Export all components:
 
-    >>> system.export_components_to_csv("all_components.csv")
+    >>> system.export_components_to_csv(system, file_path="all_components.csv")
 
     Export only generators using a filter:
 
     >>> from my_components import Generator
     >>> system.export_components_to_csv(
-    ...     "generators.csv",
+    ...     system,
+    ...     file_path="generators.csv",
     ...     filter_func=lambda c: isinstance(c, Generator)
     ... )
 
@@ -123,14 +127,16 @@ def export_components_to_csv(
 
     >>> from my_components import ACBus
     >>> system.export_components_to_csv(
-    ...     "high_voltage_buses.csv",
+    ...     system,
+    ...     file_path="high_voltage_buses.csv",
     ...     filter_func=lambda c: isinstance(c, ACBus) and c.voltage > 100
     ... )
 
     Export with field selection and renaming:
 
     >>> system.export_components_to_csv(
-    ...     "buses.csv",
+    ...     system,
+    ...     file_path="buses.csv",
     ...     filter_func=lambda c: isinstance(c, ACBus),
     ...     fields=["name", "voltage"],
     ...     key_mapping={"voltage": "voltage_kv"}

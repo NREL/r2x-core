@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from loguru import logger
 from rust_ok import Err, Ok
 
-from .context import TranslationContext
+from .plugin_context import PluginContext
 
 if TYPE_CHECKING:
     from rust_ok import Result
 
-GetterFunc = Callable[[TranslationContext, Any], Any]
+GetterFunc = Callable[[PluginContext, Any], Any]
 F = TypeVar("F", bound=GetterFunc)
 
 GETTER_REGISTRY: dict[str, GetterFunc] = {}

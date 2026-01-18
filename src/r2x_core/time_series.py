@@ -10,7 +10,7 @@ from uuid import UUID
 from loguru import logger
 
 if TYPE_CHECKING:
-    from .context import TranslationContext
+    from .plugin_context import PluginContext
 
 
 class TransferStats(NamedTuple):
@@ -72,19 +72,24 @@ def _count_ts_associations(conn: Connection) -> int:
     return int(count)
 
 
-def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
+def transfer_time_series_metadata(context: PluginContext) -> TransferStats:
     """Transfer time series metadata for target system."""
-    uuid_map = context.target_system._component_mgr._components_by_uuid
+    if context.source_system is None or context.target_system is None:
+        raise ValueError("source_system and target_system must be set in context")
+
+    source_system = context.source_system
+    target_system = context.target_system
+    uuid_map = target_system._component_mgr._components_by_uuid
 
     logger.info(f"Transferring time series metadata for {len(uuid_map)} components")
 
     with (
-        context.source_system.open_time_series_store(mode="r") as src_store,
-        context.target_system.open_time_series_store(mode="a") as tgt_store,
+        source_system.open_time_series_store(mode="r") as src_store,
+        target_system.open_time_series_store(mode="a") as tgt_store,
     ):
         src_metadata = src_store.metadata_conn
         tgt_metadata = tgt_store.metadata_conn
-        src_associations = context.source_system._component_mgr._associations._con
+        src_associations = source_system._component_mgr._associations._con
 
         uuid_to_type = {str(uuid): type(comp).__name__ for uuid, comp in uuid_map.items()}
 
@@ -238,7 +243,7 @@ def transfer_time_series_metadata(context: TranslationContext) -> TransferStats:
     # We need to rebuild the time series to have the objects in memory.
     loader = cast(
         Callable[[], None],
-        context.target_system._time_series_mgr._metadata_store._load_metadata_into_memory,
+        target_system._time_series_mgr._metadata_store._load_metadata_into_memory,
     )
     loader()
 

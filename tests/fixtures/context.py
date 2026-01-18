@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from r2x_core import PluginConfig, TranslationContext
+    from r2x_core import PluginConfig, PluginContext
 
 FIXTURE_MODEL_MODULES: tuple[str, ...] = (
     "fixtures.source_system",
@@ -20,18 +20,19 @@ def _build_config() -> PluginConfig:
     return PluginConfig(models=FIXTURE_MODEL_MODULES)
 
 
-def _build_translation_context(
+def _build_plugin_context(
     rules_simple,
     source_system,
     target_system,
-) -> TranslationContext:
-    from r2x_core import TranslationContext
+) -> PluginContext:
+    from r2x_core import PluginContext
 
-    return TranslationContext(
+    return PluginContext(
         source_system=source_system,
         target_system=target_system,
         config=_build_config(),
         rules=rules_simple,
+        store=None,
     )
 
 
@@ -40,6 +41,6 @@ def context_example(
     rules_simple,
     source_system,
     target_system,
-) -> TranslationContext:
-    """TranslationContext with populated systems and fixture rules."""
-    return _build_translation_context(rules_simple, source_system, target_system)
+) -> PluginContext:
+    """PluginContext with populated systems and fixture rules."""
+    return _build_plugin_context(rules_simple, source_system, target_system)

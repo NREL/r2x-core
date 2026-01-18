@@ -61,34 +61,62 @@ def audit_file(fpath: Path) -> Result[Path, ValueError | FileNotFoundError]:
 
 def resolve_path(
     raw_path: Path | str,
-    folder_path: Path,
     *,
+    base_folder: Path,
     must_exist: bool = True,
 ) -> Result[Path, ValueError | FileNotFoundError]:
-    """Resolve raw path relative to the given folder, optionally checking existence."""
+    """Resolve raw path relative to the given folder, optionally checking existence.
+
+    Parameters
+    ----------
+    raw_path : Path | str
+        The path to resolve (relative or absolute)
+    base_folder : Path
+        The base folder to resolve relative paths against
+    must_exist : bool, optional
+        If True, check that the resolved path exists, by default True
+
+    Returns
+    -------
+    Result[Path, ValueError | FileNotFoundError]
+        Ok with resolved path if successful, Err otherwise
+    """
     path = Path(raw_path)
-    resolved = path if path.is_absolute() else folder_path / path
+    resolved = path if path.is_absolute() else base_folder / path
 
     if must_exist:
         return audit_file(resolved)
     return Ok(resolved)
 
 
-def resolve_glob_pattern(path: Path, pattern: str) -> Result[Path, ValueError | FileNotFoundError]:
-    """Resolve a glob pattern to a single file path."""
+def resolve_glob_pattern(pattern: str, *, search_dir: Path) -> Result[Path, ValueError | FileNotFoundError]:
+    """Resolve a glob pattern to a single file path.
+
+    Parameters
+    ----------
+    pattern : str
+        The glob pattern to resolve
+    search_dir : Path
+        The directory to search for matching files
+
+    Returns
+    -------
+    Result[Path, ValueError | FileNotFoundError]
+        Ok with the matched file path, Err if no matches or multiple matches
+    """
     if not any(wildcard in pattern for wildcard in ["*", "?", "[", "]"]):
         msg = f"Pattern '{pattern}' does not contain glob wildcards (*, ?, [, ]). Use 'fpath' or 'relative_fpath' for exact filenames."
         return Err(ValueError(msg))
 
-    matches = [p for p in path.glob(pattern) if p.is_file()]
+    matches = [p for p in search_dir.glob(pattern) if p.is_file()]
 
     if not matches:
-        msg = f"No files found matching pattern '{pattern}' in {path}"
+        msg = f"No files found matching pattern '{pattern}' in {search_dir}"
         return Err(FileNotFoundError(msg))
 
     if len(matches) > 1:
         file_list = "\n".join(f"  - {m.name}" for m in sorted(matches))
-        msg = f"Multiple files matched pattern '{pattern}' in {path}:\n{file_list}"
+        msg = f"Multiple files matched pattern '{pattern}' in {search_dir}:\n{file_list}"
         return Err(ValueError(msg))
 
     logger.debug("Glob pattern {} resolved to: {}", pattern, matches[0])

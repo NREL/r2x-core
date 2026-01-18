@@ -304,7 +304,7 @@ def test_topological_sort_unnamed_rules():
 
 def test_get_current_component_getter():
     """get_current_component (application-defined) returns the component being processed."""
-    from r2x_core import PluginConfig, System, TranslationContext
+    from r2x_core import PluginConfig, PluginContext, System
 
     class MockComponent:
         def __init__(self, name):
@@ -313,12 +313,13 @@ def test_get_current_component_getter():
     component = MockComponent("test")
     source_system = System(name="source")
     target_system = System(name="target")
-    config = PluginConfig(models=[])
-    ctx = TranslationContext(
+    config = PluginConfig(models=())
+    ctx = PluginContext(
         source_system=source_system,
         target_system=target_system,
         config=config,
-        rules=[],
+        rules=(),
+        store=None,
     )
 
     # Use the application-defined getter from this module

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from fixtures.context import FIXTURE_MODEL_MODULES
 from fixtures.target_system import StationComponent
@@ -52,7 +52,7 @@ def test_rule_filter_matches_geq_numeric():
 
 def _run_rule_with_filter(filter_spec: RuleFilter, source_system: System) -> tuple[int, System]:
     """Apply a single filtered rule and return conversion count and target system."""
-    from r2x_core import PluginConfig, Rule, System, TranslationContext, apply_rules_to_context
+    from r2x_core import PluginConfig, PluginContext, Rule, System, apply_rules_to_context
 
     config = PluginConfig(models=FIXTURE_MODEL_MODULES)
     rule = Rule(
@@ -63,11 +63,12 @@ def _run_rule_with_filter(filter_spec: RuleFilter, source_system: System) -> tup
         filter=filter_spec,
     )
     target_system = System(name="FilteredTarget", auto_add_composed_components=True)
-    context = TranslationContext(
+    context = PluginContext(
         source_system=source_system,
         target_system=target_system,
         config=config,
-        rules=[rule],
+        rules=(rule,),
+        store=None,
     )
     result = apply_rules_to_context(context)
     return result.total_converted, target_system
@@ -267,7 +268,7 @@ def test_rulefilter_model_validator_prefixes_type():
     from r2x_core import RuleFilter
 
     with pytest.raises(ValueError) as _:
-        RuleFilter(field="name", op="startswith", prefixes=[123])
+        RuleFilter(field="name", op="startswith", prefixes=cast(Any, [123]))
 
 
 def test_rulefilter_normalized_prefixes_casefold():

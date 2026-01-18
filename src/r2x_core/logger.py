@@ -1,4 +1,3 @@
-# type: ignore
 """Logging configuration for R2X Core using loguru.
 
 This module provides unified logging setup using loguru, supporting multiple

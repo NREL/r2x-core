@@ -6,9 +6,9 @@ from fixtures.source_system import BusComponent, BusGeographicInfo
 
 from r2x_core import (
     PluginConfig,
+    PluginContext,
     Rule,
     System,
-    TranslationContext,
     apply_rules_to_context,
     apply_single_rule,
 )
@@ -20,15 +20,16 @@ def _build_context(
     rules: list[Rule],
     source_system: System | None = None,
     target_system: System | None = None,
-) -> TranslationContext:
-    """Helper to build a translation context for executor tests."""
+) -> PluginContext:
+    """Helper to build a plugin context for executor tests."""
     source_system = source_system or System(name="executor-source")
     target_system = target_system or System(name="executor-target")
-    return TranslationContext(
+    return PluginContext(
         source_system=source_system,
         target_system=target_system,
         config=PluginConfig(models=FIXTURE_MODEL_MODULES),
-        rules=rules,
+        rules=tuple(rules),
+        store=None,
     )
 
 
@@ -93,7 +94,7 @@ def test_apply_single_rule_missing_source_attribute(source_system, target_system
         target_system=target_system,
     )
 
-    result = apply_single_rule(rule, context)
+    result = apply_single_rule(rule, context=context)
     assert result.is_err()
     assert "No attribute" in str(result.err())
 

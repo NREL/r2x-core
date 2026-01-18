@@ -97,7 +97,7 @@ class DataReader:
         logger.debug("Starting reading for data_file={}", data_file.name)
         is_optional = data_file.info.is_optional if data_file.info else False  # By default files are no-opt
 
-        fpath_result = get_fpath(data_file, folder_path, info=data_file.info)
+        fpath_result = get_fpath(data_file, folder_path=folder_path, info=data_file.info)
         if fpath_result.is_err():
             error = fpath_result.err()
             if isinstance(error, FileNotFoundError) and is_optional:
@@ -118,8 +118,8 @@ class DataReader:
             raw_data = reader.function(fpath, **reader_kwargs)
             if data_file.proc_spec is not None:
                 processed_data = apply_processing(
+                    raw_data,
                     data_file=data_file,
-                    data=raw_data,
                     proc_spec=data_file.proc_spec,
                     placeholders=placeholders,
                 )
@@ -140,7 +140,7 @@ class DataReader:
         raw_data = read_file_by_type(file_type_instance, fpath, **reader_kwargs)
         if data_file.proc_spec is not None:
             processed_data = apply_processing(
-                data_file=data_file, data=raw_data, proc_spec=data_file.proc_spec, placeholders=placeholders
+                raw_data, data_file=data_file, proc_spec=data_file.proc_spec, placeholders=placeholders
             )
             if processed_data.is_err():
                 raise ReaderError(processed_data.error)
