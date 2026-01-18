@@ -451,6 +451,9 @@ GEMINI.md
 CLAUDE_INSTRUCTIONS.md
 GEMINI_INSTRUCTIONS.md
 
+# Generated badge files
+docs/source/_static/docstr_coverage_badge.svg
+
 # Claude Code configuration
 .claude/
 .claude_config/

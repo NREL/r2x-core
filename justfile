@@ -29,6 +29,10 @@ lint *ARGS:
 type:
     uv run ty check src/
 
+# Check docstring coverage.
+docstrings:
+    uv run docstr-coverage src --badge docs/source/_static --percentage-only
+
 # Run tests.
 test *ARGS:
     uv run pytest -q --cov-report=term-missing:skip-covered {{ARGS}}
@@ -41,6 +45,6 @@ docs:
 hooks:
     uv run prek run --all-files
 
-# Comprehensive verification: hooks + tests with strict coverage.
-verify: hooks
+# Comprehensive verification: hooks + tests + docstring coverage.
+verify: hooks docstrings
     uv run pytest --tb=short --cov --cov-report=term-missing:skip-covered

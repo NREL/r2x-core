@@ -54,6 +54,11 @@ _console: Any | None = None
 
 
 def _get_console() -> Any | None:
+    """Get or create a Rich Console instance for TTY output.
+
+    Returns None if Rich is not installed or if TTY is not available.
+    Caches the console instance globally to avoid repeated imports.
+    """
     global _console
     if _console is not None:
         return _console or None
@@ -67,12 +72,21 @@ def _get_console() -> Any | None:
 
 
 def _format_timestamp(record: dict[str, Any]) -> str:
+    """Format a log record's timestamp using LOG_TIME_FORMAT env var or default.
+
+    Substitutes milliseconds ({ms}) in the format string with zero-padded microseconds.
+    """
     time_format = os.environ.get("LOG_TIME_FORMAT", DEFAULT_TIME_FORMAT)
     ms = f"{record['time'].microsecond // 1000:03d}"
     return record["time"].strftime(time_format.replace("{ms}", ms))
 
 
 def _render_exception(record: dict[str, Any], console: Any | None) -> None:
+    """Render exception traceback from log record to stderr.
+
+    Prefers Rich-formatted tracebacks if console is available and Rich is installed.
+    Falls back to standard Python traceback formatting.
+    """
     exc = record["exception"]
     if not exc or not exc.type or not exc.value:
         return
