@@ -38,6 +38,7 @@ Learn how to develop and use plugins with R2X Core.
 ```{toctree}
 :maxdepth: 1
 
+create-function-plugins
 structure-plugin-directories
 register-plugins
 run-plugins

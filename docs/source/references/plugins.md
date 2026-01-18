@@ -11,6 +11,7 @@ The R2X Core plugin system provides models for discovering and managing parser, 
 - {py:class}`~r2x_core.PluginConfig` - Base class for type-safe model-specific configuration
 - {py:class}`~r2x_core.Plugin` - Plugin base class for extending r2x-core
 - {py:class}`~r2x_core.PluginContext` - Execution context with source and target systems
+- {py:func}`~r2x_core.expose_plugin` - Decorator to mark functions as plugin entry points
 
 ## Usage Examples
 
@@ -79,8 +80,46 @@ config/
 - **Pydantic validation** - Full support for Pydantic field validators and configuration
 - **Type safety** - IDE support and runtime validation for all model parameters
 
+### Function-Based Transform Plugins
+
+For simple System transformations, use function-based plugins with the `@expose_plugin` decorator:
+
+```python
+from r2x_core import expose_plugin, PluginConfig, System
+from pydantic import Field
+from rust_ok import Ok, Result
+
+class MyTransformConfig(PluginConfig):
+    threshold: int = Field(default=5, ge=0)
+
+@expose_plugin
+def my_transform(
+    system: System,
+    config: MyTransformConfig,
+) -> Result[System, str]:
+    """Transform system based on config."""
+    # Implementation here
+    return Ok(system)
+```
+
+**Benefits**:
+- Zero boilerplate - single function, not a full class
+- Type-safe configuration via `PluginConfig`
+- Direct Python usage - call functions explicitly
+- CLI-discoverable via `@expose_plugin` decorator and entry points
+- Consistent error handling with `Result` type
+
+**Entry point registration**:
+```toml
+[project.entry-points."r2x.transforms"]
+my_transform = "my_package.transforms:my_transform"
+```
+
+See {doc}`../how-tos/create-function-plugins` for detailed examples and best practices.
+
 ## See Also
 
+- {doc}`../how-tos/create-function-plugins` - Creating function-based transform plugins
 - {doc}`../how-tos/register-plugins` - Detailed plugin registration guide
 - {doc}`../how-tos/structure-plugin-directories` - Plugin development standards
 - {doc}`../explanations/plugin-system` - Deep dive into plugin architecture

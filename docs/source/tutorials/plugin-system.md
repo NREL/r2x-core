@@ -254,18 +254,21 @@ immediately rather than later during plugin execution when they would be harder 
 
 ## Plugin Discovery
 
-Plugins can be discovered using ast-grep rules that extract detailed metadata about each
-plugin. The discovery process reads the config type from the generic parameter
-(e.g., `class MyPlugin(Plugin[MyConfig])`), determining what configuration the plugin accepts.
-It identifies implemented hooks by scanning for method names like `on_validate`, `on_build`,
-`on_transform`, `on_translate`, `on_export`, and `on_cleanup`. Required context fields are
-inferred from non-Optional property return types—a property returning `System` requires a
-system, while `System | None` makes it optional. The config schema is extracted directly from
-Pydantic field definitions, enabling full documentation generation without parsing the plugin
-code.
+Plugins are discovered through entry points registered in `pyproject.toml`. The discovery
+process reads the config type from the generic parameter (e.g., `class MyPlugin(Plugin[MyConfig])`),
+determining what configuration the plugin accepts. It identifies implemented hooks by scanning
+for method names like `on_validate`, `on_build`, `on_transform`, `on_translate`, `on_export`,
+and `on_cleanup`. Required context fields are inferred from non-Optional property return types—a
+property returning `System` requires a system, while `System | None` makes it optional. The
+config schema is extracted directly from Pydantic field definitions, enabling full documentation
+generation without parsing the plugin code.
 
-See {doc}`./plugin-discovery` for the complete ast-grep discovery rules that make this
-automated analysis possible.
+Plugins are registered as entry points in external packages:
+
+```toml
+[project.entry-points."r2x.plugins"]
+my_model_parser = "my_package.plugins:MyModelPlugin"
+```
 
 ## Passing Context Through Pipelines
 
@@ -373,10 +376,39 @@ different error conditions appropriately. Finally, add docstrings to config clas
 with discoverability and so the discovery system can extract meaningful documentation about
 what configuration each plugin accepts.
 
+## Function-Based Transform Plugins
+
+For simple System transformations, you can use function-based plugins with the `@expose_plugin` decorator.
+These are zero-overhead alternatives to the full Plugin class pattern:
+
+```python
+from r2x_core import expose_plugin, PluginConfig, System
+from rust_ok import Ok, Result
+
+class MyTransformConfig(PluginConfig):
+    threshold: int = 5
+
+@expose_plugin
+def my_transform(system: System, config: MyTransformConfig) -> Result[System, str]:
+    """Transform system based on config."""
+    return Ok(system)
+
+# Call directly in Python:
+config = MyTransformConfig(threshold=10)
+result = my_transform(system, config)
+```
+
+Function-based plugins:
+- Use `PluginConfig` for type-safe configuration
+- Return `Result[System, str]` for consistent error handling
+- Are marked with `@expose_plugin` for CLI discovery via entry points
+- Are called explicitly with all arguments (no auto-injection)
+
+See {doc}`../how-tos/create-function-plugins` for detailed examples and best practices.
+
 ## Next Steps
 
-For detailed patterns on how to use plugin context effectively in complex workflows, see
-{doc}`./plugin-context`. To understand how to automatically discover and analyze plugins in
-your codebase using ast-grep, see {doc}`./plugin-discovery`. Additional examples of working
-plugins can be found in `tests/test_plugin*.py`, covering edge cases and advanced patterns
-not shown in this introduction.
+For working with function-based plugins, see {doc}`../how-tos/create-function-plugins`. For
+detailed patterns on how to use plugin context effectively in complex workflows with class-based
+plugins, see {doc}`./plugin-context`. Additional examples of working plugins can be found in
+`tests/test_plugin*.py`, covering edge cases and advanced patterns not shown in this introduction.

@@ -83,6 +83,53 @@ convert units) become first-class, discoverable functions.
 The flexible signature supports polymorphic filters that work with multiple data
 types.
 
+#### Function-Based Transform Plugins
+
+Transform functions are simple, zero-overhead plugins for System transformations.
+They are marked with the `@expose_plugin` decorator for CLI discovery.
+
+**Rationale**: For simple transforms, function-based plugins avoid boilerplate
+while maintaining full type safety via `PluginConfig`. The decorator is purely
+a marker—no auto-injection or magic at runtime. Users call functions explicitly
+with all arguments.
+
+**Signature**: `(system: System, config: C) -> Result[System, str]` where C is a
+`PluginConfig` subclass.
+
+**Decorator**: `@expose_plugin` - marks function for AST-grep discovery, sets `__r2x_exposed__` attribute.
+
+**Example**:
+
+```python doctest
+from r2x_core import expose_plugin, PluginConfig, System
+from pydantic import Field
+from rust_ok import Ok, Result
+
+class BreakGensConfig(PluginConfig):
+    """Configuration for breaking generators."""
+    threshold: int = Field(default=5, ge=0)
+
+@expose_plugin
+def break_generators(
+    system: System,
+    config: BreakGensConfig,
+) -> Result[System, str]:
+    """Break generators into sub-units based on threshold."""
+    # Implementation here
+    return Ok(system)
+
+# Direct usage (explicit, no magic):
+config = BreakGensConfig(threshold=10)
+my_system = System(name="test")
+result = break_generators(my_system, config)
+assert result.is_ok()
+new_system = result.unwrap()
+assert new_system.name == "test"
+```
+
+The function can optionally accept a `ctx: PluginContext | None` parameter for
+access to the DataStore or metadata during execution.
+
 ### 2. Plugin Registry
 
 The `Plugin` base class and `PluginContext` provide the core mechanism for

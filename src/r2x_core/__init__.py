@@ -21,6 +21,7 @@ from .getters import getter
 from .plugin_base import Plugin
 from .plugin_config import PluginConfig
 from .plugin_context import PluginContext
+from .plugin_expose import expose_plugin
 from .reader import DataReader
 from .result import RuleResult, TranslationResult
 from .rules import Rule, RuleFilter
@@ -89,6 +90,7 @@ __all__ = [
     "components_to_records",
     "create_component",
     "export_components_to_csv",
+    "expose_plugin",
     "get_unit_system",
     "getter",
     "h5_readers",
