@@ -51,7 +51,7 @@ def extract_doctest_blocks(path: Path) -> list[DocBlock]:
         return []
 
     blocks: list[DocBlock] = []
-    lines = path.read_text().split("\n")
+    lines = path.read_text(encoding="utf-8").split("\n")
     i = 0
 
     while i < len(lines):

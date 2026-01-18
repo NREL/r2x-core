@@ -75,7 +75,7 @@ def _scan_docs_for_symbols() -> set[str]:
 
     for md_file in DOCS_ROOT.glob("**/*.md"):
         try:
-            content = md_file.read_text()
+            content = md_file.read_text(encoding="utf-8")
             doctest_content = _extract_doctest_content(content)
             documented.update(_extract_symbols_from_doctest(doctest_content))
         except Exception:
