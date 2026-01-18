@@ -213,16 +213,12 @@ True
 ```
 
 **PEP 695 Type Parameter Syntax Benefits**:
-- ✅ **Constraint checking**: `[C: BaseTransformConfig]` ensures config type validity
-- ✅ **Type inference**: Type parameter automatically inferred from config argument
-- ✅ **IDE support**: Full auto-completion and type checking
-- ✅ **Clean syntax**: More readable than `TypeVar` approach
-- ✅ **Self-documenting**: Constraint clearly visible in function signature
+
+Constraint checking with `[C: BaseTransformConfig]` ensures config type validity, type parameters are automatically inferred from the config argument, full auto-completion and type checking support in IDEs, cleaner and more readable syntax compared to the `TypeVar` approach, and constraints clearly visible in the function signature for self-documenting code.
 
 **When to Use**:
-- Use PEP 695 for plugins accepting multiple config types with a common interface
-- Use simple `config: SpecificConfig` for single config type
-- Use `config: C` (with TypeVar) for backward compatibility with Python <3.12
+
+Use PEP 695 for plugins accepting multiple config types with a common interface. Use simple `config: SpecificConfig` for single config types. Use `config: C` with TypeVar for backward compatibility with Python versions earlier than 3.12.
 
 ## CLI Registration via Entry Points
 
