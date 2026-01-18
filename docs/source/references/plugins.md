@@ -1,6 +1,6 @@
 # Plugin System
 
-For complete API documentation of plugin classes, see {doc}`api`.
+For complete API documentation of plugin classes, see {doc}`./api`.
 
 ## Overview
 
@@ -8,23 +8,9 @@ The R2X Core plugin system provides models for discovering and managing parser, 
 
 ## Quick Reference
 
-- {py:class}`~r2x_core.PluginManifest` - Package-level registry exported by entry points
-- {py:class}`~r2x_core.PluginSpec` - Declarative description of a single plugin
-- {py:class}`~r2x_core.InvocationSpec` - How to instantiate/call the entry point
-- {py:class}`~r2x_core.IOContract` - Inputs/outputs consumed or produced
-- {py:class}`~r2x_core.ResourceSpec` - Configuration/DataStore requirements
 - {py:class}`~r2x_core.PluginConfig` - Base class for type-safe model-specific configuration
-
-## Builder Helpers
-
-Plugin authors rarely need to populate every field of :class:`PluginSpec` manually. Use the helper constructors:
-
-- :meth:`PluginSpec.parser` - describe a typical `config + store -> system` parser
-- :meth:`PluginSpec.exporter` - describe an exporter that consumes a system
-- :meth:`PluginSpec.function` - declare a simple function modifier
-- :meth:`PluginSpec.upgrader` - wrap an upgrader class and re-use its registered steps
-
-These helpers set sensible defaults (method names, IO contracts, store/config requirements) while still producing a full manifest for CLI tooling.
+- {py:class}`~r2x_core.Plugin` - Plugin base class for extending r2x-core
+- {py:class}`~r2x_core.PluginContext` - Execution context with source and target systems
 
 ## Usage Examples
 
@@ -61,33 +47,6 @@ defaults = config.load_defaults()
 file_mappings = config.load_file_mapping()
 ```
 
-### Implementing a Parser and Exporter
-
-Create implementations of `BaseParser` and `BaseExporter`:
-
-```python
-from r2x_core import BaseParser, BaseExporter, PluginConfig
-
-class MyModelConfig(PluginConfig):
-    folder: str
-    year: int
-
-class MyParser(BaseParser):
-    def build_system_components(self):
-        # Build components
-        pass
-
-    def build_time_series(self):
-        # Add time series
-        pass
-
-class MyExporter(BaseExporter):
-    def prepare_export(self):
-        # Export logic
-        pass
-```
-
-
 ### Entry Point Discovery
 
 Register plugins in external packages via `pyproject.toml`:
@@ -100,7 +59,6 @@ my_model = "my_package.plugins"
 Plugins are discovered by loading the entry point and reading a `PluginManifest`. A manifest exports a list of :class:`PluginSpec` objects, each of which contains all the metadata downstream tooling needs (call signatures, resource requirements, IO contracts, etc.). Tools such as the CLI can parse the manifest file statically (via `ast-grep` or JSON artifacts) without executing arbitrary plugin code.
 
 ### Manifest Export Utility
-
 
 ### Configuration Directory Structure
 
@@ -121,10 +79,8 @@ config/
 - **Pydantic validation** - Full support for Pydantic field validators and configuration
 - **Type safety** - IDE support and runtime validation for all model parameters
 
--## See Also
+## See Also
 
-- {doc}`../how-tos/plugin-system/plugin-registration` - Detailed plugin registration guide
-- {doc}`../how-tos/plugin-system/plugin-standards` - Plugin development standards
+- {doc}`../how-tos/register-plugins` - Detailed plugin registration guide
+- {doc}`../how-tos/structure-plugin-directories` - Plugin development standards
 - {doc}`../explanations/plugin-system` - Deep dive into plugin architecture
-- {doc}`parser` - BaseParser reference
-- {doc}`exporter` - BaseExporter reference

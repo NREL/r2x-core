@@ -1,13 +1,11 @@
 # Upgrade System
 
-For complete API documentation of upgrade classes, see {doc}`api`.
+For complete API documentation of upgrade classes, see {doc}`./api`.
 
 ## Quick Reference
 
 - {py:class}`~r2x_core.UpgradeStep` - Upgrade step definition
 - {py:class}`~r2x_core.UpgradeType` - Upgrade type enum (DATA or SYSTEM)
-- {py:func}`~r2x_core.run_datafile_upgrades` - Execute file-based data upgrades
-- {py:func}`~r2x_core.run_system_upgrades` - Execute system object upgrades
 - {py:func}`~r2x_core.run_upgrade_step` - Execute a single upgrade step
 
 ## Overview
@@ -83,40 +81,30 @@ step = UpgradeStep(
 )
 ```
 
-### Apply Data Upgrades
+### Apply Upgrades
 
-Execute file-based data upgrades:
+Execute upgrade steps:
 
 ```python
-from r2x_core import run_datafile_upgrades
+from r2x_core import run_upgrade_step
 
-# Define upgrade steps
-steps = [step1, step2]  # From previous examples
+# Define upgrade steps (from previous examples)
+data_step = ...  # UpgradeStep for data transformation
+system_step = ...  # UpgradeStep for system modification
 
-# Apply upgrades to raw data
+# Apply data upgrade
 data = {"version": "1.0.0", "old_name": "test"}
-upgraded_data = run_datafile_upgrades(data, steps)
-```
+upgraded_data = run_upgrade_step(data_step, data)
 
-### Apply System Upgrades
-
-Execute system object upgrades:
-
-```python
-from r2x_core import run_system_upgrades, System
-
-# Define system upgrade steps
-steps = [system_step]  # From previous example
-
-# Apply upgrades to System
+# Apply system upgrade
 system = System(100.0, name="Grid")
-upgraded_system = run_system_upgrades(system, steps)
+upgraded_system = run_upgrade_step(system_step, system)
 ```
 
 ## See Also
 
-- {doc}`versioning` - Versioning strategies
-- {doc}`plugins` - Plugin system integration
-- {doc}`../how-tos/versioning/upgrade-data` - Upgrade data guide
-- {doc}`../how-tos/versioning/upgrade-systems` - Upgrade systems guide
-- {doc}`api` - Complete API documentation
+- {doc}`./versioning` - Versioning strategies
+- {doc}`./plugins` - Plugin system integration
+- {doc}`../how-tos/upgrade-data-files` - Upgrade data guide
+- {doc}`../how-tos/upgrade-systems` - Upgrade systems guide
+- {doc}`./api` - Complete API documentation

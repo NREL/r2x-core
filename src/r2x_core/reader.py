@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from rust_ok import Ok
 
 from .datafile import DataFile
 from .exceptions import ReaderError
@@ -104,8 +105,8 @@ class DataReader:
                 logger.info("Skipping optional file: {}", data_file.name)
                 return None
             raise error
-
-        fpath = fpath_result.unwrap()
+        assert isinstance(fpath_result, Ok), "Result should be Ok after error check"
+        fpath = fpath_result.value
 
         reader = data_file.reader
         reader_kwargs = reader.kwargs if reader else {}
@@ -126,8 +127,8 @@ class DataReader:
 
                 if processed_data.is_err():
                     raise ReaderError(processed_data.error)
-
-                processed_data = processed_data.unwrap()
+                assert isinstance(processed_data, Ok), "Result should be Ok after error check"
+                processed_data = processed_data.value
             else:
                 processed_data = raw_data
 
@@ -144,8 +145,8 @@ class DataReader:
             )
             if processed_data.is_err():
                 raise ReaderError(processed_data.error)
-
-            processed_data = processed_data.unwrap()
+            assert isinstance(processed_data, Ok), "Result should be Ok after error check"
+            processed_data = processed_data.value
         else:
             processed_data = raw_data
         return processed_data

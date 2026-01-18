@@ -1,6 +1,6 @@
-# Claude Code Agent Profile
+# OpenCode Agent Profile
 
-**Purpose**: Operate Claude Code tasks while honoring user preferences and house style.\
+**Purpose**: Operate OpenCode tasks while honoring user preferences and house style.\
 **When to read this**: On task initialization and before major decisions; re-skim when requirements shift.\
 **Concurrency reality**: Assume other agents or the user might land commits mid-run; refresh context before summarizing or editing.
 
@@ -80,28 +80,6 @@
 - **fixtures over setup methods**. Define `pytest.fixture` with clear names. Use `autouse` sparingly.
 - **hypothesis** for property-based testing on complex pure functions.
 - **Prose-style documentation tests**. For e2e integration tests, prefer markdown documents containing Python code blocks that are tested using pytest. This approach combines documentation with executable tests, ensuring examples stay current and functional.
-
-#### Python Logging & Observability
-
-- Use `structlog` for structured logging in production apps. Simple `logging` for scripts.
-- Loguru is also acceptable but structlog integrates better with observability stacks.
-
-#### Python Project Structure
-
-```
-project/
-├── pyproject.toml
-├── src/
-│   └── package/
-│       ├── __init__.py
-│       ├── module.py
-│       └── subpackage/
-├── tests/
-│   ├── __init__.py
-│   └── test_module.py
-└── scripts/
-    └── script.py
-```
 
 #### Python Function Design
 

@@ -243,7 +243,12 @@ class PluginConfig(BaseModel):
         Path
             Path to the configuration directory. May not exist on the filesystem.
         """
-        module_file = inspect.getfile(cls)
+        try:
+            module_file = inspect.getfile(cls)
+        except (TypeError, AttributeError):
+            # For classes defined in doctest or other special contexts,
+            # return a path based on current working directory
+            return Path.cwd() / cls.CONFIG_DIR
         module_dir = Path(module_file).parent
         if module_dir.name == cls.CONFIG_DIR:
             return module_dir

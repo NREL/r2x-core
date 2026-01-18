@@ -117,7 +117,8 @@ def substitute_placeholders(
                 res = substitute_value(item)
                 if res.is_err():
                     return res  # propagate error
-                new_list.append(res.unwrap())
+                assert isinstance(res, Ok), "Result should be Ok after error check"
+                new_list.append(res.value)
             return Ok(new_list)
 
         elif isinstance(val, dict):
@@ -126,7 +127,8 @@ def substitute_placeholders(
                 res = substitute_value(v)
                 if res.is_err():
                     return res
-                new_dict[k] = res.unwrap()
+                assert isinstance(res, Ok), "Result should be Ok after error check"
+                new_dict[k] = res.value
             return Ok(new_dict)
 
         return Ok(val)
@@ -563,8 +565,8 @@ def apply_processing(
         if result_substitution.is_err():
             error = result_substitution.err()
             return Err(error)
-
-        substituted = result_substitution.unwrap()
+        assert isinstance(result_substitution, Ok), "Result should be Ok after error check"
+        substituted = result_substitution.value
         new_proc = proc_spec.model_copy(update={"filter_by": substituted})
         data_file = data_file.model_copy(update={"proc_spec": new_proc})
         proc_spec = new_proc

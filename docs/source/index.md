@@ -25,12 +25,11 @@ R2X Core serves as the foundation for building translators between power system 
 
 R2X Core offers the following capabilities:
 
-- **Plugin-based architecture** - Singleton registry with automatic discovery and registration of parsers, exporters, system modifiers, and filters
+- **Plugin-based architecture** - Singleton registry with automatic discovery and registration of plugins
 - **Standardized component models** - Power system components via [infrasys](https://github.com/NREL/infrasys)
 - **Multiple file format support** - Native support for CSV, HDF5, Parquet, JSON, and XML
 - **Type-safe configuration** - Pydantic-based `PluginConfig` for model-specific parameters with defaults loading
 - **Data transformation pipeline** - Built-in filters, column mapping, and reshaping operations
-- **Abstract base classes** - `BaseParser` and `BaseExporter` for implementing translators
 - **System modifiers** - Apply transformations to entire power system models with flexible context passing
 - **Filter functions** - Register custom data processing functions for reusable transformations
 - **Flexible data store** - Automatic format detection and intelligent caching
@@ -39,29 +38,25 @@ R2X Core offers the following capabilities:
 ## Quick Start
 
 ```python
-from r2x_core import PluginManager, BaseParser, BaseExporter, PluginConfig
+from r2x_core import PluginConfig, Plugin, PluginContext
 
 # Define type-safe configuration
 class MyModelConfig(PluginConfig):
     folder: str
     year: int
 
-# Register your model plugin
-PluginManager.register_model_plugin(
-    name="my_model",
-    config=MyModelConfig,
-    parser=MyModelParser,
-    exporter=MyModelExporter,
-)
+# Create a plugin
+class MyModelPlugin(Plugin):
+    def execute(self, context: PluginContext) -> None:
+        # Plugin logic here
+        pass
 
 # Use it
-manager = PluginManager()
-parser_class = manager.load_parser("my_model")
 config = MyModelConfig(folder="/path/to/data", year=2030)
-system = parser_class(config, data_store=data_store).build_system()
+plugin = MyModelPlugin(config)
 ```
 
-👉 [See the full tutorial](tutorials/getting-started.md) for a complete example.
+👉 See {doc}`tutorials/getting-started` for a complete example.
 
 ### Plugin Discovery
 
@@ -72,7 +67,7 @@ Plugins can be registered programmatically or discovered from entry points. Exte
 my_model = "my_package.plugins:my_plugin_component"
 ```
 
-See {doc}`references/plugins` for detailed examples and {doc}`how-tos/plugin-system/plugin-registration` for advanced patterns.
+See {doc}`references/plugins` for detailed examples and {doc}`how-tos/register-plugins` for advanced patterns.
 
 ## Indices and Tables
 

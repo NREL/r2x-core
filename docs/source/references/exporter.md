@@ -1,7 +1,5 @@
 # Exporter Framework
 
-For complete API documentation of the exporter framework, see {doc}`api`.
+Exporter functionality is implemented through the plugin system. See {doc}`./plugins` for plugin development patterns.
 
-## Quick Reference
-
-- {py:class}`~r2x_core.BaseExporter` - Exporter base class
+For complete API documentation, see {doc}`./api`.

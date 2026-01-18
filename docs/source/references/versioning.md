@@ -1,17 +1,29 @@
 # Versioning Strategies
 
-For complete API documentation of versioning classes, see {doc}`api`.
+For complete API documentation of versioning classes, see {doc}`./api`.
 
 ## Quick Reference
 
+- {py:class}`~r2x_core.VersionStrategy` - Versioning protocol base class
 - {py:class}`~r2x_core.SemanticVersioningStrategy` - Semantic versioning (e.g., "1.2.3")
 - {py:class}`~r2x_core.GitVersioningStrategy` - Git-based versioning
-- {py:class}`~r2x_core.VersionDetector` - Detect current version from data
-- {py:class}`~r2x_core.VersioningModel` - Versioning configuration model
+- {py:class}`~r2x_core.VersionReader` - Version detection utility
 
 ## Overview
 
 The versioning system provides flexible strategies for managing version information in data structures and system objects. Supported strategies include semantic versioning and git-based versioning.
+
+## Protocol: VersionReader
+
+The {py:class}`~r2x_core.VersionReader` protocol defines the interface for detecting versions from data:
+
+```python doctest
+>>> from r2x_core import VersionReader
+>>> from typing import Protocol
+>>> # VersionReader is a Protocol (structural typing)
+>>> isinstance(VersionReader, type)
+True
+```
 
 ## Usage Examples
 
@@ -81,7 +93,6 @@ comparison = strategy.compare(
     "2024-06-01T00:00:00Z"
 )  # -1 (earlier < later)
 ```
-
 
 ## Version Comparison
 
@@ -164,6 +175,6 @@ strategy.compare(None, "1.0.0")  # -1 (upgrade needed)
 
 ## See Also
 
-- {doc}`upgrader` - Upgrade system using versioning strategies
-- {doc}`../how-tos/versioning/version-management` - Version management guide
-- {doc}`api` - Complete API documentation
+- {doc}`./upgrader` - Upgrade system using versioning strategies
+- {doc}`../how-tos/manage-versions` - Version management guide
+- {doc}`./api` - Complete API documentation

@@ -150,7 +150,7 @@ def test_rule_from_records_processes_string_getters_and_filters():
     assert isinstance(rule.filter, RuleFilter)
     getter_fn = rule.getters["nested_name"]
     if callable(getter_fn):
-        result = getter_fn(SimpleNamespace(child=SimpleNamespace(name="x")), context=None)  # type: ignore[arg-type]
+        result = getter_fn(SimpleNamespace(child=SimpleNamespace(name="x")), context=None)
         assert isinstance(result, Ok)
 
 

@@ -380,4 +380,8 @@ class DataFile(BaseModel):
         result = resolve_path(raw_path, base_folder=folder_path, must_exist=must_exist)
         if result.is_err():
             raise result.err()
-        return result.unwrap()
+
+        # Safe because we verified result is Ok above
+        path = result.ok()
+        assert path is not None, "Expected Path from Ok result"
+        return path

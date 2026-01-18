@@ -11,7 +11,7 @@ from abc import ABC
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, get_args, get_origin
 
 from loguru import logger
-from rust_ok import Err
+from rust_ok import Err, Ok
 
 from .exceptions import PluginError
 from .plugin_context import PluginContext
@@ -41,7 +41,7 @@ class Plugin(ABC, Generic[ConfigT]):
     - Optional return type (e.g., -> System | None) = field is optional
 
     Lifecycle (fixed order, all optional)
-    -----------------------------------
+    --------------------------------------
     1. on_validate()  ->  Validate inputs/config
     2. on_prepare()   ->  Load data, setup
     3. on_upgrade()   ->  Upgrade system to target version
@@ -362,7 +362,8 @@ class Plugin(ABC, Generic[ConfigT]):
             result = on_upgrade()
             if isinstance(result, Err):
                 raise PluginError(f"{plugin_name} upgrade failed: {result.error}")
-            system_result = result.unwrap()
+            assert isinstance(result, Ok), "Result should be Ok after error check"
+            system_result = result.value
             self._ctx.system = system_result
 
         on_build = getattr(self, "on_build", None)
@@ -371,7 +372,8 @@ class Plugin(ABC, Generic[ConfigT]):
             result = on_build()
             if isinstance(result, Err):
                 raise PluginError(f"{plugin_name} build failed: {result.error}")
-            system_result = result.unwrap()
+            assert isinstance(result, Ok), "Result should be Ok after error check"
+            system_result = result.value
             self._ctx.system = system_result
 
         on_transform = getattr(self, "on_transform", None)
@@ -380,7 +382,8 @@ class Plugin(ABC, Generic[ConfigT]):
             result = on_transform()
             if isinstance(result, Err):
                 raise PluginError(f"{plugin_name} transform failed: {result.error}")
-            system_result = result.unwrap()
+            assert isinstance(result, Ok), "Result should be Ok after error check"
+            system_result = result.value
             self._ctx.system = system_result
 
         on_translate = getattr(self, "on_translate", None)
@@ -389,7 +392,8 @@ class Plugin(ABC, Generic[ConfigT]):
             result = on_translate()
             if isinstance(result, Err):
                 raise PluginError(f"{plugin_name} translate failed: {result.error}")
-            target_result = result.unwrap()
+            assert isinstance(result, Ok), "Result should be Ok after error check"
+            target_result = result.value
             self._ctx.target_system = target_result
 
         on_export = getattr(self, "on_export", None)

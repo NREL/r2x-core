@@ -194,7 +194,7 @@ def test_getter_callable_with_result_type():
 
     # Access the registered function to get the correct type
     getter_func = GETTER_REGISTRY["test_getter_func"]
-    result = getter_func(None, context=None)  # type: ignore[arg-type]
+    result = getter_func(None, context=None)
     assert result.is_ok()
     assert result.unwrap() == 42
 

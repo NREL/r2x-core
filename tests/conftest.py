@@ -17,6 +17,18 @@ pytest_plugins = [
 ]
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    """Configure pytest with custom markers for documentation tests."""
+    config.addinivalue_line(
+        "markers",
+        "doctest: tests for documentation examples",
+    )
+    config.addinivalue_line(
+        "markers",
+        "doc_coverage: tests for API documentation coverage",
+    )
+
+
 @pytest.fixture(scope="function")
 def empty_file(tmp_path) -> Generator[Path, None, None]:
     empty_fpath = tmp_path / "test.csv"

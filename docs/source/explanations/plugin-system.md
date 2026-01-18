@@ -1,15 +1,20 @@
 # Plugin System Architecture
 
-This document explains the design and architecture of the r2x-core plugin system, providing insight into how it works and why it was designed this way.
+This document explains the design and architecture of the r2x-core plugin
+system, providing insight into how it works and why it was designed this way.
 
 ## Purpose and Goals
 
-The plugin system enables **extensibility** and **modularity** in r2x-core by allowing applications and external packages to register custom components without modifying the core library. This separation of concerns provides:
+The plugin system enables **extensibility** and **modularity** in r2x-core by
+allowing applications and external packages to register custom components
+without modifying the core library. This separation of concerns provides:
 
-- **Model-agnostic workflows**: Parse from any input model, export to any output model
+- **Model-agnostic workflows**: Parse from any input model, export to any output
+  model
 - **Decentralized development**: Model-specific code lives in separate packages
 - **Dynamic discovery**: Automatically find and load installed plugins
-- **Reusable components**: Share parsers, exporters, and transformations across applications
+- **Reusable components**: Share parsers, exporters, and transformations across
+  applications
 
 ## Architecture Overview
 
@@ -20,27 +25,34 @@ The plugin system consists of three main layers:
 r2x-core supports three distinct plugin types, each serving a different purpose:
 
 #### Model Plugins
-Model plugins register parser and/or exporter classes for specific energy models (e.g., ReEDS, PLEXOS, Sienna). Each model plugin consists of:
 
-- **Configuration**: A `PluginConfig` subclass defining model-specific parameters with automatic path resolution and JSON defaults loading
-- **Parser** (optional): A `BaseParser` subclass to read model input files
-- **Exporter** (optional): A `BaseExporter` subclass to write model output files
+Model plugins register custom functionality for specific energy models (e.g.,
+ReEDS, PLEXOS, Sienna). Each model plugin consists of:
 
-**Rationale**: Separating parser and exporter allows flexible model translation workflows (input-only, output-only, or bidirectional).
+- **Configuration**: A `PluginConfig` subclass defining model-specific
+  parameters with automatic path resolution and JSON defaults loading
+- **Plugin Implementation**: A `Plugin` subclass implementing custom logic
+
+**Rationale**: The plugin system allows flexible, extensible workflows where
+model-specific code is decoupled from the core library.
 
 **PluginConfig Features**:
-- Automatic configuration directory discovery (looks for `config/` subdirectory relative to the config class)
+
+- Automatic configuration directory discovery (looks for `config/` subdirectory
+  relative to the config class)
 - Load default parameters from `config/defaults.json`
 - Load file mappings from `config/file_mapping.json`
 - Pydantic-based validation and type safety
 - Full IDE support for field completion
 
 ```{seealso}
-See :doc:`../how-tos/plugin-system/plugin-standards` for configuration best practices and standards.
+See {doc}`../how-tos/structure-plugin-directories` for configuration best practices and standards.
 ```
 
 #### System Modifier Plugins
-System modifiers are functions that post-process a `System` after parsing. They enable:
+
+System modifiers are functions that post-process a `System` after parsing. They
+enable:
 
 - Adding components (storage, electrolyzers, etc.)
 - Removing or filtering components
@@ -48,279 +60,265 @@ System modifiers are functions that post-process a `System` after parsing. They 
 - Setting constraints or limits
 - Modifying attributes based on scenarios
 
-**Rationale**: System modifiers provide a hook for custom logic without requiring parser subclassing. This allows combining base model parsers with application-specific customizations.
+**Rationale**: System modifiers provide a hook for custom logic without
+requiring parser subclassing. This allows combining base model parsers with
+application-specific customizations.
 
-**Signature**: `(system: System, **kwargs) -> System`
+**Signature**: `(system: System, context: PluginContext, **kwargs) -> System`
 
-The flexible `**kwargs` allows modifiers to accept optional context:
-- `config`: Configuration object
-- `parser`: Parser instance that built the system
-- Custom parameters specific to the modifier
+The `PluginContext` provides access to configuration and the source system
+during modifications.
 
 #### Filter Plugins
-Filters are data transformation functions applied during parsing. They operate on raw data (typically `polars.LazyFrame` or `dict`) before component creation.
 
-**Rationale**: Filters provide reusable data transformations that can be shared across parsers and models. Common operations (rename columns, filter rows, convert units) become first-class, discoverable functions.
+Filters are data transformation functions applied during parsing. They operate
+on raw data (typically `polars.LazyFrame` or `dict`) before component creation.
+
+**Rationale**: Filters provide reusable data transformations that can be shared
+across parsers and models. Common operations (rename columns, filter rows,
+convert units) become first-class, discoverable functions.
 
 **Signature**: `(data: Any, **kwargs) -> Any`
 
-The flexible signature supports polymorphic filters that work with multiple data types.
+The flexible signature supports polymorphic filters that work with multiple data
+types.
 
-### 2. Plugin Registry (PluginManager)
+### 2. Plugin Registry
 
-The `PluginManager` is a **singleton** that maintains centralized registries for all plugin types.
+The `Plugin` base class and `PluginContext` provide the core mechanism for
+plugin execution and context management.
 
-#### Singleton Pattern
-Why singleton?
-- **Global registry**: All parts of an application see the same registered plugins
-- **Initialization once**: External plugins discovered only once at startup
-- **Consistent state**: No risk of registry inconsistency across instances
+#### PluginContext
 
-#### Storage Structure
-```python
-_registry: dict[str, PluginComponent]           # Model plugins by name
-_modifier_registry: dict[str, SystemModifier]   # System modifiers by name
-_filter_registry: dict[str, Callable]           # Filters by name
-```
-
-#### Registration Methods
-Plugins register using class methods (available before instantiation):
+The `PluginContext` is passed to plugin implementations during execution:
 
 ```python
-@classmethod
-def register_model_plugin(cls, name, config, parser, exporter) -> None
-@classmethod
-def register_system_modifier(cls, name) -> Callable  # Decorator
-@classmethod
-def register_filter(cls, name) -> Callable           # Decorator
+context: PluginContext = PluginContext(
+    source_system=...,     # System being transformed
+    target_system=...,     # Target system for results
+    config=...,            # Plugin configuration
+)
 ```
 
-**Rationale**: Class methods allow registration before the singleton is instantiated, which is important for external plugins discovered via entry points.
+Plugin methods receive this context and use it to access both systems and
+configuration.
 
-#### Discovery Methods
-Applications query the registry to discover available plugins:
+#### Plugin Base Class
+
+Custom plugins inherit from `Plugin`:
 
 ```python
-@property
-def registered_parsers(self) -> list[str]
-@property
-def registered_exporters(self) -> list[str]
-@property
-def registered_modifiers(self) -> list[str]
-@property
-def registered_filters(self) -> list[str]
+from r2x_core import Plugin, PluginConfig, PluginContext
+
+class MyPlugin(Plugin):
+    """Custom plugin for data transformation."""
+
+    def apply(self, context: PluginContext) -> None:
+        """Apply plugin logic to context systems."""
+        source = context.source_system
+        target = context.target_system
+        # Custom logic here
 ```
 
-### 3. External Plugin Discovery
+### 3. Plugin Configuration
 
-The plugin system uses Python's **entry point** mechanism for automatic plugin discovery.
+Plugins use `PluginConfig` for type-safe, validated configuration:
 
-#### Entry Point Group: `r2x_plugin`
+```python
+from r2x_core import PluginConfig
+from pydantic import field_validator
 
-External packages declare entry points in `pyproject.toml`:
+class MyPluginConfig(PluginConfig):
+    """Configuration for custom plugin."""
 
-```toml
-[project.entry-points.r2x_plugin]
-my_model = "my_package.plugins:register_plugins"
+    folder: str
+    year: int
+    scenario: str = "base"
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v):
+        if v < 2020 or v > 2050:
+            raise ValueError("Year must be between 2020 and 2050")
+        return v
 ```
 
-#### Discovery Process
-
-When `PluginManager()` is first instantiated:
-
-1. Scan for entry points in the `r2x_plugin` group
-2. Load each entry point (imports the module and gets the function)
-3. Call the registration function
-4. Log success or failure for each plugin
-
-**Rationale**: Entry points are a standard Python mechanism for plugin discovery. They enable:
-- Automatic discovery of installed packages
-- No explicit imports required in r2x-core
-- Clean separation between core and plugins
-- Standard pip installation workflow
+Configuration loads automatically from `config/defaults.json` and
+`config/file_mapping.json` relative to the config class location.
 
 ## Data Flow
 
-### Parsing Workflow with Plugins
+### Plugin Execution Model
+
+Plugins are called during the system transformation process:
+
+1. **Initialization**: Plugin receives configuration (PluginConfig subclass)
+2. **Context Creation**: PluginContext is created with source and target systems
+3. **Plugin Execution**: Plugin.apply(context) performs custom logic
+4. **Result**: Modified or new system is returned
+
+### Filter Application in Parsers
+
+Filters are optional transformations that can be applied during component
+creation:
 
 ```
-1. Application loads parser class
-   PluginManager.load_parser("reeds") → ReEDSParser
-
-2. Parser initialization
-   parser = ReEDSParser(config, data_store)
-
-3. Build system
-   system = parser.build_system()
-   ├── parser.build_system_components()
-   │   ├── read_data_file() → raw data
-   │   ├── apply filters from registry
-   │   └── create_component() → add to system
-   └── parser.build_time_series()
-
-4. Apply system modifiers
-   modifier = PluginManager.get_system_modifier("add_storage")
-   system = modifier(system, config=config, parser=parser)
-
-5. Export
-   Exporter = PluginManager.load_exporter("plexos")
-   exporter = Exporter(config, system, data_store)
-   exporter.export()
+Raw Data File
+  ↓
+Filter 1: rename_columns()
+  ↓
+Filter 2: filter_by_year()
+  ↓
+Filter 3: convert_units()
+  ↓
+create_component(ComponentClass)
+  ↓
+Add to System
 ```
 
-### Filter Application
-
-Filters are applied within parsers during data processing:
-
-```
-Raw Data → Filter 1 → Filter 2 → ... → Filter N → Components
-```
-
-Example:
-```
-CSV File
-  → rename_columns({"gen_name": "name"})
-  → filter_by_year(2030)
-  → convert_units("capacity", 1000)
-  → create_component(Generator, row)
-```
+Filters are composable and can be chained together for complex data
+transformations.
 
 ## Design Decisions
 
-### Why Not Abstract Base Classes for Plugins?
+### Why Use PluginConfig Subclasses?
 
-We use **registration** rather than requiring plugins to inherit from abstract base classes.
+PluginConfig provides a structured approach to plugin configuration.
 
 **Advantages**:
-- Plugins can be plain functions (modifiers, filters)
-- No inheritance complexity
-- Works with third-party code that can't be modified
-- Simpler mental model
 
-### Why Flexible Signatures?
+- Type safety with Pydantic validation
+- IDE support and autocomplete
+- JSON schema generation for tooling
+- Automatic path resolution for config files
+- Clear documentation of required parameters
 
-System modifiers and filters use flexible `**kwargs` rather than strict typed signatures.
+### Why Flexible Plugin Signatures?
+
+System modifiers and filters use flexible `**kwargs` rather than strict typed
+signatures.
 
 **Rationale**:
-- Different modifiers need different context (some need parser, some don't)
-- Filters may work with different data types (LazyFrame, dict, etc.)
+
+- Different modifiers need different context (some need config, some don't)
+- Filters may work with different data types (DataFrame, dict, etc.)
 - Easier to extend without breaking existing plugins
 - Applications can pass custom parameters
 
-**Trade-off**: Less type safety, but more flexibility. We rely on documentation and runtime checking.
+**Trade-off**: Less type safety, but more flexibility. We rely on documentation
+and type hints.
 
-### Why Separate Model Plugins from Modifiers?
+### Why PluginContext Instead of Individual Parameters?
 
-Model plugins (parser/exporter) are **model-specific**, while modifiers are often **cross-cutting** (work with any model).
+The `PluginContext` bundles source system, target system, and configuration
+together.
 
-**Example**:
-- `ReEDSParser` is specific to ReEDS input format
-- `add_storage` modifier can work with systems from any parser
+**Advantages**:
+
+- Single parameter instead of scattered arguments
+- Consistent interface across plugins
+- Easy to extend with new context fields
+- Clear separation of concerns
+
+### Why Support Both Plugins and Filter Functions?
+
+Plugins handle complex logic, while filters handle data transformations.
+
+**Use cases**:
+
+- **Plugins**: Add storage, modify constraints, merge systems
+- **Filters**: Rename columns, filter rows, convert units
 
 This separation allows:
-- Mixing and matching: ReEDS parser + storage modifier + PLEXOS exporter
-- Reusing modifiers across models
-- Installing only needed components
 
-### Why Allow Plugins Without Parser or Exporter?
-
-Some plugins only provide modifiers and filters without model I/O.
-
-**Use case**: A package like `r2x-storage-plugins` might only provide:
-- `add_battery_storage` modifier
-- `add_pumped_hydro` modifier
-- `storage_aggregation` filter
-
-This is valid because the plugin adds value without defining a complete model.
-
-## CLI Integration Pattern
-
-While r2x-core provides the registry, applications build CLIs on top of it:
-
-```python
-# Application's CLI (not in r2x-core)
-def build_cli():
-    manager = PluginManager()
-
-    # Dynamic model selection based on installed plugins
-    parser.add_argument(
-        "--input-model",
-        choices=manager.registered_parsers,  # Discovered dynamically
-        required=True
-    )
-
-    # Dynamic config fields based on selected model
-    plugin = manager.get_plugin(args.input_model)
-    for field in plugin.config.model_fields:
-        # Add CLI argument for each config field
-        ...
-```
-
-**Workflow**:
-```bash
-# User installs plugins
-pip install r2x-reeds r2x-plexos
-
-# CLI automatically discovers them
-r2x run --input-model=reeds --output-model=plexos ...
-```
+- Composable transformations for data pipelines
+- Reusable logic across multiple parsers
+- Flexibility in implementation approach
 
 ## Extension Points
 
-The plugin system provides several extension points:
+The plugin system provides several extension points for customization:
 
-### 1. Parser Hooks
-Parsers can override hooks for custom behavior:
-- `validate_inputs()`: Pre-parsing validation
-- `build_system_components()`: Component creation (required)
-- `build_time_series()`: Time series attachment (required)
-- `post_process_system()`: Post-parsing modifications
+### 1. Custom Plugin Classes
 
-### 2. System Modifiers
-Applications can chain modifiers for complex workflows:
+Applications can create custom Plugin subclasses for specific functionality:
+
 ```python
-for modifier_name in ["add_storage", "emission_cap", "electrolyzers"]:
-    modifier = manager.get_system_modifier(modifier_name)
-    system = modifier(system, ...)
+from r2x_core import Plugin, PluginContext, PluginConfig
+
+class StoragePlugin(Plugin):
+    """Add storage components to a system."""
+
+    def apply(self, context: PluginContext) -> None:
+        for storage_config in self.config.storages:
+            component = create_component(
+                Storage,
+                name=storage_config.name,
+                capacity=storage_config.capacity_mw
+            )
+            context.target_system.add_component(component)
 ```
 
-### 3. Filter Composition
-Filters can be composed into pipelines:
+### 2. Filter Functions
+
+Custom filter functions can be defined and used during parsing:
+
 ```python
-filters = [
-    ("rename_columns", {...}),
-    ("filter_by_year", {...}),
-    ("convert_units", {...}),
-]
-for name, kwargs in filters:
-    filter_func = manager.get_filter(name)
-    data = filter_func(data, **kwargs)
+def filter_by_year(data: Any, *, year: int) -> Any:
+    """Filter components by year."""
+    return data[data["year"] == year]
+
+# Use in parser
+filtered = filter_by_year(raw_data, year=2030)
+```
+
+### 3. Configuration Validation
+
+PluginConfig supports comprehensive validation:
+
+```python
+class AdvancedConfig(PluginConfig):
+    models: list[str]
+    solver: str = "gurobi"
+
+    @field_validator("models")
+    @classmethod
+    def validate_models(cls, v):
+        if not v:
+            raise ValueError("At least one model required")
+        return v
 ```
 
 ## Security Considerations
 
 ### Trusted Plugins Only
 
-The plugin system executes code from external packages. Only install plugins from **trusted sources**.
+The plugin system executes code from external packages. Only install plugins
+from **trusted sources**.
 
 ### Entry Point Validation
 
 PluginManager validates entry points during discovery:
+
 - Catches and logs errors if a plugin fails to load
 - Continues initialization even if one plugin fails
 - Provides clear error messages for debugging
 
 ### No Sandboxing
 
-Plugins run with full application privileges. There is **no sandboxing** or permission system.
+Plugins run with full application privileges. There is **no sandboxing** or
+permission system.
 
-**Mitigation**: Document clearly which plugins are official/trusted, and encourage users to review plugin code before installation.
+**Mitigation**: Document clearly which plugins are official/trusted, and
+encourage users to review plugin code before installation.
 
 ## Future Considerations
 
 ### Plugin Dependencies
 
-Currently, plugins can have dependencies on each other implicitly (e.g., a modifier might expect certain filters to be registered). Future versions could:
+Currently, plugins can have dependencies on each other implicitly (e.g., a
+modifier might expect certain filters to be registered). Future versions could:
+
 - Add explicit dependency declaration
 - Validate plugin dependencies at registration
 - Provide dependency resolution
@@ -328,6 +326,7 @@ Currently, plugins can have dependencies on each other implicitly (e.g., a modif
 ### Plugin Versioning
 
 Future versions could support:
+
 - Version requirements for plugins
 - Compatibility checking (plugin API version)
 - Migration paths for breaking changes
@@ -335,13 +334,14 @@ Future versions could support:
 ### Plugin Configuration
 
 Future versions could add:
+
 - Plugin-level configuration
 - Enable/disable plugins dynamically
 - Plugin priority/ordering for modifiers
 
 ## See Also
 
-- :doc:`../how-tos/plugin-system/plugin-registration` : How to register plugins
-- :doc:`../how-tos/plugin-system/plugin-usage` : How to use registered plugins
-- :doc:`../how-tos/filter-examples` : Filter registry examples
-- :doc:`../reference/plugin-api` : Plugin API reference
+- {doc}`../how-tos/register-plugins` : How to register plugins
+- {doc}`../how-tos/run-plugins` : How to use registered plugins
+- {doc}`../how-tos/run-plugins` : Using plugins in workflows
+- {doc}`../references/plugins` : Plugin API reference

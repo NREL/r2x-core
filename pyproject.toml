@@ -88,6 +88,7 @@ docs = [
     "sphinx-copybutton>=0.5.2,<1.0.0",
     "sphinx-reports>=0.1.0,<1.0.0",
     "sphinx-tabs>=3.4.5,<4.0.0",
+    "sphinxcontrib-mermaid>=2.0.0,<3.0.0",
 ]
 
 [build-system]

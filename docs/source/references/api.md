@@ -43,15 +43,31 @@ Complete API documentation for all r2x-core classes and functions.
    :field-list-validators: False
 ```
 
-## Parser Framework
-
 ```{eval-rst}
-.. autoclass:: r2x_core.BaseParser
+.. autoclass:: r2x_core.FileInfo
    :members:
-   :undoc-members:
-   :show-inheritance:
    :no-index:
 ```
+
+```{eval-rst}
+.. autoclass:: r2x_core.ReaderConfig
+   :members:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.TabularProcessing
+   :members:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.JSONProcessing
+   :members:
+   :no-index:
+```
+
+## Plugin Configuration
 
 ```{eval-rst}
 .. autopydantic_model:: r2x_core.PluginConfig
@@ -63,19 +79,21 @@ Complete API documentation for all r2x-core classes and functions.
    :no-index:
 ```
 
-## Exporter Framework
+## Plugin System
 
 ```{eval-rst}
-.. autoclass:: r2x_core.BaseExporter
+.. autoclass:: r2x_core.Plugin
    :members:
-   :undoc-members:
    :show-inheritance:
    :no-index:
 ```
 
-## Plugin System
-
-The plugin system is extended through subclasses of the parser, exporter, and upgrader frameworks.
+```{eval-rst}
+.. autoclass:: r2x_core.PluginContext
+   :members:
+   :show-inheritance:
+   :no-index:
+```
 
 ## File Types
 
@@ -87,13 +105,51 @@ The plugin system is extended through subclasses of the parser, exporter, and up
    :no-index:
 ```
 
-## Exceptions
+```{eval-rst}
+.. autoclass:: r2x_core.H5Format
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :no-index:
+```
+
+## Rules and Translation
 
 ```{eval-rst}
-.. autoclass:: r2x_core.ParserError
+.. autoclass:: r2x_core.Rule
    :members:
    :show-inheritance:
 ```
+
+```{eval-rst}
+.. autoclass:: r2x_core.RuleFilter
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.RuleResult
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.TranslationResult
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.apply_rules_to_context
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.apply_single_rule
+```
+
+## Exceptions
 
 ```{eval-rst}
 .. autoclass:: r2x_core.ValidationError
@@ -108,9 +164,24 @@ The plugin system is extended through subclasses of the parser, exporter, and up
 ```
 
 ```{eval-rst}
-.. autoclass:: r2x_core.ExporterError
+.. autoclass:: r2x_core.CLIError
    :members:
    :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.PluginError
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.UpgradeError
+   :members:
+   :show-inheritance:
+   :no-index:
 ```
 
 ## Versioning and Upgrades
@@ -130,9 +201,30 @@ The plugin system is extended through subclasses of the parser, exporter, and up
 ```
 
 ```{eval-rst}
+.. autoclass:: r2x_core.VersionReader
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.VersionStrategy
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
 .. autoclass:: r2x_core.UpgradeStep
    :members:
    :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.UpgradeType
+   :members:
+   :show-inheritance:
+   :no-index:
 ```
 
 ```{eval-rst}
@@ -142,6 +234,33 @@ The plugin system is extended through subclasses of the parser, exporter, and up
 ## Utilities
 
 ```{eval-rst}
+.. autofunction:: r2x_core.components_to_records
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.export_components_to_csv
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.create_component
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.getter
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.transfer_time_series_metadata
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.time_series.TimeSeriesTransferResult
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
 .. autofunction:: r2x_core.utils.filter_valid_kwargs
 ```
 
@@ -149,6 +268,37 @@ The plugin system is extended through subclasses of the parser, exporter, and up
 .. autofunction:: r2x_core.utils.validate_file_extension
 ```
 
+## Results
+
+```{eval-rst}
+.. autoclass:: r2x_core.Result
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.Ok
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autoclass:: r2x_core.Err
+   :members:
+   :show-inheritance:
+   :no-index:
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.is_ok
+```
+
+```{eval-rst}
+.. autofunction:: r2x_core.is_err
+```
+
 ## Data Processors
 
-See {doc}`processors` for complete processor documentation.
+See {doc}`./processors` for complete processor documentation.

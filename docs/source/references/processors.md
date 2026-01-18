@@ -9,24 +9,26 @@ Data processors are used internally by the DataReader to apply transformations t
 Transformations are applied automatically by DataReader:
 
 ```python
-from r2x_core import DataReader, DataFile
+from pathlib import Path
+from r2x_core import DataReader, DataFile, TabularProcessing
 
 # Define data file with transformations
 data_file = DataFile(
     name="generators",
-    filepath="data/generators.csv",
-    lowercase=True,
-    drop_columns=["old_col"],
-    column_mapping={"gen_id": "id", "gen_name": "name"},
-    schema={"capacity": "Float64", "year": "Int64"},
-    filters={"year": 2030},
-    value_columns=["capacity", "name"],
+    fpath=Path("data/generators.csv"),
+    proc_spec=TabularProcessing(
+        drop_columns=["old_col"],
+        column_mapping={"gen_id": "id", "gen_name": "name"},
+        column_schema={"capacity": "Float64", "year": "Int64"},
+        filter_by={"year": 2030},
+        select_columns=["capacity", "name"],
+    ),
 )
 
 # Transformations applied automatically
 reader = DataReader()
 data = reader.read_data_file(folder=".", data_file=data_file)
-# Returns transformed LazyFrame with lowercase, dropped columns, renamed, cast, filtered, and selected
+# Returns transformed LazyFrame with dropped columns, renamed, cast, filtered, and selected
 ```
 
 ### Manual Transformation
@@ -116,9 +118,12 @@ schema = {
     "date": "Date",             # Date
     "datetime": "Datetime",     # Datetime
 }
+
+processing = TabularProcessing(column_schema=schema)
 ```
 
 Supported Polars types include:
+
 - Numeric: Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, Float64
 - String: Utf8, Categorical
 - Boolean: Boolean
@@ -148,6 +153,6 @@ df2_transformed = lowercase_transform(df2)
 
 ## See Also
 
-- {doc}`../how-tos/data-management/data-reading` - Data reading guide
-- {doc}`file-formats` - File format configuration
-- {doc}`models` - DataFile model reference
+- {doc}`../how-tos/read-data-files` - Data reading guide
+- {doc}`./file-formats` - File format configuration
+- {doc}`./models` - DataFile model reference

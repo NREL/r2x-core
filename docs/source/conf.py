@@ -16,6 +16,7 @@ extensions = [
     "sphinx_tabs.tabs",
     "sphinx_reports",
     "sphinxcontrib.autodoc_pydantic",
+    "sphinxcontrib.mermaid",
 ]
 
 templates_path = ["_templates"]
@@ -81,7 +82,14 @@ report_doccov_packages = {
         "name": "r2x_core",
         "directory": "src/",
         "fail_below": 90,
-        "levels": "default",
+        "levels": {
+            0: {"desc": "No documentation", "class": "report-cov-0"},
+            25: {"desc": "Minimal documentation", "class": "report-cov-25"},
+            50: {"desc": "Some documentation", "class": "report-cov-50"},
+            75: {"desc": "Good documentation", "class": "report-cov-75"},
+            100: {"desc": "Complete documentation", "class": "report-cov-100"},
+            "error": {"desc": "Errors", "class": "report-cov-error"},
+        },
     }
 }
 intersphinx_mapping = {

@@ -10,6 +10,9 @@ Explanations provide background and context about r2x-core's design and architec
 plugin-system
 unit-system
 h5-readers
+rules-system
+data-management
+versioning
 ```
 
 ## When to Read Explanations

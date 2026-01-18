@@ -1,6 +1,6 @@
 # System
 
-For complete API documentation of the System class, see {doc}`api`.
+For complete API documentation of the System class, see {doc}`./api`.
 
 ## Quick Reference
 

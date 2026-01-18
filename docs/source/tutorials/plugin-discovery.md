@@ -1,6 +1,8 @@
 # Plugin Discovery
 
-Plugins can be automatically discovered and cataloged using ast-grep rules. This enables:
+Plugins can be automatically discovered and cataloged using ast-grep rules. This
+enables:
+
 - Plugin registry generation
 - CLI help text generation
 - Documentation generation
@@ -58,34 +60,34 @@ Discovery would extract:
 
 ```json
 {
-    "ReEDSParser": {
-        "config_type": "ReEDSConfig",
-        "file": "plugins/reeds_parser.py",
-        "line": 12,
-        "hooks": ["on_validate", "on_build"],
-        "required_context": ["config", "store"],
-        "accepts_stdin": false,
-        "config_schema": {
-            "model_year": {
-                "type": "int",
-                "required": true
-            },
-            "scenario": {
-                "type": "str",
-                "required": false,
-                "default": "base"
-            },
-            "input_folder": {
-                "type": "str",
-                "required": true
-            },
-            "skip_buses": {
-                "type": "bool",
-                "required": false,
-                "default": false
-            }
-        }
+  "ReEDSParser": {
+    "config_type": "ReEDSConfig",
+    "file": "plugins/reeds_parser.py",
+    "line": 12,
+    "hooks": ["on_validate", "on_build"],
+    "required_context": ["config", "store"],
+    "accepts_stdin": false,
+    "config_schema": {
+      "model_year": {
+        "type": "int",
+        "required": true
+      },
+      "scenario": {
+        "type": "str",
+        "required": false,
+        "default": "base"
+      },
+      "input_folder": {
+        "type": "str",
+        "required": true
+      },
+      "skip_buses": {
+        "type": "bool",
+        "required": false,
+        "default": false
+      }
     }
+  }
 }
 ```
 
@@ -93,28 +95,28 @@ Discovery would extract:
 
 ### Using Plugin Introspection
 
-```python doctest
->>> from r2x_core import Plugin, PluginConfig
->>> from rust_ok import Ok
+```python
+from r2x_core import Plugin, PluginConfig
+from rust_ok import Ok
 
->>> class MyConfig(PluginConfig):
-...     value: int
+class MyConfig(PluginConfig):
+    value: int
 
->>> class MyPlugin(Plugin[MyConfig]):
-...     def on_validate(self):
-...         return Ok(None)
+class MyPlugin(Plugin[MyConfig]):
+    def on_validate(self):
+        return Ok(None)
 ...
-...     def on_build(self):
-...         return Ok(None)
+    def on_build(self):
+        return Ok(None)
 
->>> # Get config type
->>> config_type = MyPlugin.get_config_type()
->>> config_type.__name__
+# Get config type
+config_type = MyPlugin.get_config_type()
+config_type.__name__
 'MyConfig'
 
->>> # Get implemented hooks
->>> hooks = MyPlugin.get_implemented_hooks()
->>> sorted(list(hooks))
+# Get implemented hooks
+hooks = MyPlugin.get_implemented_hooks()
+sorted(list(hooks))
 ['on_build', 'on_validate']
 ```
 
@@ -196,6 +198,7 @@ rule:
 ```
 
 **Usage:**
+
 ```bash
 ast-grep scan --rule discover_plugins.yml /path/to/plugins/
 ```
@@ -368,20 +371,3 @@ $ python -m cli run ReEDSParser --model-year 2030 --input-folder /data
 
 $ python -m cli run PlexosExporter --output-dir /export < system.json
 ```
-
-## Best Practices
-
-1. **Use plugin naming** - Class names should end with `Plugin` for easy discovery
-2. **Use config naming** - Config classes should end with `Config`
-3. **Use type hints** - Property return types indicate requirements
-4. **Document hooks** - Add docstrings to hook methods
-5. **Test discovery** - Verify ast-grep rules match your plugins
-6. **Cache registry** - Build once, use many times for CLI/docs
-7. **Version the schema** - Include discovery schema version in registry
-
-## Schema Version
-
-Current discovery schema version: **1.0**
-
-Changes:
-- v1.0: Initial schema with plugins, hooks, config, context fields
