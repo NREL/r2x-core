@@ -213,12 +213,11 @@ def test_json_select_keys_keeps_specified_keys(sample_json_file: Path):
     df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
 
     result = json_select_keys(df_file, data, proc_spec)
-    assert isinstance(result, list)
+    assert isinstance(result, dict)
 
-    assert len(result) == 2
-    assert isinstance(result[0], dict)
-    assert set(result[0].keys()) == {"name", "city"}
-    assert result[0]["name"] == "Alice"
+    assert set(result.keys()) == {"name", "score"}
+    assert result["name"] == "Alice"
+    assert result["score"] == 85.5
 
 
 def test_json_apply_filters_with_no_match(sample_json_file: Path):

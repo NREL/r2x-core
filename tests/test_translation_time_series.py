@@ -6,6 +6,7 @@ import sqlite3
 from typing import Any, cast
 from uuid import uuid4
 
+import pytest
 from fixtures.target_system import NodeComponent
 
 from r2x_core import PluginContext, apply_rules_to_context
@@ -191,3 +192,12 @@ def test_main_db_path_returns_path():
             return Cursor()
 
     assert _main_db_path(cast(Any, Conn())) == "/tmp/test.db"
+
+
+def test_transfer_time_series_requires_systems(context_example: PluginContext):
+    """transfer_time_series_metadata raises ValueError if systems are None."""
+    # Create a context with no systems
+    context = context_example.evolve(source_system=None, target_system=None)
+
+    with pytest.raises(ValueError, match="source_system and target_system must be set"):
+        transfer_time_series_metadata(context)
