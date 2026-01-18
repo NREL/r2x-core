@@ -8,7 +8,7 @@ how-tos/index
 explanations/index
 references/index
 contributing
-CHANGELOG
+../../CHANGELOG
 ```
 
 # R2X Core Documentation
