@@ -138,6 +138,7 @@ Use descriptive branch names following this pattern:
 ```
 
 **Types:**
+
 - `feature/` - New features
 - `fix/` - Bug fixes
 - `docs/` - Documentation changes
@@ -145,6 +146,7 @@ Use descriptive branch names following this pattern:
 - `refactor/` - Code improvements
 
 **Examples:**
+
 - `feature/plexos-parser`
 - `fix/data-validation`
 - `docs/api-reference`
@@ -162,6 +164,7 @@ Follow the [Angular/Karma](https://karma-runner.github.io/6.4/dev/git-commit-msg
 ```
 
 **Types:**
+
 - `feat`: New features
 - `fix`: Bug fixes
 - `docs`: Documentation changes
@@ -171,6 +174,7 @@ Follow the [Angular/Karma](https://karma-runner.github.io/6.4/dev/git-commit-msg
 - `chore`: Changes to build process or auxiliary tools
 
 **Examples:**
+
 ```
 feat(parser): add support for PLEXOS XML files
 fix(validation): handle missing data columns
@@ -190,6 +194,7 @@ docs: update API reference for DataStore
 We use a **trunk-based development** approach:
 
 1. **Create feature branch** from `main`:
+
    ```bash
    git switch -c feature/your-feature-name
    ```
@@ -197,12 +202,14 @@ We use a **trunk-based development** approach:
 2. **Make changes** and commit regularly with clear messages
 
 3. **Keep branch updated** with main:
+
    ```bash
    git fetch origin
    git rebase origin/main
    ```
 
 4. **Push and create PR** when ready:
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -275,6 +282,7 @@ We follow the [Diataxis](https://diataxis.fr/) framework:
 ### Coding Conventions
 
 We follow Python best practices:
+
 - PEP 8 style guide (enforced by Ruff)
 - Type hints for all function signatures
 - Docstrings for all public functions and classes
