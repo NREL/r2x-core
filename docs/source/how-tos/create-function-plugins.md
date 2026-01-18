@@ -165,6 +165,65 @@ Call exposed functions directly with explicit arguments:
 Success: original
 ```
 
+### Advanced: Python 3.12 Type Parameters (PEP 695)
+
+Use PEP 695 type parameter syntax for generic plugin functions with constrained config types:
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from rust_ok import Ok, Result
+>>> from pydantic import Field
+
+>>> # Define config types that implement a specific interface
+>>> class BaseTransformConfig(PluginConfig):
+...     """Base config for transform operations."""
+...     pass
+
+>>> class ScaleConfig(BaseTransformConfig):
+...     """Config for scaling operations."""
+...     factor: float = Field(default=1.0, ge=0.1)
+
+>>> class RotateConfig(BaseTransformConfig):
+...     """Config for rotation operations."""
+...     angle: float = Field(default=0.0)
+
+>>> # Python 3.12 type parameter syntax with constraint
+>>> @expose_plugin
+... def transform_system[C: BaseTransformConfig](
+...     system: System,
+...     config: C,
+... ) -> Result[System, str]:
+...     """Generic transform accepting any BaseTransformConfig subclass."""
+...     # Config type is guaranteed to be BaseTransformConfig or subclass
+...     system.name = f"{system.name}_transformed"
+...     return Ok(system)
+
+>>> # Usage - type parameter is inferred from config type
+>>> system = System(name="grid")
+>>> scale_config = ScaleConfig(factor=2.5)
+>>> result = transform_system(system, scale_config)
+>>> result.unwrap().name
+'grid_transformed'
+
+>>> # Type checker ensures config matches the constraint
+>>> rotate_config = RotateConfig(angle=45.0)
+>>> result2 = transform_system(system, rotate_config)
+>>> result2.is_ok()
+True
+```
+
+**PEP 695 Type Parameter Syntax Benefits**:
+- ✅ **Constraint checking**: `[C: BaseTransformConfig]` ensures config type validity
+- ✅ **Type inference**: Type parameter automatically inferred from config argument
+- ✅ **IDE support**: Full auto-completion and type checking
+- ✅ **Clean syntax**: More readable than `TypeVar` approach
+- ✅ **Self-documenting**: Constraint clearly visible in function signature
+
+**When to Use**:
+- Use PEP 695 for plugins accepting multiple config types with a common interface
+- Use simple `config: SpecificConfig` for single config type
+- Use `config: C` (with TypeVar) for backward compatibility with Python <3.12
+
 ## CLI Registration via Entry Points
 
 To make your function discoverable by the Rust CLI, register it as an entry point in your package's `pyproject.toml`:
