@@ -57,6 +57,10 @@
           "jsonpath": "$.package[?(@.name.value=='r2x-core')].version",
           "path": "uv.lock",
           "type": "toml"
+        },
+        {
+          "path": "docs/source/conf.py",
+          "type": "generic"
         }
       ],
       "include-component-in-tag": false,
