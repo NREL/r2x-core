@@ -375,7 +375,7 @@ def test_json_select_columns_with_nested_list(sample_json_file: Path):
     result = json_select_columns(df_file, data, proc_spec)
 
     assert len(result) == 2
-    assert all(set(item.keys()) == {"name", "city"} for item in result)
+    assert all(isinstance(item, dict) and set(item.keys()) == {"name", "city"} for item in result)
 
 
 def test_json_rename_keys_with_list(sample_json_file: Path):

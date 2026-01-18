@@ -1,6 +1,6 @@
 """Tests for :mod:`r2x_core.upgrader_utils` helpers."""
 
-from r2x_core.upgrader_utils import (
+from r2x_core.utils import (
     UpgradeStep,
     UpgradeType,
     run_upgrade_step,

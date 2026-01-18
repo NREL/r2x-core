@@ -176,6 +176,7 @@ def test_to_json_bytes_with_time_series(caplog):
     original_system.add_time_series(ts_data, component)
 
     json_bytes = original_system.to_json()
+    assert json_bytes is not None
 
     deserialized_system = System.from_json(json_bytes)
     assert isinstance(deserialized_system, System)
@@ -202,7 +203,7 @@ def test_from_json_bytes_missing_directory_raises():
 def test_from_json_with_invalid_source_type_raises():
     """Non-str/path/bytes source should raise NotImplementedError."""
     with pytest.raises(NotImplementedError):
-        System.from_json(123)
+        System.from_json(123)  # type: ignore[arg-type]
 
 
 def test_from_json_sets_system_base_on_has_per_unit_component():
@@ -212,6 +213,7 @@ def test_from_json_sets_system_base_on_has_per_unit_component():
     system.add_components(component)
 
     json_bytes = system.to_json()
+    assert json_bytes is not None
 
     loaded = System.from_json(json_bytes)
     loaded_component = loaded.get_component(PerUnitComponentFixture, name="HasPU")

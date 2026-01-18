@@ -173,7 +173,9 @@ def test_glob_with_reader_function(data_reader, single_xml_dir):
     def custom_reader(path):
         return path.read_text()
 
-    data_file = DataFile(name="test_xml", glob="*.xml", reader=ReaderConfig(function=custom_reader))
+    data_file = DataFile(
+        name="test_xml", glob="*.xml", reader=ReaderConfig(function=custom_reader, kwargs={})
+    )
 
     result = data_reader.read_data_file(data_file, single_xml_dir)
 

@@ -68,7 +68,6 @@ class SemanticVersioningStrategy(VersionStrategy):
     Notes
     -----
     Does not handle pre-release suffixes (rc, alpha, beta).
-    For complex semantic versioning, use packaging.version.Version instead.
     """
 
     def compare_versions(self, current: str, target: str) -> int:

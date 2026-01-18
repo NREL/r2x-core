@@ -72,7 +72,7 @@ def test_getter_rejects_non_callable_first_argument():
     from r2x_core.getters import getter
 
     with pytest.raises(TypeError, match="first argument must be callable or None"):
-        getter("not_a_function")
+        getter("not_a_function")  # type: ignore[arg-type]
 
 
 def test_getter_function_is_returned_unchanged():
@@ -173,13 +173,15 @@ def test_getter_callable_with_result_type():
     """@getter decorated function returns Result type correctly."""
     from rust_ok import Ok
 
-    from r2x_core.getters import getter
+    from r2x_core.getters import GETTER_REGISTRY, getter
 
     @getter
     def test_getter_func(ctx, comp):
         return Ok(42)
 
-    result = test_getter_func(None, None)
+    # Access the registered function to get the correct type
+    getter_func = GETTER_REGISTRY["test_getter_func"]
+    result = getter_func(None, None)  # type: ignore[arg-type]
     assert result.is_ok()
     assert result.unwrap() == 42
 

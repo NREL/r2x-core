@@ -36,6 +36,8 @@ def test_multifield_rule_requires_getter():
 
 def test_validation_with_multiple_multifield_mappings():
     """Validation checks all multi-field mappings."""
+    from rust_ok import Ok
+
     from r2x_core import Rule
 
     with pytest.raises(ValueError, match=r"Multi-field mapping .* requires a getter"):
@@ -48,7 +50,7 @@ def test_validation_with_multiple_multifield_mappings():
                 "field2": ["src_c", "src_d"],
             },
             getters={
-                "field1": lambda c: 0,  # Only field1 has getter
+                "field1": lambda ctx, comp: Ok(0),  # Only field1 has getter
             },
         )
 
@@ -142,8 +144,10 @@ def test_rule_from_records_processes_string_getters_and_filters():
     assert len(rules) == 1
     rule = rules[0]
     assert isinstance(rule.filter, RuleFilter)
-    result = rule.getters["nested_name"](None, SimpleNamespace(child=SimpleNamespace(name="x")))
-    assert isinstance(result, Ok)
+    getter_fn = rule.getters["nested_name"]
+    if callable(getter_fn):
+        result = getter_fn(None, SimpleNamespace(child=SimpleNamespace(name="x")))  # type: ignore[arg-type]
+        assert isinstance(result, Ok)
 
 
 def test_rule_filter_pattern_variants():
@@ -178,7 +182,7 @@ def test_rule_filter_pattern_variants():
         RuleFilter(field="name", values=["x"], op=None)
 
     with pytest.raises(ValueError):
-        RuleFilter(field="name", op="eq", values=["x"], any_of=[{"field": "x"}])
+        RuleFilter(field="name", op="eq", values=["x"], any_of=[{"field": "x"}])  # type: ignore[arg-type]
 
     with pytest.raises(ValueError):
         RuleFilter(field="value", op="geq", values=[1, 2])

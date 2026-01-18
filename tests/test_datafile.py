@@ -4,6 +4,8 @@ import json
 
 import pytest
 
+from r2x_core.datafile import FileInfo, JSONProcessing, ReaderConfig, TabularProcessing
+
 
 def test_datafile_with_nested_structure(tmp_path):
     """Test DataFile with nested FileInfo, ReaderConfig, and proc_spec."""
@@ -15,26 +17,30 @@ def test_datafile_with_nested_structure(tmp_path):
     data_file = DataFile(
         name="test_data",
         fpath=csv_file,
-        info={
-            "description": "Test data file",
-            "is_input": True,
-            "is_optional": False,
-            "units": "MW",
-        },
-        reader={
-            "kwargs": {"infer_schema_length": 1000},
-            "function": None,
-        },
-        proc_spec={
-            "column_mapping": {"old_name": "new_name"},
-            "select_columns": ["new_name", "col2"],
-        },
+        info=FileInfo(
+            description="Test data file",
+            is_input=True,
+            is_optional=False,
+            units="MW",
+        ),
+        reader=ReaderConfig(
+            kwargs={"infer_schema_length": 1000},
+            function=None,
+        ),
+        proc_spec=TabularProcessing(
+            column_mapping={"old_name": "new_name"},
+            select_columns=["new_name", "col2"],
+        ),
     )
 
     assert data_file.name == "test_data"
     assert data_file.fpath == csv_file
+    assert data_file.info is not None
     assert data_file.info.description == "Test data file"
+    assert data_file.reader is not None
     assert data_file.reader.kwargs == {"infer_schema_length": 1000}
+    assert data_file.proc_spec is not None
+    assert isinstance(data_file.proc_spec, TabularProcessing)
     assert data_file.proc_spec.column_mapping == {"old_name": "new_name"}
 
 
@@ -48,15 +54,16 @@ def test_datafile_info_attributes(tmp_path):
     data_file = DataFile(
         name="test",
         fpath=json_file,
-        info={
-            "description": "Generator parameters",
-            "is_input": True,
-            "is_optional": False,
-            "is_timeseries": False,
-            "units": "MW",
-        },
+        info=FileInfo(
+            description="Generator parameters",
+            is_input=True,
+            is_optional=False,
+            is_timeseries=False,
+            units="MW",
+        ),
     )
 
+    assert data_file.info is not None
     assert data_file.info.description == "Generator parameters"
     assert data_file.info.is_input is True
     assert data_file.info.is_optional is False
@@ -93,8 +100,10 @@ def test_datafile_deserialize_from_json_nested(tmp_path):
     data_file = DataFile.model_validate(nested_config)
 
     assert data_file.name == "pcm_defaults"
+    assert data_file.info is not None
     assert data_file.info.description == "Generator parameters"
     assert data_file.info.units == "MW"
+    assert data_file.reader is not None
     assert data_file.reader.kwargs == {"infer_schema_length": 5000}
 
 
@@ -128,6 +137,8 @@ def test_datafile_tabular_transformations(tmp_path):
         ),
     )
 
+    assert data_file.proc_spec is not None
+    assert isinstance(data_file.proc_spec, TabularProcessing)
     proc_spec = data_file.proc_spec
     assert proc_spec.select_columns == ["col1", "col2", "col3"]
     assert proc_spec.drop_columns == ["col4"]
@@ -149,7 +160,7 @@ def test_datafile_tabular_transformations(tmp_path):
 
 def test_datafile_json_transformations(tmp_path):
     """Test JSONProcessing with JSON file."""
-    from r2x_core.datafile import DataFile, JSONProcessing
+    from r2x_core.datafile import DataFile
 
     json_file = tmp_path / "data.json"
     json_file.write_text(
@@ -173,6 +184,8 @@ def test_datafile_json_transformations(tmp_path):
         ),
     )
 
+    assert data_file.proc_spec is not None
+    assert isinstance(data_file.proc_spec, JSONProcessing)
     proc_spec = data_file.proc_spec
     assert proc_spec.key_mapping == {"old_key": "new_key", "avg_capacity_MW": "capacity"}
     assert proc_spec.rename_index == "technology"
@@ -188,7 +201,7 @@ def test_datafile_pcm_defaults_use_case(tmp_path):
         {"battery": {"avg_capacity_MW": 200.0, "forced_outage_rate": 2.0}}
     Into indexed dict format with transformed keys.
     """
-    from r2x_core.datafile import DataFile, JSONProcessing
+    from r2x_core.datafile import DataFile
 
     json_file = tmp_path / "pcm_defaults.json"
     json_file.write_text(
@@ -211,12 +224,12 @@ def test_datafile_pcm_defaults_use_case(tmp_path):
     data_file = DataFile(
         name="pcm_defaults",
         fpath=json_file,
-        info={
-            "description": "Generator default parameters by technology",
-            "is_input": True,
-            "is_optional": False,
-            "units": "MW",
-        },
+        info=FileInfo(
+            description="Generator default parameters by technology",
+            is_input=True,
+            is_optional=False,
+            units="MW",
+        ),
         proc_spec=JSONProcessing(
             key_mapping={"forced_outage_rate": "outage_rate"},
             drop_keys=["internal_id"],
@@ -225,6 +238,8 @@ def test_datafile_pcm_defaults_use_case(tmp_path):
     )
 
     assert data_file.name == "pcm_defaults"
+    assert data_file.proc_spec is not None
+    assert isinstance(data_file.proc_spec, JSONProcessing)
     assert data_file.proc_spec.key_mapping == {"forced_outage_rate": "outage_rate"}
     assert data_file.proc_spec.drop_keys == ["internal_id"]
     assert data_file.proc_spec.rename_index == "tech"
@@ -243,12 +258,13 @@ def test_datafile_with_reader_config(tmp_path):
     data_file = DataFile(
         name="custom",
         fpath=csv_file,
-        reader={
-            "kwargs": {"param1": "value1"},
-            "function": custom_reader,
-        },
+        reader=ReaderConfig(
+            kwargs={"param1": "value1"},
+            function=custom_reader,
+        ),
     )
 
+    assert data_file.reader is not None
     assert data_file.reader.kwargs == {"param1": "value1"}
     assert data_file.reader.function == custom_reader
 

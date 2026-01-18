@@ -20,8 +20,8 @@ from loguru import logger
 from pydantic import BaseModel
 from rust_ok import Err, Ok, Result
 
-from .exceptions import UpgradeError
-from .versioning import VersionStrategy
+from ..exceptions import UpgradeError
+from ..versioning import VersionStrategy
 
 
 class UpgradeType(str, Enum):

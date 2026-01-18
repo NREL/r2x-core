@@ -68,6 +68,7 @@ def test_datastore_from_json_with_reader_kwargs():
         assert "load" in files
 
         data_file = store["load"]
+        assert data_file.reader is not None
         assert data_file.reader.kwargs["data_key"] == "data"
         assert data_file.reader.kwargs["columns_key"] == "columns"
 
@@ -228,5 +229,6 @@ def test_datastore_roundtrip_with_reader_kwargs():
         assert "test" in files
 
         loaded_file = store_loaded["test"]
+        assert loaded_file.reader is not None
         assert loaded_file.reader.kwargs is not None
         assert loaded_file.reader.kwargs["data_key"] == "data"

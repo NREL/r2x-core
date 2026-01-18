@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from sqlite3 import Connection
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
 from loguru import logger
@@ -13,8 +14,9 @@ if TYPE_CHECKING:
     from .plugin_context import PluginContext
 
 
-class TransferStats(NamedTuple):
-    """Class that represents the transfer status of time series."""
+@dataclass(frozen=True, slots=True)
+class TimeSeriesTransferResult:
+    """Transfer status of time series metadata."""
 
     transferred: int
     updated: int
@@ -72,7 +74,7 @@ def _count_ts_associations(conn: Connection) -> int:
     return int(count)
 
 
-def transfer_time_series_metadata(context: PluginContext) -> TransferStats:
+def transfer_time_series_metadata(context: PluginContext) -> TimeSeriesTransferResult:
     """Transfer time series metadata for target system."""
     if context.source_system is None or context.target_system is None:
         raise ValueError("source_system and target_system must be set in context")
@@ -251,4 +253,8 @@ def transfer_time_series_metadata(context: PluginContext) -> TransferStats:
         f"Time series metadata: {transferred} transferred, {updated} updated, {children_remapped} children remapped"
     )
 
-    return TransferStats(transferred=transferred, updated=updated, children_remapped=children_remapped)
+    return TimeSeriesTransferResult(
+        transferred=transferred,
+        updated=updated,
+        children_remapped=children_remapped,
+    )

@@ -11,7 +11,7 @@ from fixtures.target_system import NodeComponent
 from rust_ok import Err, Ok
 
 from r2x_core import Rule
-from r2x_core.rules_utils import (
+from r2x_core.utils import (
     _build_target_fields,
     _create_target_component,
     _make_attr_getter,

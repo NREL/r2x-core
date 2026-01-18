@@ -68,7 +68,7 @@ class RuleFilter(BaseModel):
 
     def matches(self, component: Any) -> bool:
         """Evaluate this filter against a component instance."""
-        from .rules_utils import _evaluate_rule_filter
+        from .utils import _evaluate_rule_filter
 
         return _evaluate_rule_filter(self, component)
 

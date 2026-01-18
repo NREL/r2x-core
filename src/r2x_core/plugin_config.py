@@ -6,14 +6,24 @@ and methods to load and override configuration assets.
 """
 
 import inspect
+from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar
 
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
-from .enums import PluginConfigAsset
 from .utils.overrides import override_dictionary
+
+
+class PluginConfigAsset(str, Enum):
+    """Enum describing configuration assets."""
+
+    FILE_MAPPING = "file_mapping.json"
+    DEFAULTS = "defaults.json"
+    TRANSLATION_RULES = "translation_rules.json"
+    PARSER_RULES = "parser_rules.json"
+    EXPORTER_RULES = "exporter_rules.json"
 
 
 class PluginConfig(BaseModel):

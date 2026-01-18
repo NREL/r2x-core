@@ -5,8 +5,8 @@ from pathlib import Path
 from loguru import logger
 from rust_ok import Result
 
-from .datafile import DataFile, FileInfo
-from .utils import audit_file, resolve_glob_pattern
+from ..datafile import DataFile, FileInfo
+from . import audit_file, resolve_glob_pattern
 
 
 def get_fpath(

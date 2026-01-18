@@ -1,5 +1,7 @@
 """Helper functions for extracting data from the system."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -7,11 +9,9 @@ from typing import Any
 from infrasys import Component
 from loguru import logger
 
-from .system import System
-
 
 def components_to_records(
-    system: System,
+    system: Any,
     filter_func: Callable[[Component], bool] | None = None,
     fields: list[str] | None = None,
     key_mapping: dict[str, str] | None = None,
@@ -23,6 +23,8 @@ def components_to_records(
 
     Parameters
     ----------
+    system : System
+        The system to extract components from.
     filter_func : Callable, optional
         Function to filter components. Should accept a component and return bool.
         If None, converts all components in the system.
@@ -73,13 +75,20 @@ def components_to_records(
 
     # Apply key mapping if provided
     if key_mapping is not None:
-        records = [{key_mapping.get(k, k): v for k, v in record.items()} for record in records]
+        mapped_records: list[dict[str, Any]] = []
+        for record in records:
+            mapped: dict[str, Any] = {}
+            for k, v in record.items():
+                new_key = key_mapping.get(k, k) if isinstance(k, str) else str(k)
+                mapped[new_key] = v
+            mapped_records.append(mapped)
+        records = mapped_records
 
     return records
 
 
 def export_components_to_csv(
-    system: System,
+    system: Any,
     *,
     file_path: Path | str,
     filter_func: Callable[[Component], bool] | None = None,

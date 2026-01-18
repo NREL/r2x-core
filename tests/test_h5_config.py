@@ -58,6 +58,7 @@ def test_json_config_workflow_with_reader_kwargs():
 
         h5_format = H5Format()
         reader_kwargs = config.get("reader_kwargs", {})
+        assert isinstance(reader_kwargs, dict)
 
         df = read_file_by_type(h5_format, Path(h5_file), **reader_kwargs).collect()
 
@@ -101,6 +102,7 @@ def test_json_config_workflow_with_tabular_schema():
 
         h5_format = H5Format()
         reader_kwargs = config.get("reader_kwargs", {})
+        assert isinstance(reader_kwargs, dict)
 
         df = read_file_by_type(h5_format, Path(h5_file), **reader_kwargs).collect()
 

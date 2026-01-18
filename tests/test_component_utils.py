@@ -1,7 +1,7 @@
 from infrasys import Component
 
-from r2x_core.component_utils import components_to_records, export_components_to_csv
 from r2x_core.system import System
+from r2x_core.utils import components_to_records, export_components_to_csv
 
 
 def test_components_to_records_returns_data():

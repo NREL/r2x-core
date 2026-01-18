@@ -49,8 +49,8 @@ def test_create_with_natural_units():
         name="G1",
         base_power=100.0,
         rated_voltage=13.8,
-        rating={"value": 80.0, "unit": "MW"},
-        voltage={"value": 14.49, "unit": "kV"},
+        rating={"value": 80.0, "unit": "MW"},  # type: ignore[arg-type]
+        voltage={"value": 14.49, "unit": "kV"},  # type: ignore[arg-type]
     )
 
     # Internal storage should be in pu
@@ -65,7 +65,7 @@ def test_create_with_mixed_units():
         base_power=100.0,
         rated_voltage=13.8,
         rating=0.8,  # Already pu
-        voltage={"value": 14.49, "unit": "kV"},  # Natural - converts to pu
+        voltage={"value": 14.49, "unit": "kV"},  # type: ignore[arg-type]  # Natural - converts to pu
     )
 
     assert gen.rating == 0.8
@@ -179,7 +179,7 @@ def test_convert_power_to_pu():
         name="G1",
         base_power=50.0,  # 50 MVA base
         rated_voltage=13.8,
-        rating={"value": 40.0, "unit": "MW"},  # Should convert to 0.8 pu
+        rating={"value": 40.0, "unit": "MW"},  # type: ignore[arg-type]  # Should convert to 0.8 pu
         voltage=1.0,
     )
 
@@ -193,7 +193,7 @@ def test_convert_voltage_to_pu():
         base_power=100.0,
         rated_voltage=138.0,  # 138 kV base
         rating=1.0,
-        voltage={"value": 144.9, "unit": "kV"},  # Should convert to 1.05 pu
+        voltage={"value": 144.9, "unit": "kV"},  # type: ignore[arg-type]  # Should convert to 1.05 pu
     )
 
     assert gen.voltage == pytest.approx(1.05, rel=0.01)  # 144.9 / 138 = 1.05 pu

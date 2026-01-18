@@ -1,28 +1,35 @@
-"""Test for logging."""
+"""Tests for logging."""
+
+import json
+import sys
+
+from loguru import logger
+
+from r2x_core.logger import setup_logging
 
 
-def test_logger_setup_with_log_file(tmp_path):
-    """Test logger setup with file output."""
-    from r2x_core.logger import setup_logging
+def test_setup_logging_emits_json_when_not_tty(monkeypatch, capsys):
+    monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+    setup_logging(verbosity=1)
 
-    log_file = tmp_path / "test.log"
+    logger.bind(name="r2x_core.test").info("hello")
 
-    setup_logging(level="DEBUG", log_file=str(log_file), module="r2x_core")
+    output = capsys.readouterr().err.strip().splitlines()
+    assert output
+    payload = json.loads(output[-1])
+    assert payload["msg"] == "hello"
+    assert payload["level"] == "INFO"
+    assert payload["logger"] == "r2x_core.test"
 
-    assert log_file.exists()
 
+def test_setup_logging_defaults_to_warning(monkeypatch, capsys):
+    monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
+    setup_logging()
 
-def test_logger_setup_with_tracing(tmp_path):
-    """Test logger setup with tracing enabled."""
-    from r2x_core.logger import setup_logging
+    logger.info("not shown")
+    logger.warning("shown")
 
-    log_file = tmp_path / "test_trace.log"
-
-    setup_logging(
-        level="TRACE",
-        tracing=True,
-        log_file=str(log_file),
-        module="r2x_core",
-    )
-
-    assert log_file.exists()
+    output = capsys.readouterr().err.strip().splitlines()
+    assert output
+    payload = json.loads(output[-1])
+    assert payload["level"] == "WARN"

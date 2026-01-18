@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from infrasys import Component
 
-    from . import System
+    from .. import System
 
 
 def _iter_system_components(

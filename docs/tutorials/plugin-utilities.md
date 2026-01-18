@@ -231,14 +231,14 @@ Transfer time series metadata from a source system to a target system, handling 
 
 **Signature:**
 ```python
-def transfer_time_series_metadata(context: PluginContext) -> TransferStats
+def transfer_time_series_metadata(context: PluginContext) -> TimeSeriesTransferResult
 ```
 
 **Parameters:**
 - `context` (PluginContext): The plugin context containing both source and target systems
 
 **Returns:**
-- `TransferStats` (NamedTuple): Statistics about the transfer with fields:
+- `TimeSeriesTransferResult` (dataclass): Statistics about the transfer with fields:
   - `transferred: int` - Number of new time series transferred
   - `updated: int` - Number of time series with updated owner mappings
   - `children_remapped: int` - Number of child component associations remapped

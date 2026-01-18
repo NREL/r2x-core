@@ -72,7 +72,9 @@ def test_custom_reader_function(reader_example, tmp_path):
     def custom_reader(path):
         return path.read_text().upper()
 
-    data_file = DataFile(name="custom", fpath=test_file, reader=ReaderConfig(function=custom_reader))
+    data_file = DataFile(
+        name="custom", fpath=test_file, reader=ReaderConfig(function=custom_reader, kwargs={})
+    )
     result = reader_example.read_data_file(data_file, tmp_path)
 
     assert result == "CUSTOM CONTENT"
@@ -129,7 +131,7 @@ def test_read_data_file_with_custom_reader(reader_example, sample_csv, tmp_path)
     data_file = DataFile(
         name="test",
         fpath=sample_csv,
-        reader=ReaderConfig(function=custom_reader),
+        reader=ReaderConfig(function=custom_reader, kwargs={}),
     )
 
     result = reader_example.read_data_file(data_file, tmp_path)

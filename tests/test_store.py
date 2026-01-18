@@ -218,7 +218,7 @@ def test_from_data_files_constructor_with_relative_paths(data_store_example, fol
     (Path.cwd() / "local_file.csv").write_text("col1,col2\n1,2\n3,4")
     df_01 = DataFile(name="test1", relative_fpath="file1.csv")
     df_02 = DataFile(name="test2", relative_fpath="file2.csv")
-    df_03 = DataFile(name="test3", fpath="local_file.csv")
+    df_03 = DataFile(name="test3", fpath=Path("local_file.csv"))
     store = DataStore.from_data_files(data_files=[df_01, df_02, df_03], path=folder_with_data)
     assert "test1" in store
     assert "test2" in store
@@ -318,11 +318,12 @@ def test_load_file_with_json_transform_drop_columns(tmp_path):
 
 def test_load_file_converts_proc_spec_dict(tmp_path):
     from r2x_core import DataStore
+    from r2x_core.datafile import TabularProcessing
 
     csv_file = tmp_path / "data.csv"
     csv_file.write_text("c1,c2\n1,2\n3,4\n")
 
-    lazy = DataStore.load_file(csv_file, proc_spec={"drop_columns": ["c2"]})
+    lazy = DataStore.load_file(csv_file, proc_spec=TabularProcessing(drop_columns=["c2"]))
     assert "c2" not in lazy.collect().columns
 
 
@@ -523,7 +524,7 @@ def test_store_add_data_invalid_type(tmp_path):
     store = DataStore(tmp_path)
 
     with pytest.raises(TypeError):
-        store.add_data("not_a_datafile")
+        store.add_data("not_a_datafile")  # type: ignore[arg-type]
 
 
 def test_store_add_data_duplicate_without_overwrite(tmp_path):
@@ -566,4 +567,4 @@ def test_store_add_multiple_data_invalid_type(tmp_path):
     store = DataStore(tmp_path)
 
     with pytest.raises(TypeError):
-        store.add_data(["not_datafile"])
+        store.add_data(["not_datafile"])  # type: ignore[arg-type]

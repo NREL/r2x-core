@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 from rust_ok import Err, Ok, Result
 
-from .plugin_context import PluginContext
+from ..plugin_context import PluginContext
 
 if TYPE_CHECKING:
-    from .rules import Rule, RuleFilter, RuleLike
+    from ..rules import Rule, RuleFilter, RuleLike
 
 
 _COMPONENT_TYPE_CACHE: dict[str, type] = {}
