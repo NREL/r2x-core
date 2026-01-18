@@ -56,7 +56,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest (quick)
-        entry: uv run pytest -q --maxfail=1 --disable-warnings --cov-report=term-missing:skip-covered
+        entry: uv run pytest -q --maxfail=1 --disable-warnings --cov-report=term-missing
         language: system
         types: [python]
         pass_filenames: false

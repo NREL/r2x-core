@@ -196,3 +196,130 @@ def test_build_component_kwargs_from_parser_record(context_example):
     assert kwargs["region_component"].area == "north-zone"
     assert kwargs["ramp_limits"].up == pytest.approx(0.12)
     assert kwargs["ramp_limits"].down == pytest.approx(0.12)
+
+
+def test_make_attr_getter_returns_none_when_chain_breaks():
+    """Attr getter returns Ok(None) when attribute is None mid-chain."""
+
+    class Outer:
+        inner = None
+
+    getter = _make_attr_getter(["inner", "value"])
+    result = getter(Outer(), context=cast(Any, None))
+
+    assert result.is_ok()
+    assert result.unwrap() is None
+
+
+def test_build_target_fields_skips_multifield_mappings(context_example):
+    """Multi-field mappings in field_map are skipped for direct assignment."""
+
+    class Source:
+        name = "source_name"
+        x_coord = 10.0
+        y_coord = 20.0
+
+    def coords_getter(src: Any, *, context: Any) -> Result[tuple, ValueError]:
+        _ = context
+        return Ok((src.x_coord, src.y_coord))
+
+    rule = Rule(
+        source_type="SourceType",
+        target_type="TargetType",
+        version=1,
+        field_map={"name": "name", "coords": ["x_coord", "y_coord"]},
+        getters={"coords": coords_getter},
+    )
+
+    result = _build_target_fields(Source(), rule=rule, context=context_example)
+
+    assert result.is_ok()
+    kwargs = result.unwrap()
+    assert kwargs["name"] == "source_name"
+    assert kwargs["coords"] == (10.0, 20.0)
+
+
+def test_build_target_fields_getter_error_uses_default(context_example):
+    """Getter failures fall back to defaults when defined."""
+
+    class Source:
+        value = "x"
+
+    def faulty_getter(_src: Any, *, context: Any) -> Result[Any, ValueError]:
+        _ = context
+        return Err(ValueError("boom"))
+
+    rule = Rule(
+        source_type="SourceType",
+        target_type="TargetType",
+        version=1,
+        field_map={"value": "value"},
+        getters={"computed": faulty_getter},
+        defaults={"computed": "fallback_value"},
+    )
+
+    result = _build_target_fields(Source(), rule=rule, context=context_example)
+
+    assert result.is_ok()
+    kwargs = result.unwrap()
+    assert kwargs["computed"] == "fallback_value"
+
+
+def test_evaluate_rule_filter_all_of():
+    """Test _evaluate_rule_filter with all_of composite filter."""
+    from r2x_core import RuleFilter
+    from r2x_core.utils import _evaluate_rule_filter
+
+    class Component:
+        kind = "gas"
+        capacity = 500
+
+    filt = RuleFilter(
+        all_of=[
+            RuleFilter(field="kind", op="eq", values=["gas"]),
+            RuleFilter(field="capacity", op="geq", values=[400]),
+        ]
+    )
+
+    assert _evaluate_rule_filter(Component(), rule_filter=filt)
+
+    class FailComponent:
+        kind = "gas"
+        capacity = 300
+
+    assert not _evaluate_rule_filter(FailComponent(), rule_filter=filt)
+
+
+def test_evaluate_rule_filter_incomplete_raises():
+    """Test _evaluate_rule_filter raises on incomplete leaf filter."""
+    from r2x_core import RuleFilter
+    from r2x_core.utils import _evaluate_rule_filter
+
+    class Component:
+        kind = "gas"
+
+    filt = RuleFilter.__new__(RuleFilter)
+    object.__setattr__(filt, "any_of", None)
+    object.__setattr__(filt, "all_of", None)
+    object.__setattr__(filt, "field", None)
+    object.__setattr__(filt, "op", None)
+    object.__setattr__(filt, "values", None)
+    object.__setattr__(filt, "prefixes", None)
+    object.__setattr__(filt, "casefold", True)
+    object.__setattr__(filt, "on_missing", "exclude")
+
+    with pytest.raises(ValueError, match="must have field, op, and values"):
+        _evaluate_rule_filter(Component(), rule_filter=filt)
+
+
+def test_evaluate_rule_filter_geq_non_numeric():
+    """Test _evaluate_rule_filter geq returns False for non-numeric values."""
+    from r2x_core import RuleFilter
+    from r2x_core.utils import _evaluate_rule_filter
+
+    class Component:
+        capacity = "not_a_number"
+
+    filt = RuleFilter(field="capacity", op="geq", values=[100])
+
+    assert not _evaluate_rule_filter(Component(), rule_filter=filt)

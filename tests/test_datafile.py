@@ -298,3 +298,73 @@ def test_data_file_from_records_validation_error(tmp_path):
 
     with pytest.raises(ValidationError):
         DataFile.from_records(records, folder_path=tmp_path)
+
+
+def test_datafile_file_not_found_error_non_optional(tmp_path):
+    """Test that DataFile raises FileNotFoundError for non-optional missing file."""
+    from r2x_core import DataFile
+
+    with pytest.raises(FileNotFoundError, match="File not found"):
+        DataFile(
+            name="missing",
+            fpath=tmp_path / "nonexistent.csv",
+        )
+
+
+def test_datafile_file_type_requires_path_or_glob():
+    """Test that file_type raises ValueError when no path or glob is set."""
+    from r2x_core import DataFile
+
+    df = DataFile.__new__(DataFile)
+    object.__setattr__(df, "name", "test")
+    object.__setattr__(df, "fpath", None)
+    object.__setattr__(df, "relative_fpath", None)
+    object.__setattr__(df, "glob", None)
+    object.__setattr__(df, "info", None)
+    object.__setattr__(df, "reader", None)
+    object.__setattr__(df, "proc_spec", None)
+
+    with pytest.raises(ValueError, match="Either fpath, relative_fpath, or glob must be set"):
+        _ = df.file_type
+
+
+def test_datafile_file_type_unknown_extension(tmp_path):
+    """Test that file_type raises KeyError for unknown extension."""
+    from r2x_core import DataFile
+
+    unknown_file = tmp_path / "data.xyz"
+    unknown_file.write_text("content")
+
+    with pytest.raises(KeyError, match="not found on"):
+        DataFile(
+            name="unknown",
+            fpath=unknown_file,
+        )
+
+
+def test_data_file_from_records_key_error(tmp_path):
+    """Test from_records handles KeyError for missing fpath."""
+    from pydantic import ValidationError
+
+    from r2x_core import DataFile
+
+    records = [
+        {"name": "test1"},  # Missing fpath key
+    ]
+
+    with pytest.raises(ValidationError, match="Invalid data file records"):
+        DataFile.from_records(records, folder_path=tmp_path)
+
+
+def test_data_file_from_records_file_not_found(tmp_path):
+    """Test from_records handles FileNotFoundError for non-existent files."""
+    from pydantic import ValidationError
+
+    from r2x_core import DataFile
+
+    records = [
+        {"name": "test1", "fpath": "nonexistent.csv"},
+    ]
+
+    with pytest.raises(ValidationError, match="Invalid data file records"):
+        DataFile.from_records(records, folder_path=tmp_path)

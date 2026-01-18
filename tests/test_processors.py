@@ -472,3 +472,153 @@ def test_pl_apply_filters_datetime_multiple_years(sample_csv: Path):
     result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
 
     assert result is not None
+
+
+def test_substitute_placeholders_non_string_passthrough():
+    """Test substitute_placeholders returns non-string/list/dict values unchanged."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders(42, placeholders={"x": 1})
+    assert result.is_ok()
+    assert result.unwrap() == 42
+
+    result = substitute_placeholders(3.14, placeholders={"x": 1})
+    assert result.is_ok()
+    assert result.unwrap() == 3.14
+
+
+def test_substitute_placeholders_string_without_placeholder():
+    """Test substitute_placeholders returns string without braces unchanged."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("plain text", placeholders={"x": 1})
+    assert result.is_ok()
+    assert result.unwrap() == "plain text"
+
+
+def test_substitute_placeholders_partial_placeholder_error():
+    """Test substitute_placeholders errors on partial placeholder like prefix_{var}."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders("prefix_{variable}", placeholders={"variable": "value"})
+    assert result.is_err()
+    assert "not a complete placeholder" in str(result.err())
+
+
+def test_substitute_placeholders_list_error_propagation():
+    """Test substitute_placeholders propagates errors from list items."""
+    from r2x_core.processors import substitute_placeholders
+
+    result = substitute_placeholders(["{valid}", "{missing}"], placeholders={"valid": 1})
+    assert result.is_err()
+    assert "missing" in str(result.err())
+
+
+def test_pl_apply_filters_column_not_in_schema(sample_csv: Path):
+    """Test pl_apply_filters returns unchanged when filter column not in schema."""
+    lf = pl.scan_csv(sample_csv)
+    proc_spec = TabularProcessing(filter_by={"nonexistent_column": "value"})
+    df_file = DataFile(name="test", fpath=sample_csv, proc_spec=proc_spec)
+
+    result = pl_apply_filters(lf, data_file=df_file, proc_spec=proc_spec).collect()
+
+    assert result.equals(lf.collect())
+
+
+def test_json_apply_filters_passthrough_non_dict_list(sample_json_file: Path):
+    """Test json_apply_filters returns non-dict/list data unchanged."""
+    from typing import Any, cast
+
+    proc_spec = JSONProcessing(filter_by={"key": "value"})
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_apply_filters(cast(Any, "plain string"), data_file=df_file, proc_spec=proc_spec)
+    assert result == "plain string"
+
+    result = json_apply_filters(cast(Any, 42), data_file=df_file, proc_spec=proc_spec)
+    assert result == 42
+
+
+def test_json_select_keys_with_list_of_dicts(sample_json_file: Path):
+    """Test json_select_keys filters keys from list of dicts."""
+    data = [
+        {"name": "Alice", "age": 30, "city": "NYC"},
+        {"name": "Bob", "age": 25, "city": "LA"},
+    ]
+    proc_spec = JSONProcessing(select_keys=["name", "age"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_select_keys(data, data_file=df_file, proc_spec=proc_spec)
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    assert all(set(item.keys()) == {"name", "age"} for item in result)
+
+
+def test_json_select_keys_passthrough_non_dict_list(sample_json_file: Path):
+    """Test json_select_keys returns non-dict/list data unchanged."""
+    from typing import Any, cast
+
+    proc_spec = JSONProcessing(select_keys=["name"])
+    df_file = DataFile(name="test", fpath=sample_json_file, proc_spec=proc_spec)
+
+    result = json_select_keys(cast(Any, "plain string"), data_file=df_file, proc_spec=proc_spec)
+    assert result == "plain string"
+
+    result = json_select_keys(cast(Any, 42), data_file=df_file, proc_spec=proc_spec)
+    assert result == 42
+
+
+def test_transform_xml_data_placeholder(sample_json_file: Path):
+    """Test transform_xml_data returns data unchanged (placeholder implementation)."""
+    from r2x_core.processors import transform_xml_data
+
+    df_file = DataFile(name="test", fpath=sample_json_file)
+    data = {"root": {"child": "value"}}
+
+    result = transform_xml_data(data, data_file=df_file)
+
+    assert result == data
+
+
+def test_pl_build_filter_expr_datetime_year_list():
+    """Test pl_build_filter_expr with datetime column and list of years."""
+    from datetime import datetime
+
+    from r2x_core.processors import pl_build_filter_expr
+
+    expr = pl_build_filter_expr("datetime", value=[2020, 2021])
+
+    df = pl.DataFrame(
+        {
+            "datetime": [
+                datetime(2020, 1, 1),
+                datetime(2021, 6, 15),
+                datetime(2022, 12, 31),
+            ]
+        }
+    )
+
+    result = df.filter(expr)
+    assert len(result) == 2
+
+
+def test_pl_build_filter_expr_datetime_year_single():
+    """Test pl_build_filter_expr with datetime column and single year."""
+    from datetime import datetime
+
+    from r2x_core.processors import pl_build_filter_expr
+
+    expr = pl_build_filter_expr("datetime", value=2020)
+
+    df = pl.DataFrame(
+        {
+            "datetime": [
+                datetime(2020, 1, 1),
+                datetime(2021, 6, 15),
+            ]
+        }
+    )
+
+    result = df.filter(expr)
+    assert len(result) == 1
