@@ -76,7 +76,7 @@ def test_datastore_from_json_with_reader_kwargs():
         from r2x_core.reader import DataReader
 
         reader = DataReader()
-        df = reader.read_data_file(data_file, tmpdir_path).collect()
+        df = reader.read_data_file(data_file, folder_path=tmpdir_path).collect()
 
         # Verify the data
         assert "region_ca" in df.columns
@@ -172,19 +172,19 @@ def test_datastore_from_json_with_multiple_h5_files():
 
         # Load file (ReEDS schema)
         load_file_obj = store["load"]
-        load_df = reader.read_data_file(load_file_obj, tmpdir_path).collect()
+        load_df = reader.read_data_file(load_file_obj, folder_path=tmpdir_path).collect()
         assert "region1" in load_df.columns
         assert "datetime" in load_df.columns
 
         cf_file_obj = store["cf"]
-        cf_df = reader.read_data_file(cf_file_obj, tmpdir_path).collect()
+        cf_df = reader.read_data_file(cf_file_obj, folder_path=tmpdir_path).collect()
         assert "tech_a" in cf_df.columns
         assert "tech_b" in cf_df.columns
         assert "year" in cf_df.columns
 
         # Simple file (default schema)
         simple_file_obj = store["simple"]
-        simple_df = reader.read_data_file(simple_file_obj, tmpdir_path).collect()
+        simple_df = reader.read_data_file(simple_file_obj, folder_path=tmpdir_path).collect()
         assert "simple_data" in simple_df.columns
 
 
@@ -214,11 +214,11 @@ def test_datastore_roundtrip_with_reader_kwargs():
             ),
         )
         store = DataStore(tmpdir_path)
-        store.add_data(data_file)
+        store.add_data([data_file])
 
         # Export to JSON
         json_file = tmpdir_path / "export.json"
-        store.to_json(json_file)
+        store.to_json(fpath=json_file)
 
         # Read back
         store_loaded = DataStore.from_json(json_file, path=tmpdir_path)

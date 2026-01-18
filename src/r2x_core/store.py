@@ -5,6 +5,7 @@ loading data, caching.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -126,6 +127,7 @@ class DataStore:
     def from_data_files(
         cls,
         data_files: list[DataFile],
+        *,
         path: Path | str | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a list of :class:`DataFile` instances.
@@ -142,14 +144,15 @@ class DataStore:
         DataStore
             New DataStore instance with provided data files.
         """
-        store = cls(path)
-        store.add_data(*data_files)
+        store = cls(path=path)
+        store.add_data(data_files)
         return store
 
     @classmethod
     def from_json(
         cls,
         json_fpath: Path | str,
+        *,
         path: Path | str | None = None,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a JSON configuration file.
@@ -192,6 +195,7 @@ class DataStore:
     def from_plugin_config(
         cls,
         plugin_config: PluginConfig,
+        *,
         path: Path | str,
     ) -> "DataStore":
         """Create a :class:`DataStore` from a :class:`PluginConfig` instance.
@@ -224,7 +228,11 @@ class DataStore:
 
     @classmethod
     def load_file(
-        cls, fpath: str | Path, name: str | None = None, proc_spec: FileProcessing | None = None
+        cls,
+        fpath: str | Path,
+        *,
+        name: str | None = None,
+        proc_spec: FileProcessing | None = None,
     ) -> Any:
         """Load a single data file conveniently without creating a full DataStore.
 
@@ -272,17 +280,17 @@ class DataStore:
             fpath=fpath,
             proc_spec=proc_spec,
         )
-        store.add_data(data_file)
+        store.add_data([data_file])
 
         return store.read_data(name=name)
 
-    def add_data(self, *data_files: DataFile, overwrite: bool = False) -> None:
+    def add_data(self, data_files: Sequence[DataFile], *, overwrite: bool = False) -> None:
         """Add one or more :class:`DataFile` instances to the store.
 
         Parameters
         ----------
-        *data_files : DataFile
-            Variable number of DataFile instances to add.
+        data_files : Sequence[DataFile]
+            DataFile instances to add.
         overwrite : bool, optional
             If True, overwrite existing data files with the same name.
             Default is False.
@@ -294,7 +302,7 @@ class DataStore:
         KeyError
             If a data file with the same name exists and overwrite is False.
         """
-        return self._add_data_file(*data_files, overwrite=overwrite)
+        return self._add_data_file(data_files, overwrite=overwrite)
 
     def list_data(self) -> list[str]:
         """List all data file names in the store.
@@ -334,8 +342,8 @@ class DataStore:
         Parameters
         ----------
         *names : str
-            Variable number of data file names to remove.
-            Examples: remove_data("file1", "file2")
+            Data file names to remove.
+            Example: remove_data("file1", "file2")
 
         Raises
         ------
@@ -368,7 +376,7 @@ class DataStore:
             data_file.model_dump(
                 mode="json",
                 round_trip=True,
-                **filter_valid_kwargs(data_file.model_dump, model_dump_kwargs),
+                **filter_valid_kwargs(data_file.model_dump, kwargs=model_dump_kwargs),
             )
             for data_file in self._cache.values()
         ]
@@ -378,13 +386,18 @@ class DataStore:
 
         logger.info("Created JSON file at {}", fpath)
 
-    def _add_data_file(self, *data_files: DataFile, overwrite: bool = False) -> None:
+    def _add_data_file(
+        self,
+        data_files: Sequence[DataFile],
+        *,
+        overwrite: bool = False,
+    ) -> None:
         """Add :class:`DataFile` instances to the store (internal).
 
         Parameters
         ----------
-        *data_files : DataFile
-            Variable number of DataFile instances.
+        data_files : Sequence[DataFile]
+            DataFile instances to add.
         overwrite : bool, optional
             If True, overwrite existing data files. Default is False.
         """
@@ -449,7 +462,11 @@ class DataStore:
             raise KeyError(f"'{name}' not present in store.")
 
         data_file = self._cache[name]
-        return self.reader.read_data_file(data_file, self.folder, placeholders=placeholders)
+        return self.reader.read_data_file(
+            data_file,
+            folder_path=self.folder,
+            placeholders=placeholders,
+        )
 
     def _load_file_mapping(self, mapping_path: Path) -> None:
         """Load DataFile definitions from a file-mapping JSON."""
@@ -466,4 +483,4 @@ class DataStore:
         except ValidationError as exec:
             raise exec
 
-        self.add_data(*data_files)
+        self.add_data(data_files)

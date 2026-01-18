@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
 
 from loguru import logger
 from rust_ok import Err, Ok
 
-from .plugin_context import PluginContext
-
 if TYPE_CHECKING:
     from rust_ok import Result
 
-GetterFunc = Callable[[PluginContext, Any], Any]
+
+GetterFunc: TypeAlias = Callable[..., Any]
+
+
 F = TypeVar("F", bound=GetterFunc)
 
 GETTER_REGISTRY: dict[str, GetterFunc] = {}

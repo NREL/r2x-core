@@ -280,7 +280,7 @@ def test_data_file_from_records_success(tmp_path):
         {"name": "test2", "fpath": "data.csv"},
     ]
 
-    data_files = DataFile.from_records(records, tmp_path)
+    data_files = DataFile.from_records(records, folder_path=tmp_path)
     assert len(data_files) == 2
 
 
@@ -297,4 +297,4 @@ def test_data_file_from_records_validation_error(tmp_path):
     ]
 
     with pytest.raises(ValidationError):
-        DataFile.from_records(records, tmp_path)
+        DataFile.from_records(records, folder_path=tmp_path)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
@@ -11,6 +11,7 @@ from loguru import logger
 from rust_ok import Err, Ok, Result
 
 from ..plugin_context import PluginContext
+from ..rules import RuleGetter
 
 if TYPE_CHECKING:
     from ..rules import Rule, RuleFilter, RuleLike
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 _COMPONENT_TYPE_CACHE: dict[str, type] = {}
 
 
-def _resolve_component_type(type_name: str, context: PluginContext) -> Result[type, TypeError]:
+def _resolve_component_type(type_name: str, *, context: PluginContext) -> Result[type, TypeError]:
     """Resolve a component type name to a class.
 
     Uses cache to avoid repeated module imports for the same type.
@@ -60,17 +61,18 @@ def _resolve_component_type(type_name: str, context: PluginContext) -> Result[ty
     return Err(TypeError(f"Component type '{type_name}' not found in modules: {modules_to_search}"))
 
 
-def _create_target_component(target_class: type, kwargs: dict[str, Any]) -> Any:
+def _create_target_component(target_class: type, *, kwargs: dict[str, Any]) -> Any:
     """Instantiate a target component safely."""
     logger.trace("Building {} with kwargs {}", target_class, kwargs)
     return target_class(**kwargs)
 
 
-def _make_attr_getter(chain: list[str]) -> Callable[[PluginContext, Any], Result[Any, ValueError]]:
+def _make_attr_getter(chain: list[str]) -> RuleGetter:
     """Create a getter that safely walks nested attributes and returns a Result."""
 
-    def _getter(_: PluginContext, src: Any) -> Result[Any, ValueError]:
+    def _getter(src: Any, *, context: PluginContext) -> Result[Any, ValueError]:
         """Extract attributes."""
+        _ = context
         val = src
         for attr in chain:
             val = getattr(val, attr, None)
@@ -82,8 +84,9 @@ def _make_attr_getter(chain: list[str]) -> Callable[[PluginContext, Any], Result
 
 
 def _build_target_fields(
-    rule: Rule,
     source_component: Any,
+    *,
+    rule: Rule,
     context: PluginContext,
 ) -> Result[dict[str, Any], ValueError]:
     """Build field map for the target component."""
@@ -135,7 +138,7 @@ def build_component_kwargs(
 
     for target_field, getter_func in getters.items():
         if callable(getter_func):
-            result = getter_func(context, source_obj)
+            result = getter_func(source_obj, context=context)
         else:
             return Err(ValueError(f"Getter for '{target_field}' is not callable: {getter_func}"))
 
@@ -152,12 +155,12 @@ def build_component_kwargs(
     return Ok(kwargs)
 
 
-def _evaluate_rule_filter(rule_filter: RuleFilter, component: Any) -> bool:
+def _evaluate_rule_filter(component: Any, *, rule_filter: RuleFilter) -> bool:
     """Return True if the component satisfies the rule filter."""
     if rule_filter.any_of is not None:
-        return any(_evaluate_rule_filter(child, component) for child in rule_filter.any_of)
+        return any(_evaluate_rule_filter(component, rule_filter=child) for child in rule_filter.any_of)
     if rule_filter.all_of is not None:
-        return all(_evaluate_rule_filter(child, component) for child in rule_filter.all_of)
+        return all(_evaluate_rule_filter(component, rule_filter=child) for child in rule_filter.all_of)
 
     assert rule_filter.field is not None and rule_filter.op is not None and rule_filter.values is not None
 

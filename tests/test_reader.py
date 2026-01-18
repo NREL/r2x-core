@@ -27,7 +27,7 @@ def test_read_data_file_basic(reader_example, sample_csv, tmp_path):
 
     data_file = DataFile(name="test", fpath=sample_csv)
 
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
 
     assert result is not None
     collected = result.collect()
@@ -43,7 +43,7 @@ def test_read_optional_missing_file(reader_example, tmp_path):
     data_file = DataFile(name="test", fpath=dummy_file, info=FileInfo(is_optional=True))
     dummy_file.unlink()
 
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
 
     assert result is None
 
@@ -59,7 +59,7 @@ def test_read_required_missing_file(reader_example, tmp_path):
     dummy_file.unlink()
 
     with pytest.raises(FileNotFoundError, match="Missing required file"):
-        reader_example.read_data_file(data_file, tmp_path)
+        reader_example.read_data_file(data_file, folder_path=tmp_path)
 
 
 def test_custom_reader_function(reader_example, tmp_path):
@@ -75,7 +75,7 @@ def test_custom_reader_function(reader_example, tmp_path):
     data_file = DataFile(
         name="custom", fpath=test_file, reader=ReaderConfig(function=custom_reader, kwargs={})
     )
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
 
     assert result == "CUSTOM CONTENT"
 
@@ -102,7 +102,7 @@ def test_read_with_reader_kwargs(reader_example, sample_csv, tmp_path):
 
     data_file = DataFile(name="test", fpath=sample_csv, reader=ReaderConfig(kwargs={"skip_rows": 1}))
 
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
     collected = result.collect()
 
     assert collected.shape == (1, 3)
@@ -113,7 +113,7 @@ def test_read_json_file(reader_example, sample_json, tmp_path):
 
     data_file = DataFile(name="json_test", fpath=sample_json)
 
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
 
     assert isinstance(result, dict)
     assert result["key"] == "value"
@@ -134,7 +134,7 @@ def test_read_data_file_with_custom_reader(reader_example, sample_csv, tmp_path)
         reader=ReaderConfig(function=custom_reader, kwargs={}),
     )
 
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
     assert result is not None
 
 
@@ -148,7 +148,7 @@ def test_read_data_file_with_processing_error(reader_example, sample_csv, tmp_pa
     )
 
     with pytest.raises(ValueError):
-        reader_example.read_data_file(data_file, tmp_path)
+        reader_example.read_data_file(data_file, folder_path=tmp_path)
 
 
 def test_read_data_file_glob_pattern(reader_example, tmp_path):
@@ -157,7 +157,7 @@ def test_read_data_file_glob_pattern(reader_example, tmp_path):
     (tmp_path / "data1.csv").write_text("a,b\n1,2\n")
 
     data_file = DataFile(name="test", glob="*.csv")
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
     assert result is not None
 
 
@@ -168,5 +168,5 @@ def test_read_data_file_relative_path(reader_example, tmp_path):
     csv_file.write_text("col1,col2\n1,2\n")
 
     data_file = DataFile(name="test", relative_fpath="data.csv")
-    result = reader_example.read_data_file(data_file, tmp_path)
+    result = reader_example.read_data_file(data_file, folder_path=tmp_path)
     assert result is not None

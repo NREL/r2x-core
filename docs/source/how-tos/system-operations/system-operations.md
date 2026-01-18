@@ -81,9 +81,7 @@ class Generator(Component):
     min_active_power: float = Field(default=0.0, description="Minimum active power in MW")
 
 system = System(name="MySystem")
-system.add_components(
-    Generator(name="gen1", max_active_power=500.0, min_active_power=100.0)
-)
+system.add_components(Generator(name="gen1", max_active_power=500.0, min_active_power=100.0))
 
 gen_records = system.components_to_records(
     filter_func=lambda c: isinstance(c, Generator),

@@ -49,7 +49,7 @@ def test_get_rule_by_exact_match(sample_rules):
         rules=sample_rules,
     )
 
-    rule = ctx.get_rule("BusComponent", "NodeComponent", version=1)
+    rule = ctx.get_rule("BusComponent", target_type="NodeComponent", version=1)
     assert rule.version == 1
     assert rule.source_type == "BusComponent"
     assert rule.target_type == "NodeComponent"
@@ -68,7 +68,7 @@ def test_get_rule_default_version(sample_rules):
         rules=sample_rules,
     )
 
-    rule = ctx.get_rule("BusComponent", "NodeComponent")
+    rule = ctx.get_rule("BusComponent", target_type="NodeComponent")
     assert rule.version == 2
 
 
@@ -82,7 +82,7 @@ def test_get_rule_not_found(sample_rules):
     )
 
     with pytest.raises(KeyError, match="No rule found"):
-        ctx.get_rule("NonExistent", "AlsoNone", version=1)
+        ctx.get_rule("NonExistent", target_type="AlsoNone", version=1)
 
 
 def test_list_available_conversions(sample_rules):
@@ -133,7 +133,7 @@ def test_get_rules_for_conversion(sample_rules):
         rules=sample_rules,
     )
 
-    conversions = ctx.get_rules_for_conversion("BusComponent", "NodeComponent")
+    conversions = ctx.get_rules_for_conversion("BusComponent", target_type="NodeComponent")
     assert len(conversions) == 2  # Two versions
     for rule in conversions:
         assert "BusComponent" in rule.get_source_types()
@@ -155,5 +155,5 @@ def test_empty_rules():
     bus_rules = ctx.get_rules_for_source("BusComponent")
     assert bus_rules == []
 
-    conversions = ctx.get_rules_for_conversion("BusComponent", "NodeComponent")
+    conversions = ctx.get_rules_for_conversion("BusComponent", target_type="NodeComponent")
     assert conversions == []

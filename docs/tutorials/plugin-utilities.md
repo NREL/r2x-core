@@ -181,21 +181,21 @@ def getter(
 1. **Without parentheses** - Uses function name as the registration key:
 ```python
 @getter
-def get_bus_voltage(context: TranslationContext, bus: Bus) -> float:
+def get_bus_voltage(bus: Bus, *, context: TranslationContext) -> float:
     return bus.voltage
 ```
 
 2. **With parentheses** - Function name is the registration key:
 ```python
 @getter()
-def get_bus_voltage(context: TranslationContext, bus: Bus) -> float:
+def get_bus_voltage(bus: Bus, *, context: TranslationContext) -> float:
     return bus.voltage
 ```
 
 3. **With custom name** - Uses provided name as the registration key:
 ```python
 @getter(name="voltage_kv")
-def get_bus_voltage(context: TranslationContext, bus: Bus) -> float:
+def get_bus_voltage(bus: Bus, *, context: TranslationContext) -> float:
     return bus.voltage / 1000
 ```
 
@@ -213,12 +213,12 @@ from r2x_core import getter
 from r2x_core import TranslationContext
 
 @getter
-def get_generator_efficiency(context: TranslationContext, gen) -> float:
+def get_generator_efficiency(gen, *, context: TranslationContext) -> float:
     """Compute generator efficiency."""
     return gen.efficiency if hasattr(gen, 'efficiency') else 0.95
 
 @getter(name="rated_capacity_mw")
-def get_capacity(context: TranslationContext, gen) -> float:
+def get_capacity(gen, *, context: TranslationContext) -> float:
     """Get generator capacity in MW."""
     return gen.capacity_mw
 ```

@@ -12,6 +12,7 @@ from loguru import logger
 
 def components_to_records(
     system: Any,
+    *,
     filter_func: Callable[[Component], bool] | None = None,
     fields: list[str] | None = None,
     key_mapping: dict[str, str] | None = None,

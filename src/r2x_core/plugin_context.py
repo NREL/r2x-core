@@ -228,6 +228,7 @@ class PluginContext(Generic[ConfigT]):
     def get_rule(
         self,
         source_type: str,
+        *,
         target_type: str,
         version: int | None = None,
     ) -> Rule:
@@ -306,7 +307,7 @@ class PluginContext(Generic[ConfigT]):
         matching.sort(key=lambda r: (str(r.target_type), r.version))
         return matching
 
-    def get_rules_for_conversion(self, source_type: str, target_type: str) -> list[Rule]:
+    def get_rules_for_conversion(self, source_type: str, *, target_type: str) -> list[Rule]:
         """Get all versions of a conversion between two types.
 
         Parameters

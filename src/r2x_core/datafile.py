@@ -24,7 +24,7 @@ def _validate_optional_file_extension(path: Path | None, info: ValidationInfo) -
     """Run validate_file_extension when a path is provided."""
     if path is None:
         return None
-    return validate_file_extension(path, info)
+    return validate_file_extension(path, info=info)
 
 
 class FileInfo(BaseModel):
@@ -298,7 +298,7 @@ class DataFile(BaseModel):
         return file_type_class()
 
     @classmethod
-    def from_record(cls, record: dict[str, Any], folder_path: Path) -> "DataFile":
+    def from_record(cls, record: dict[str, Any], *, folder_path: Path) -> "DataFile":
         """Build a DataFile from a single record dictionary."""
         record_copy = dict(record)
         info = record_copy.get("info")
@@ -307,7 +307,7 @@ class DataFile(BaseModel):
         raw_path = record_copy["fpath"]
         resolved = cls._resolve_record_path(
             raw_path,
-            folder_path,
+            folder_path=folder_path,
             must_exist=not is_optional,
         )
         record_copy["fpath"] = resolved
@@ -315,14 +315,14 @@ class DataFile(BaseModel):
         return cls.model_validate(record_copy)
 
     @classmethod
-    def from_records(cls, records: list[dict[str, Any]], folder_path: Path) -> list["DataFile"]:
+    def from_records(cls, records: list[dict[str, Any]], *, folder_path: Path) -> list["DataFile"]:
         """Construct multiple DataFile instances from JSON records."""
         data_files: list[DataFile] = []
         errors: list[ValidationError] = []
 
         for idx, record in enumerate(records):
             try:
-                data_files.append(cls.from_record(record, folder_path))
+                data_files.append(cls.from_record(record, folder_path=folder_path))
 
             except (KeyError, TypeError) as exc:
                 errors.append(
@@ -372,8 +372,8 @@ class DataFile(BaseModel):
     @staticmethod
     def _resolve_record_path(
         raw_path: str | Path,
-        folder_path: Path,
         *,
+        folder_path: Path,
         must_exist: bool = True,
     ) -> Path:
         """Resolve a raw path into an absolute path with optional checking."""

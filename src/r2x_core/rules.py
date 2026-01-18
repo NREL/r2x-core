@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias
 
 from pydantic import BaseModel, PrivateAttr, model_validator
-
-from .plugin_context import PluginContext
+from rust_ok import Result
 
 if TYPE_CHECKING:
-    from rust_ok import Result
+    pass
 
 
 class RuleFilter(BaseModel):
@@ -70,7 +69,7 @@ class RuleFilter(BaseModel):
         """Evaluate this filter against a component instance."""
         from .utils import _evaluate_rule_filter
 
-        return _evaluate_rule_filter(self, component)
+        return _evaluate_rule_filter(component, rule_filter=self)
 
     def normalized_prefixes(self) -> list[str]:
         """Return the cached prefix values ready for prefix comparisons."""
@@ -83,6 +82,9 @@ class RuleFilter(BaseModel):
         return self._normalized_prefixes
 
 
+RuleGetter: TypeAlias = Callable[..., Result[Any, ValueError]]
+
+
 class RuleLike(Protocol):
     """Minimal interface required to build kwargs for a target component."""
 
@@ -92,7 +94,7 @@ class RuleLike(Protocol):
         ...
 
     @property
-    def getters(self) -> Mapping[str, Callable[[PluginContext, Any], Result[Any, ValueError]] | str]:
+    def getters(self) -> Mapping[str, RuleGetter | str]:
         """Mapping of target field names to getter callables."""
         ...
 
@@ -110,9 +112,7 @@ class Rule:
     target_type: str | list[str]
     version: int
     field_map: dict[str, str | list[str]] = field(default_factory=dict)
-    getters: dict[str, Callable[[PluginContext, Any], Result[Any, ValueError]] | str] = field(
-        default_factory=dict
-    )
+    getters: dict[str, RuleGetter | str] = field(default_factory=dict)
     defaults: dict[str, Any] = field(default_factory=dict)
     filter: RuleFilter | None = field(default=None)
     system: Literal["source", "target"] = "source"

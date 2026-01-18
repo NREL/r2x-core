@@ -44,7 +44,7 @@ def test_semantic_versioning_compare(current, target, expected):
     from r2x_core.versioning import SemanticVersioningStrategy
 
     strategy = SemanticVersioningStrategy()
-    assert strategy.compare_versions(current, target) == expected
+    assert strategy.compare_versions(current, target=target) == expected
 
 
 def test_git_versioning_constructor_valid():
@@ -129,7 +129,7 @@ def test_git_versioning_compare_valid(current, target, expected):
     from r2x_core.versioning import GitVersioningStrategy
 
     strategy = GitVersioningStrategy(["abc123", "def456", "ghi789"])
-    assert strategy.compare_versions(current, target) == expected
+    assert strategy.compare_versions(current, target=target) == expected
 
 
 def test_git_versioning_compare_current_none():
@@ -138,7 +138,7 @@ def test_git_versioning_compare_current_none():
 
     strategy = GitVersioningStrategy(["abc123", "def456"])
     with pytest.raises(ValueError, match="Current version cannot be None"):
-        strategy.compare_versions(None, "def456")
+        strategy.compare_versions(None, target="def456")
 
 
 def test_git_versioning_compare_current_not_found():
@@ -147,7 +147,7 @@ def test_git_versioning_compare_current_not_found():
 
     strategy = GitVersioningStrategy(["abc123", "def456", "ghi789"])
     with pytest.raises(ValueError, match="Current commit 'xyz999' not found"):
-        strategy.compare_versions("xyz999", "def456")
+        strategy.compare_versions("xyz999", target="def456")
 
 
 def test_git_versioning_compare_target_not_found():
@@ -156,7 +156,7 @@ def test_git_versioning_compare_target_not_found():
 
     strategy = GitVersioningStrategy(["abc123", "def456", "ghi789"])
     with pytest.raises(ValueError, match="Target commit 'xyz999' not found"):
-        strategy.compare_versions("abc123", "xyz999")
+        strategy.compare_versions("abc123", target="xyz999")
 
 
 def test_git_versioning_error_message_shows_available_commits():
@@ -167,7 +167,7 @@ def test_git_versioning_error_message_shows_available_commits():
     strategy = GitVersioningStrategy(commits)
 
     with pytest.raises(ValueError, match=r"aaa.*eee"):
-        strategy.compare_versions("xyz", "bbb")
+        strategy.compare_versions("xyz", target="bbb")
 
 
 def test_git_versioning_commit_history_ordering():
@@ -178,9 +178,9 @@ def test_git_versioning_commit_history_ordering():
     strategy = GitVersioningStrategy(commits)
 
     # Earlier commits should be "older"
-    assert strategy.compare_versions("commit1", "commit5") == -1
-    assert strategy.compare_versions("commit2", "commit4") == -1
-    assert strategy.compare_versions("commit3", "commit3") == 0
+    assert strategy.compare_versions("commit1", target="commit5") == -1
+    assert strategy.compare_versions("commit2", target="commit4") == -1
+    assert strategy.compare_versions("commit3", target="commit3") == 0
 
 
 def test_git_versioning_adjacent_commits():
@@ -190,14 +190,14 @@ def test_git_versioning_adjacent_commits():
     strategy = GitVersioningStrategy(["a", "b", "c", "d"])
 
     # Adjacent pairs
-    assert strategy.compare_versions("a", "b") == -1
-    assert strategy.compare_versions("b", "c") == -1
-    assert strategy.compare_versions("c", "d") == -1
+    assert strategy.compare_versions("a", target="b") == -1
+    assert strategy.compare_versions("b", target="c") == -1
+    assert strategy.compare_versions("c", target="d") == -1
 
     # Reverse adjacent pairs
-    assert strategy.compare_versions("b", "a") == 1
-    assert strategy.compare_versions("c", "b") == 1
-    assert strategy.compare_versions("d", "c") == 1
+    assert strategy.compare_versions("b", target="a") == 1
+    assert strategy.compare_versions("c", target="b") == 1
+    assert strategy.compare_versions("d", target="c") == 1
 
 
 def test_git_versioning_many_commits():
@@ -207,6 +207,6 @@ def test_git_versioning_many_commits():
     commits = [f"commit{i:03d}" for i in range(100)]
     strategy = GitVersioningStrategy(commits)
 
-    assert strategy.compare_versions(commits[0], commits[1]) == -1
-    assert strategy.compare_versions(commits[-1], commits[-2]) == 1
-    assert strategy.compare_versions(commits[50], commits[75]) == -1
+    assert strategy.compare_versions(commits[0], target=commits[1]) == -1
+    assert strategy.compare_versions(commits[-1], target=commits[-2]) == 1
+    assert strategy.compare_versions(commits[50], target=commits[75]) == -1

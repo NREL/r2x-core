@@ -145,7 +145,7 @@ def test_load_config_missing_asset_raises(tmp_path):
 def test_override_dictionary_merges_scalars():
     base = {"a": 1, "b": 2}
     overrides = {"a": 10}
-    result = override_dictionary(base, overrides)
+    result = override_dictionary(base, overrides=overrides)
     assert result["a"] == 10
     assert result["b"] == 2
 
@@ -153,7 +153,7 @@ def test_override_dictionary_merges_scalars():
 def test_override_dictionary_merges_lists():
     base = {"items": ["a", "b", "c"]}
     overrides = {"items": ["x", "y"]}
-    result = override_dictionary(base, overrides)
+    result = override_dictionary(base, overrides=overrides)
     assert result["items"][0] == "x"
     assert result["items"][1] == "y"
     assert result["items"][2:] == ["c"]
@@ -162,7 +162,7 @@ def test_override_dictionary_merges_lists():
 def test_override_dictionary_merges_nested_dicts():
     base = {"nested": {"value": 1, "extra": 2}}
     overrides = {"nested": {"value": 10, "new": 5}}
-    result = override_dictionary(base, overrides)
+    result = override_dictionary(base, overrides=overrides)
     assert result["nested"]["value"] == 10
     assert result["nested"]["extra"] == 2
     assert result["nested"]["new"] == 5

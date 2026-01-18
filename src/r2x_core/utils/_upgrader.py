@@ -105,11 +105,11 @@ def shall_we_upgrade(
 
     logger.debug("Evaluating {}: current={}, target={}", step.name, current_version, step.target_version)
 
-    if strategy.compare_versions(current_version, step.target_version) >= 0:
+    if strategy.compare_versions(current_version, target=step.target_version) >= 0:
         logger.debug("Skipping {}: already at target version", step.name)
         return Ok(False)
 
-    if step.min_version and strategy.compare_versions(current_version, step.min_version) < 0:
+    if step.min_version and strategy.compare_versions(current_version, target=step.min_version) < 0:
         logger.warning(
             "Skipping {}: current version {} below minimum {}",
             step.name,
@@ -118,7 +118,7 @@ def shall_we_upgrade(
         )
         return Ok(False)
 
-    if step.max_version and strategy.compare_versions(current_version, step.max_version) > 0:
+    if step.max_version and strategy.compare_versions(current_version, target=step.max_version) > 0:
         logger.warning(
             "Skipping {}: current version {} above maximum {}",
             step.name,

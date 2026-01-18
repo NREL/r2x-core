@@ -56,6 +56,7 @@ class DataReader:
     def read_data_file(
         self,
         data_file: DataFile,
+        *,
         folder_path: Path,
         placeholders: dict[str, Any] | None = None,
     ) -> Any:
@@ -65,7 +66,7 @@ class DataReader:
         ----------
         data_file : DataFile
             Data file configuration with metadata.
-        folder : Path
+        folder_path : Path
             Base directory containing the data files.
         placeholders : dict[str, Any] | None, optional
             Dictionary mapping placeholder variable names to their values.
@@ -136,7 +137,7 @@ class DataReader:
         logger.trace(
             "Attempting to read data_file={} with {}", data_file.name, type(file_type_instance).__name__
         )
-        raw_data = read_file_by_type(file_type_instance, fpath, **reader_kwargs)
+        raw_data = read_file_by_type(file_type_instance, file_path=fpath, **reader_kwargs)
         if data_file.proc_spec is not None:
             processed_data = apply_processing(
                 raw_data, data_file=data_file, proc_spec=data_file.proc_spec, placeholders=placeholders

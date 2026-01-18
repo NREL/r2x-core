@@ -11,6 +11,7 @@ T = TypeVar("T", bound=Component)
 
 def create_component(
     component_class: type[T],
+    *,
     skip_none: bool = True,
     skip_validation: bool = False,
     **field_values: Any,

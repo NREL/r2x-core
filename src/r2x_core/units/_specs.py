@@ -185,6 +185,7 @@ class UnitSpec:
 
 def unit_spec(
     unit: str,
+    *,
     base: str | None = None,
 ) -> UnitSpec:
     """Create a UnitSpec for field annotation.

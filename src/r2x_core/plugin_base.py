@@ -297,7 +297,7 @@ class Plugin(ABC, Generic[ConfigT]):
 
         return hooks
 
-    def run(self, ctx: PluginContext[ConfigT] | None = None) -> PluginContext[ConfigT]:
+    def run(self, *, ctx: PluginContext[ConfigT] | None = None) -> PluginContext[ConfigT]:
         """Execute plugin lifecycle.
 
         Hooks are called in fixed order. Unimplemented hooks are skipped.

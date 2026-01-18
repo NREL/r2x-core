@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 def _iter_system_components(
     system: System,
+    *,
     class_type: type[Component],
     filter_func: Callable[[Component], bool] | None = None,
 ) -> Generator[Component, None, None]:

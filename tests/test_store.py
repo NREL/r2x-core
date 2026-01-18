@@ -26,7 +26,7 @@ def data_store_example(folder_with_data) -> "DataStore":
     df_02 = DataFile(name="test2", fpath=folder_with_data / "file2.csv")
 
     store = DataStore(folder_with_data)
-    store.add_data(df_01, df_02)
+    store.add_data([df_01, df_02])
     return store
 
 
@@ -92,11 +92,11 @@ def test_add_data_overwrite_datafile(data_store_example, folder_with_data):
     store = data_store_example
 
     new_file = DataFile(name="test1", fpath=folder_with_data / "file2.csv")
-    store.add_data(new_file, overwrite=True)
+    store.add_data([new_file], overwrite=True)
     assert store["test1"].fpath == folder_with_data / "file2.csv"
 
     with pytest.raises(KeyError):
-        store.add_data(new_file)
+        store.add_data([new_file])
 
 
 def test_store_accessing_data(data_store_example):
@@ -120,7 +120,7 @@ def test_remove_data_files(data_store_example, folder_with_data):
 
     store = data_store_example
     file_to_remove = DataFile(name="file_to_remove", fpath=folder_with_data / "file2.csv")
-    store.add_data(file_to_remove)
+    store.add_data([file_to_remove])
 
     assert "file_to_remove" in store
     store.remove_data("file_to_remove")
@@ -135,7 +135,7 @@ def test_clear_cache(folder_with_data):
 
     store = DataStore(folder_with_data)
     df_01 = DataFile(name="test_1", fpath=folder_with_data / "file1.csv")
-    store.add_data(df_01)
+    store.add_data([df_01])
     assert store.list_data() == ["test_1"]
 
 
@@ -181,7 +181,7 @@ def test_to_json_serialization(data_store_example, tmp_path, folder_with_data):
 
     store = data_store_example
     json_path = tmp_path / "config.json"
-    store.to_json(json_path)
+    store.to_json(fpath=json_path)
     assert json_path.exists()
 
     with open(json_path) as f:
@@ -190,7 +190,7 @@ def test_to_json_serialization(data_store_example, tmp_path, folder_with_data):
     assert len(data) == 2
     assert data[0]["name"] == "test1"
 
-    new_store = DataStore.from_json(json_path, folder_with_data)
+    new_store = DataStore.from_json(json_path, path=folder_with_data)
     assert "test1" in new_store
     assert "test2" in new_store
 
@@ -524,7 +524,7 @@ def test_store_add_data_invalid_type(tmp_path):
     store = DataStore(tmp_path)
 
     with pytest.raises(TypeError):
-        store.add_data("not_a_datafile")  # type: ignore[arg-type]
+        store.add_data(["not_a_datafile"])  # type: ignore[arg-type]
 
 
 def test_store_add_data_duplicate_without_overwrite(tmp_path):
@@ -538,10 +538,10 @@ def test_store_add_data_duplicate_without_overwrite(tmp_path):
     store = DataStore(tmp_path)
     data_file = DataFile(name="test", fpath=csv_file)
 
-    store.add_data(data_file)
+    store.add_data([data_file])
 
     with pytest.raises(KeyError):
-        store.add_data(data_file, overwrite=False)
+        store.add_data([data_file], overwrite=False)
 
 
 def test_store_add_data_duplicate_with_overwrite(tmp_path):
@@ -553,8 +553,8 @@ def test_store_add_data_duplicate_with_overwrite(tmp_path):
     store = DataStore(tmp_path)
     data_file = DataFile(name="test", fpath=csv_file)
 
-    store.add_data(data_file)
-    store.add_data(data_file, overwrite=True)
+    store.add_data([data_file])
+    store.add_data([data_file], overwrite=True)
 
     assert store["test"] is not None
 

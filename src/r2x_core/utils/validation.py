@@ -32,12 +32,14 @@ def filter_kwargs_for(func: Callable[..., Any], *, kwargs: dict[str, Any]) -> di
 
 
 # Backward compatibility alias
-def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+def filter_valid_kwargs(func: Callable[..., Any], *, kwargs: dict[str, Any]) -> dict[str, Any]:
     """Filter function kwargs, maintaining backward compatibility."""
     return filter_kwargs_for(func, kwargs=kwargs)
 
 
-def filter_kwargs_by_signatures(kwargs: dict[str, Any], *callables: Callable[..., Any]) -> dict[str, Any]:
+def filter_kwargs_by_signatures(
+    kwargs: dict[str, Any], *, callables: list[Callable[..., Any]]
+) -> dict[str, Any]:
     """Filter kwargs to those accepted by the provided callables."""
     valid_params: set[str] = set()
     for callable_obj in callables:
@@ -82,7 +84,7 @@ def validate_glob_pattern(pattern: str | None) -> str | None:
     return pattern
 
 
-def validate_file_extension(path: Path, info: "ValidationInfo") -> Path:
+def validate_file_extension(path: Path, *, info: "ValidationInfo") -> Path:
     """Validate that the file path has a supported extension.
 
     This is a Pydantic validator that checks if the file extension from the

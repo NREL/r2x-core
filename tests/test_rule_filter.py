@@ -23,7 +23,7 @@ def test_rule_filter_matches_leaf_casefold():
     from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="kind", op="eq", values=["gas"])
-    assert _evaluate_rule_filter(filt, _Dummy(kind="GAS"))
+    assert _evaluate_rule_filter(_Dummy(kind="GAS"), rule_filter=filt)
 
 
 def test_rule_filter_matches_any_of():
@@ -37,7 +37,7 @@ def test_rule_filter_matches_any_of():
             RuleFilter(field="kind", op="eq", values=["gas"]),
         ]
     )
-    assert _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+    assert _evaluate_rule_filter(_Dummy(kind="gas"), rule_filter=filt)
 
 
 def test_rule_filter_matches_geq_numeric():
@@ -46,8 +46,8 @@ def test_rule_filter_matches_geq_numeric():
     from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="capacity", op="geq", values=[400])
-    assert _evaluate_rule_filter(filt, _Dummy(capacity=500.0))
-    assert not _evaluate_rule_filter(filt, _Dummy(capacity=300))
+    assert _evaluate_rule_filter(_Dummy(capacity=500.0), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(capacity=300), rule_filter=filt)
 
 
 def _run_rule_with_filter(filter_spec: RuleFilter, source_system: System) -> tuple[int, System]:
@@ -107,8 +107,8 @@ def test_rule_filter_startswith():
     from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="kind", op="startswith", values=["ga"])
-    assert _evaluate_rule_filter(filt, _Dummy(kind="gas"))
-    assert not _evaluate_rule_filter(filt, _Dummy(kind="coal"))
+    assert _evaluate_rule_filter(_Dummy(kind="gas"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(kind="coal"), rule_filter=filt)
 
 
 def test_rule_filter_not_startswith():
@@ -117,8 +117,8 @@ def test_rule_filter_not_startswith():
     from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="kind", op="not_startswith", values=["ga"])
-    assert _evaluate_rule_filter(filt, _Dummy(kind="coal"))
-    assert not _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+    assert _evaluate_rule_filter(_Dummy(kind="coal"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(kind="gas"), rule_filter=filt)
 
 
 def test_apply_rules_respects_filter_prefix(source_system):
@@ -152,16 +152,16 @@ def test_rule_filter_matches_endswith():
 
     # Standard case
     filt = RuleFilter(field="name", op="endswith", values=["alpha"])
-    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+    assert _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="plant_beta"), rule_filter=filt)
 
     # Casefolded match
     filt_casefold = RuleFilter(field="name", op="endswith", values=["ALPHA"])
-    assert _evaluate_rule_filter(filt_casefold, _Dummy(name="plant_alpha"))
+    assert _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt_casefold)
 
     # Casefold disabled
     filt_nocase = RuleFilter(field="name", op="endswith", values=["ALPHA"], casefold=False)
-    assert not _evaluate_rule_filter(filt_nocase, _Dummy(name="plant_alpha"))
+    assert not _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt_nocase)
 
 
 def test_rule_filter_matches_startswith():
@@ -170,9 +170,9 @@ def test_rule_filter_matches_startswith():
     from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="name", op="startswith", values=["plant_"])
-    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
-    assert _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
+    assert _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt)
+    assert _evaluate_rule_filter(_Dummy(name="plant_beta"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="station_alpha"), rule_filter=filt)
 
 
 def test_rule_filter_matches_not_startswith():
@@ -181,9 +181,9 @@ def test_rule_filter_matches_not_startswith():
     from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="name", op="not_startswith", values=["plant_"])
-    assert _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+    assert _evaluate_rule_filter(_Dummy(name="station_alpha"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="plant_beta"), rule_filter=filt)
 
 
 def test_rulefilter_model_validator_leaf_and_children_error():

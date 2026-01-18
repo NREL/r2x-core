@@ -131,7 +131,7 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
     assert read_system is not None  # Type guard for type checker
 
     for source_type in rule.get_source_types():
-        source_class_result = _resolve_component_type(source_type, context)
+        source_class_result = _resolve_component_type(source_type, context=context)
         if source_class_result.is_err():
             logger.error("Failed to resolve source type '{}': {}", source_type, source_class_result.err())
             return Err(ValueError(str(source_class_result.err())))
@@ -140,9 +140,13 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
         filter_func: Callable[[Any], bool] | None = None
         if rule.filter is not None:
             rule_filter = rule.filter
-            filter_func = lambda comp: _evaluate_rule_filter(rule_filter, comp)  # noqa: E731, B023
+            filter_func = lambda comp: _evaluate_rule_filter(comp, rule_filter=rule_filter)  # noqa: E731, B023
 
-        for src_component in _iter_system_components(read_system, source_class, filter_func=filter_func):
+        for src_component in _iter_system_components(
+            read_system,
+            class_type=source_class,
+            filter_func=filter_func,
+        ):
             source_component = cast(Any, src_component)
             for target_type in rule.get_target_types():
                 result = _convert_component(
@@ -196,14 +200,14 @@ def _convert_component(
     Result[Any, ValueError]
         Ok with the created component if conversion succeeds, Err otherwise
     """
-    target_class_result = _resolve_component_type(target_type, context)
+    target_class_result = _resolve_component_type(target_type, context=context)
     if target_class_result.is_err():
         logger.error("Failed to resolve target type '{}': {}", target_type, target_class_result.err())
         return Err(ValueError(str(target_class_result.err())))
 
     target_class = target_class_result.unwrap()
 
-    fields_result = _build_target_fields(rule, source_component, context)
+    fields_result = _build_target_fields(source_component, rule=rule, context=context)
     if fields_result.is_err():
         logger.error(
             "Failed to build fields for {} -> {}: {}",
@@ -219,7 +223,7 @@ def _convert_component(
         kwargs = dict(kwargs)
         kwargs["uuid"] = str(uuid4())
 
-    target = _create_target_component(target_class, kwargs)
+    target = _create_target_component(target_class, kwargs=kwargs)
     return Ok(target)
 
 

@@ -8,7 +8,7 @@ from typing import Any, cast
 import pytest
 from fixtures.source_system import BusComponent
 from fixtures.target_system import NodeComponent
-from rust_ok import Err, Ok
+from rust_ok import Err, Ok, Result
 
 from r2x_core import Rule
 from r2x_core.utils import (
@@ -22,7 +22,7 @@ from r2x_core.utils import (
 
 def test_resolve_component_type_success(context_example):
     """Component types configured on the context can be resolved."""
-    result = _resolve_component_type("BusComponent", context_example)
+    result = _resolve_component_type("BusComponent", context=context_example)
 
     assert result.is_ok()
     assert result.unwrap() is BusComponent
@@ -30,7 +30,7 @@ def test_resolve_component_type_success(context_example):
 
 def test_resolve_component_type_missing_returns_error(context_example):
     """Unknown component types return an error result."""
-    result = _resolve_component_type("NotAComponent", context_example)
+    result = _resolve_component_type("NotAComponent", context=context_example)
 
     assert result.is_err()
     assert "NotAComponent" in str(result.err())
@@ -46,7 +46,7 @@ def test_make_attr_getter_traverses_chain():
         inner = Inner()
 
     getter = _make_attr_getter(["inner", "value"])
-    result = getter(cast(Any, None), Outer())
+    result = getter(Outer(), context=cast(Any, None))
 
     assert result.is_ok()
     assert result.unwrap() == 99
@@ -59,16 +59,20 @@ def test_build_target_fields_applies_defaults_and_getters(context_example):
         name = "comp_a"
         demand = None
 
+    def area_getter(_src: Any, *, context: Any) -> Result[str, ValueError]:
+        _ = context
+        return Ok("north")
+
     rule = Rule(
         source_type="SourceType",
         target_type="TargetType",
         version=1,
         field_map={"name": "name", "demand_mw": "demand"},
-        getters={"area": lambda _ctx, _src: Ok("north")},
+        getters={"area": area_getter},
         defaults={"demand_mw": 0.0},
     )
 
-    result = _build_target_fields(rule, Source(), context_example)
+    result = _build_target_fields(Source(), rule=rule, context=context_example)
 
     assert result.is_ok()
     fields = result.unwrap()
@@ -90,7 +94,7 @@ def test_build_target_fields_missing_attribute_without_default(context_example):
         field_map={"required": "missing_attr"},
     )
 
-    result = _build_target_fields(rule, Source(), context_example)
+    result = _build_target_fields(Source(), rule=rule, context=context_example)
     assert result.is_err()
     assert "missing_attr" in str(result.err())
 
@@ -101,7 +105,8 @@ def test_build_target_fields_getter_error_without_default(context_example):
     class Source:
         value = "x"
 
-    def faulty_getter(_ctx, _src):
+    def faulty_getter(_src: Any, *, context: Any) -> Result[Any, ValueError]:
+        _ = context
         return Err(ValueError("boom"))
 
     rule = Rule(
@@ -112,7 +117,7 @@ def test_build_target_fields_getter_error_without_default(context_example):
         getters={"computed": faulty_getter},
     )
 
-    result = _build_target_fields(rule, Source(), context_example)
+    result = _build_target_fields(Source(), rule=rule, context=context_example)
     assert result.is_err()
     assert "failed" in str(result.err()).lower()
 
@@ -131,7 +136,7 @@ def test_build_target_fields_non_callable_getter_rejected(context_example):
         getters={"computed": "not_callable"},
     )
 
-    result = _build_target_fields(rule, Source(), context_example)
+    result = _build_target_fields(Source(), rule=rule, context=context_example)
     assert result.is_err()
     assert "not callable" in str(result.err())
 
@@ -142,7 +147,7 @@ def test_create_target_component_instantiates_class():
     class Dummy(NodeComponent):
         """Subclass to ensure kwargs are forwarded."""
 
-    dummy = _create_target_component(Dummy, {"name": "node_x"})
+    dummy = _create_target_component(Dummy, kwargs={"name": "node_x"})
 
     assert isinstance(dummy, Dummy)
     assert dummy.name == "node_x"
@@ -161,14 +166,14 @@ def test_build_component_kwargs_from_parser_record(context_example):
         up: float
         down: float
 
-    def resolve_region(ctx, src):
-        for node in ctx.target_system.get_components(NodeComponent):
+    def resolve_region(src: Any, *, context: Any) -> Result[NodeComponent, ValueError]:
+        for node in context.target_system.get_components(NodeComponent):
             if node.area == src.region_code:
                 return Ok(node)
         return Err(ValueError(f"Unknown region code {src.region_code}"))
 
-    def convert_ramp_rate(ctx, src):
-        system_base = ctx.target_system.base_power or 1.0
+    def convert_ramp_rate(src: Any, *, context: Any) -> Result[RampLimits, ValueError]:
+        system_base = context.target_system.base_power or 1.0
         per_unit_value = src.ramp_rate_mw_per_min / system_base
         return Ok(RampLimits(up=per_unit_value, down=per_unit_value))
 
