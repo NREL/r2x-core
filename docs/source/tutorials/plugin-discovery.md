@@ -285,6 +285,213 @@ rule:
         stopBy: end
 ```
 
+## Function-Based Plugins with @expose_plugin
+
+Function-based plugins offer a simpler alternative to class-based plugins. They are marked with the `@expose_plugin` decorator and can have complex configurations including nested models.
+
+### Basic Function Plugin
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from rust_ok import Ok, Result
+
+>>> class SimpleTransformConfig(PluginConfig):
+...     name: str
+...     enabled: bool = True
+
+>>> @expose_plugin
+... def simple_transform(system: System, config: SimpleTransformConfig) -> Result[System, str]:
+...     """Basic transformation that renames the system."""
+...     if config.enabled:
+...         system.name = f"{system.name}_{config.name}"
+...     return Ok(system)
+
+>>> # Direct Python usage
+>>> config = SimpleTransformConfig(name="updated")
+>>> system = System(name="grid")
+>>> result = simple_transform(system, config)
+>>> result.unwrap().name
+'grid_updated'
+```
+
+### Function Plugin with Nested Models
+
+Configuration fields can contain nested Pydantic models for complex structures:
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from pydantic import BaseModel, Field
+>>> from rust_ok import Ok, Result
+
+>>> class FilterCriteria(BaseModel):
+...     """Nested criteria for filtering."""
+...     min_value: float = Field(default=0.0, description="Minimum threshold")
+...     max_value: float = Field(default=100.0, description="Maximum threshold")
+...     enabled: bool = Field(default=True, description="Enable filtering")
+
+>>> class AdvancedFilterConfig(PluginConfig):
+...     """Configuration with nested models."""
+...     filter_type: str = Field(default="range", description="Type of filter")
+...     criteria: FilterCriteria = Field(
+...         default_factory=FilterCriteria,
+...         description="Nested filtering criteria"
+...     )
+...     apply_to_all: bool = Field(default=False, description="Apply to all components")
+
+>>> @expose_plugin
+... def advanced_filter(system: System, config: AdvancedFilterConfig) -> Result[System, str]:
+...     """Apply advanced filtering with nested configuration."""
+...     # Access nested fields
+...     if config.criteria.enabled:
+...         system.name = f"{system.name}_filtered"
+...     return Ok(system)
+
+>>> # Usage with nested configuration
+>>> filter_config = AdvancedFilterConfig(
+...     filter_type="custom",
+...     criteria=FilterCriteria(min_value=10.0, max_value=50.0, enabled=True),
+...     apply_to_all=True
+... )
+>>> system = System(name="power_grid")
+>>> result = advanced_filter(system, filter_config)
+>>> result.unwrap().name
+'power_grid_filtered'
+```
+
+### Multiple Configuration Ways
+
+Function plugins support several ways to define and use configurations:
+
+#### 1. Simple Configuration
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from rust_ok import Ok, Result
+
+>>> class RenameConfig(PluginConfig):
+...     suffix: str = "_renamed"
+
+>>> @expose_plugin
+... def rename_system(system: System, config: RenameConfig) -> Result[System, str]:
+...     system.name = f"{system.name}{config.suffix}"
+...     return Ok(system)
+
+>>> config = RenameConfig(suffix="_v2")
+>>> result = rename_system(System(name="sys"), config)
+>>> result.unwrap().name
+'sys_v2'
+```
+
+#### 2. Configuration with Validation
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from pydantic import Field, field_validator
+>>> from rust_ok import Ok, Result
+
+>>> class ValidatedConfig(PluginConfig):
+...     value: int = Field(default=1, ge=1, le=100, description="Value between 1 and 100")
+...     operation: str = Field(default="add", description="Operation to perform")
+...
+...     @field_validator("operation")
+...     @classmethod
+...     def validate_operation(cls, v):
+...         if v not in ["add", "subtract", "multiply"]:
+...             raise ValueError("Invalid operation")
+...         return v
+
+>>> @expose_plugin
+... def validated_transform(system: System, config: ValidatedConfig) -> Result[System, str]:
+...     system.name = f"{system.name}_{config.operation}"
+...     return Ok(system)
+
+>>> config = ValidatedConfig(value=50, operation="multiply")
+>>> result = validated_transform(System(name="data"), config)
+>>> result.is_ok()
+True
+```
+
+#### 3. Configuration with Complex Nested Structure
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from pydantic import BaseModel, Field
+>>> from rust_ok import Ok, Result
+>>> from typing import Optional
+
+>>> class TimeSeriesConfig(BaseModel):
+...     """Configuration for time series handling."""
+...     frequency: str = Field(default="hourly", description="Data frequency")
+...     interpolate: bool = Field(default=False, description="Interpolate missing values")
+
+>>> class DataProcessingConfig(BaseModel):
+...     """Nested data processing settings."""
+...     clean_outliers: bool = Field(default=True)
+...     time_series: TimeSeriesConfig = Field(
+...         default_factory=TimeSeriesConfig,
+...         description="Time series configuration"
+...     )
+
+>>> class ComplexTransformConfig(PluginConfig):
+...     """Complex configuration with multiple nested levels."""
+...     name: str = Field(description="Transform name")
+...     data_processing: DataProcessingConfig = Field(
+...         default_factory=DataProcessingConfig,
+...         description="Data processing settings"
+...     )
+...     output_format: Optional[str] = Field(default=None, description="Output format")
+
+>>> @expose_plugin
+... def complex_transform(system: System, config: ComplexTransformConfig) -> Result[System, str]:
+...     """Transform with deeply nested configuration."""
+...     processing_mode = config.data_processing.time_series.frequency
+...     system.name = f"{system.name}_{config.name}_{processing_mode}"
+...     return Ok(system)
+
+>>> # Usage with complex nested config
+>>> config = ComplexTransformConfig(
+...     name="advanced",
+...     data_processing=DataProcessingConfig(
+...         clean_outliers=True,
+...         time_series=TimeSeriesConfig(frequency="daily", interpolate=True)
+...     ),
+...     output_format="json"
+... )
+>>> result = complex_transform(System(name="analysis"), config)
+>>> result.unwrap().name
+'analysis_advanced_daily'
+```
+
+#### 4. Configuration with Python 3.12 Type Parameters
+
+```python doctest
+>>> from r2x_core import expose_plugin, PluginConfig, System
+>>> from rust_ok import Ok, Result
+
+>>> class BaseTransformConfig(PluginConfig):
+...     pass
+
+>>> class ScaleConfig(BaseTransformConfig):
+...     factor: float = 1.0
+
+>>> class RotateConfig(BaseTransformConfig):
+...     angle: float = 0.0
+
+>>> @expose_plugin
+... def generic_transform[C: BaseTransformConfig](
+...     system: System,
+...     config: C,
+... ) -> Result[System, str]:
+...     """Generic transform accepting constrained config types."""
+...     system.name = f"{system.name}_transformed"
+...     return Ok(system)
+
+>>> scale_cfg = ScaleConfig(factor=2.5)
+>>> result = generic_transform(System(name="grid"), scale_cfg)
+>>> result.is_ok()
+True
+```
+
 ## Building a Plugin Registry
 
 Here's a Python script that uses ast-grep to build a plugin registry:
