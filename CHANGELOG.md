@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.4.0](https://github.com/NREL/r2x-core/compare/v0.3.1...v0.4.0) (2026-01-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* Standardizing API for plugins and AST-discoverability. ([#76](https://github.com/NREL/r2x-core/issues/76))
+
+### Refactoring
+
+* add new rule filter and update time series transfer ([#72](https://github.com/NREL/r2x-core/issues/72)) ([334b817](https://github.com/NREL/r2x-core/commit/334b8170361c03e09d599445309f0ce55cf252de))
+* **core:** simplify codebase and remove deprecated modules ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+* **plugin:** clarify plugin system and public API ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+* Standardizing API for plugins and AST-discoverability. ([#76](https://github.com/NREL/r2x-core/issues/76)) ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+
+
+### Documentation
+
+* **structure:** restructure and significantly expand documentation ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+
+
+### CI/CD
+
+* **docs:** enforce documentation and encoding standards ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+
+
+### Build
+
+* **deps-dev:** bump myst-parser from 3.0.1 to 4.0.1 ([#67](https://github.com/NREL/r2x-core/issues/67)) ([b9f7223](https://github.com/NREL/r2x-core/commit/b9f72233bd6470c5cb56567ea00f1f2d0841cd40))
+* **deps-dev:** bump pytest from 9.0.1 to 9.0.2 ([#66](https://github.com/NREL/r2x-core/issues/66)) ([f330b78](https://github.com/NREL/r2x-core/commit/f330b78eca8539f3a109d243e4af2d6eea116882))
+* **deps:** bump actions/download-artifact from 6 to 7 ([#70](https://github.com/NREL/r2x-core/issues/70)) ([354f967](https://github.com/NREL/r2x-core/commit/354f967985e984afa24d40df2735c85bb65df21d))
+* **deps:** bump actions/upload-artifact from 5 to 6 ([#69](https://github.com/NREL/r2x-core/issues/69)) ([c1359d5](https://github.com/NREL/r2x-core/commit/c1359d52f2e9287852c4db51db97263a4ff2e47c))
+* **deps:** stabilize dependencies and build configuration ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+* **tooling:** modernize tooling, type checking, and CI ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+
+
+### Tests
+
+* **coverage:** increase coverage and strengthen correctness guarantees ([1348f04](https://github.com/NREL/r2x-core/commit/1348f042e613dcc69efafc35527e47ae0884bfdf))
+
 ## [0.3.1](https://github.com/NREL/r2x-core/compare/v0.3.0...v0.3.1) (2025-12-23)
 
 ### Bug Fixes
