@@ -58,8 +58,9 @@ def test_json_config_workflow_with_reader_kwargs():
 
         h5_format = H5Format()
         reader_kwargs = config.get("reader_kwargs", {})
+        assert isinstance(reader_kwargs, dict)
 
-        df = read_file_by_type(h5_format, Path(h5_file), **reader_kwargs).collect()
+        df = read_file_by_type(h5_format, file_path=Path(h5_file), **reader_kwargs).collect()
 
         # Check data was read correctly
         assert "region1" in df.columns
@@ -101,8 +102,9 @@ def test_json_config_workflow_with_tabular_schema():
 
         h5_format = H5Format()
         reader_kwargs = config.get("reader_kwargs", {})
+        assert isinstance(reader_kwargs, dict)
 
-        df = read_file_by_type(h5_format, Path(h5_file), **reader_kwargs).collect()
+        df = read_file_by_type(h5_format, file_path=Path(h5_file), **reader_kwargs).collect()
 
         # Check data was read correctly
         assert "col_a" in df.columns

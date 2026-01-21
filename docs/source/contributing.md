@@ -16,8 +16,8 @@ cd r2x-core
 # Install with development dependencies
 uv sync --dev
 
-# Install pre-commit hooks
-uv run pre-commit install
+# Install prek hooks
+uv run prek install
 ```
 
 ### How to run tests
@@ -40,8 +40,8 @@ uv run pytest -vvl
 Ensure code quality and consistency:
 
 ```console
-# Run pre-commit checks on all files
-uv run pre-commit run --all-files
+# Run prek checks on all files
+uv run prek run --all-files
 
 # Run type checking
 uv run mypy --config-file=pyproject.toml src/
@@ -95,7 +95,7 @@ Follow these steps to contribute:
 4. **Run tests and checks**:
    ```console
    uv run pytest
-   uv run pre-commit run --all-files
+   uv run prek run --all-files
    ```
 5. **Commit your changes** using conventional commit format:
    ```console
@@ -138,6 +138,7 @@ Use descriptive branch names following this pattern:
 ```
 
 **Types:**
+
 - `feature/` - New features
 - `fix/` - Bug fixes
 - `docs/` - Documentation changes
@@ -145,6 +146,7 @@ Use descriptive branch names following this pattern:
 - `refactor/` - Code improvements
 
 **Examples:**
+
 - `feature/plexos-parser`
 - `fix/data-validation`
 - `docs/api-reference`
@@ -162,6 +164,7 @@ Follow the [Angular/Karma](https://karma-runner.github.io/6.4/dev/git-commit-msg
 ```
 
 **Types:**
+
 - `feat`: New features
 - `fix`: Bug fixes
 - `docs`: Documentation changes
@@ -171,6 +174,7 @@ Follow the [Angular/Karma](https://karma-runner.github.io/6.4/dev/git-commit-msg
 - `chore`: Changes to build process or auxiliary tools
 
 **Examples:**
+
 ```
 feat(parser): add support for PLEXOS XML files
 fix(validation): handle missing data columns
@@ -190,6 +194,7 @@ docs: update API reference for DataStore
 We use a **trunk-based development** approach:
 
 1. **Create feature branch** from `main`:
+
    ```bash
    git switch -c feature/your-feature-name
    ```
@@ -197,12 +202,14 @@ We use a **trunk-based development** approach:
 2. **Make changes** and commit regularly with clear messages
 
 3. **Keep branch updated** with main:
+
    ```bash
    git fetch origin
    git rebase origin/main
    ```
 
 4. **Push and create PR** when ready:
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -229,12 +236,12 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-### Pre-commit Hooks
+### Prek Hooks
 
-Install pre-commit hooks to automatically run checks:
+Install prek hooks to automatically run checks:
 
 ```bash
-uv run pre-commit install
+uv run prek install
 ```
 
 This will run linting and formatting before each commit.
@@ -275,6 +282,7 @@ We follow the [Diataxis](https://diataxis.fr/) framework:
 ### Coding Conventions
 
 We follow Python best practices:
+
 - PEP 8 style guide (enforced by Ruff)
 - Type hints for all function signatures
 - Docstrings for all public functions and classes

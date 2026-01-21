@@ -41,21 +41,21 @@ def build_target_system() -> System:
     system.add_components(
         NodeComponent(
             name="node_a",
-            uuid=str(uuid4()),
+            uuid=uuid4(),
             kv_rating=230.0,
             demand_mw=140.0,
             area="north-zone",
         ),
         CircuitComponent(
             name="circuit_ab",
-            uuid=str(uuid4()),
+            uuid=uuid4(),
             r_pu=0.02,
             x_pu=0.18,
             capacity_mw=320.0,
         ),
         StationComponent(
             name="station_alpha",
-            uuid=str(uuid4()),
+            uuid=uuid4(),
             max_output_mw=520.0,
             min_output_mw=80.0,
             resource="thermal",

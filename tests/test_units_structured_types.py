@@ -76,6 +76,7 @@ def test_structured_type_optional():
         base_power=100.0,
         limits=MinMax(min=20.0, max=80.0),
     )
+    assert gen2.limits is not None
     assert gen2.limits.min == 0.2
     assert gen2.limits.max == 0.8
 

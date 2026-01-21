@@ -1,8 +1,7 @@
 from r2x_core.exceptions import (
     CLIError,
     ComponentCreationError,
-    ExporterError,
-    ParserError,
+    PluginError,
     UpgradeError,
     ValidationError,
 )
@@ -14,16 +13,10 @@ def test_cli_error():
     assert str(error) == "test error"
 
 
-def test_parser_error():
-    """Test ParserError exception."""
-    error = ParserError("parser failed")
-    assert str(error) == "parser failed"
-
-
-def test_exporter_error():
-    """Test ExporterError exception."""
-    error = ExporterError("exporter failed")
-    assert str(error) == "exporter failed"
+def test_plugin_error():
+    """Test PluginError exception."""
+    error = PluginError("plugin failed")
+    assert str(error) == "plugin failed"
 
 
 def test_component_creation_error():

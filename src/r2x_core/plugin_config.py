@@ -6,14 +6,24 @@ and methods to load and override configuration assets.
 """
 
 import inspect
+from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar
 
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
-from .enums import PluginConfigAsset
 from .utils.overrides import override_dictionary
+
+
+class PluginConfigAsset(str, Enum):
+    """Enum describing configuration assets."""
+
+    FILE_MAPPING = "file_mapping.json"
+    DEFAULTS = "defaults.json"
+    TRANSLATION_RULES = "translation_rules.json"
+    PARSER_RULES = "parser_rules.json"
+    EXPORTER_RULES = "exporter_rules.json"
 
 
 class PluginConfig(BaseModel):
@@ -233,7 +243,12 @@ class PluginConfig(BaseModel):
         Path
             Path to the configuration directory. May not exist on the filesystem.
         """
-        module_file = inspect.getfile(cls)
+        try:
+            module_file = inspect.getfile(cls)
+        except (TypeError, AttributeError):
+            # For classes defined in doctest or other special contexts,
+            # return a path based on current working directory
+            return Path.cwd() / cls.CONFIG_DIR
         module_dir = Path(module_file).parent
         if module_dir.name == cls.CONFIG_DIR:
             return module_dir

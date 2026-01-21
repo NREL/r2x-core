@@ -24,14 +24,14 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
-
-from r2x_core.datafile_utils import get_fpath
+from rust_ok import Ok
 
 from .datafile import DataFile
 from .exceptions import ReaderError
 from .file_readers import read_file_by_type
 from .file_types import EXTENSION_MAPPING
 from .processors import apply_processing, register_transformation
+from .utils._datafile import get_fpath
 
 
 class DataReader:
@@ -57,6 +57,7 @@ class DataReader:
     def read_data_file(
         self,
         data_file: DataFile,
+        *,
         folder_path: Path,
         placeholders: dict[str, Any] | None = None,
     ) -> Any:
@@ -66,7 +67,7 @@ class DataReader:
         ----------
         data_file : DataFile
             Data file configuration with metadata.
-        folder : Path
+        folder_path : Path
             Base directory containing the data files.
         placeholders : dict[str, Any] | None, optional
             Dictionary mapping placeholder variable names to their values.
@@ -97,15 +98,15 @@ class DataReader:
         logger.debug("Starting reading for data_file={}", data_file.name)
         is_optional = data_file.info.is_optional if data_file.info else False  # By default files are no-opt
 
-        fpath_result = get_fpath(data_file, folder_path, info=data_file.info)
+        fpath_result = get_fpath(data_file, folder_path=folder_path, info=data_file.info)
         if fpath_result.is_err():
             error = fpath_result.err()
             if isinstance(error, FileNotFoundError) and is_optional:
                 logger.info("Skipping optional file: {}", data_file.name)
                 return None
             raise error
-
-        fpath = fpath_result.unwrap()
+        assert isinstance(fpath_result, Ok), "Result should be Ok after error check"
+        fpath = fpath_result.value
 
         reader = data_file.reader
         reader_kwargs = reader.kwargs if reader else {}
@@ -118,16 +119,16 @@ class DataReader:
             raw_data = reader.function(fpath, **reader_kwargs)
             if data_file.proc_spec is not None:
                 processed_data = apply_processing(
+                    raw_data,
                     data_file=data_file,
-                    data=raw_data,
                     proc_spec=data_file.proc_spec,
                     placeholders=placeholders,
                 )
 
                 if processed_data.is_err():
                     raise ReaderError(processed_data.error)
-
-                processed_data = processed_data.unwrap()
+                assert isinstance(processed_data, Ok), "Result should be Ok after error check"
+                processed_data = processed_data.value
             else:
                 processed_data = raw_data
 
@@ -137,15 +138,15 @@ class DataReader:
         logger.trace(
             "Attempting to read data_file={} with {}", data_file.name, type(file_type_instance).__name__
         )
-        raw_data = read_file_by_type(file_type_instance, fpath, **reader_kwargs)
+        raw_data = read_file_by_type(file_type_instance, file_path=fpath, **reader_kwargs)
         if data_file.proc_spec is not None:
             processed_data = apply_processing(
-                data_file=data_file, data=raw_data, proc_spec=data_file.proc_spec, placeholders=placeholders
+                raw_data, data_file=data_file, proc_spec=data_file.proc_spec, placeholders=placeholders
             )
             if processed_data.is_err():
                 raise ReaderError(processed_data.error)
-
-            processed_data = processed_data.unwrap()
+            assert isinstance(processed_data, Ok), "Result should be Ok after error check"
+            processed_data = processed_data.value
         else:
             processed_data = raw_data
         return processed_data
@@ -163,6 +164,7 @@ class DataReader:
     def register_custom_transformation(
         self,
         data_types: type | tuple[type, ...],
+        *,
         transform_func: Callable[[DataFile, Any], Any],
     ) -> None:
         """Register a custom transformation function.
@@ -180,6 +182,6 @@ class DataReader:
         >>> def my_transform(data_file: DataFile, data: MyClass) -> MyClass:
         ...     # Custom logic here
         ...     return data
-        >>> reader.register_custom_transformation(MyClass, my_transform)
+        >>> reader.register_custom_transformation(MyClass, transform_func=my_transform)
         """
-        register_transformation(data_types, transform_func)
+        register_transformation(data_types, func=transform_func)

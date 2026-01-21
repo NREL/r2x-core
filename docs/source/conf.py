@@ -1,8 +1,7 @@
-# ruff: noqa
 project = "r2x-core"
 copyright = "2024, Alliance for Sustainable Energy LLC, All rights reserved."
 author = "R2X authors"
-release = "0.0.1"
+release = "0.3.1"  # x-release-please-version
 extensions = [
     "myst_parser",
     "sphinx.ext.githubpages",
@@ -16,6 +15,7 @@ extensions = [
     "sphinx_tabs.tabs",
     "sphinx_reports",
     "sphinxcontrib.autodoc_pydantic",
+    "sphinxcontrib.mermaid",
 ]
 
 templates_path = ["_templates"]
@@ -39,7 +39,7 @@ html_theme_options = {
     "source_directory": "docs/source/",
     "top_of_page_buttons": ["view", "edit"],
     "announcement": """
-        <strong>🎉 R2X Core v0.1.0 is now available!</strong>
+        <strong>🎉 R2X Core v1.0.0 is now available!</strong>
         This is our first Long-Term Support (LTS) release.
         <a href="https://github.com/NREL/r2x-core/releases/tag/v0.1.0" target="_blank">View release notes</a>
     """,
@@ -81,7 +81,14 @@ report_doccov_packages = {
         "name": "r2x_core",
         "directory": "src/",
         "fail_below": 90,
-        "levels": "default",
+        "levels": {
+            0: {"desc": "No documentation", "class": "report-cov-0"},
+            25: {"desc": "Minimal documentation", "class": "report-cov-25"},
+            50: {"desc": "Some documentation", "class": "report-cov-50"},
+            75: {"desc": "Good documentation", "class": "report-cov-75"},
+            100: {"desc": "Complete documentation", "class": "report-cov-100"},
+            "error": {"desc": "Errors", "class": "report-cov-error"},
+        },
     }
 }
 intersphinx_mapping = {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from fixtures.context import FIXTURE_MODEL_MODULES
 from fixtures.target_system import StationComponent
@@ -20,16 +20,16 @@ class _Dummy:
 def test_rule_filter_matches_leaf_casefold():
     """Leaf filters respect casefolded string comparisons."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="kind", op="eq", values=["gas"])
-    assert _evaluate_rule_filter(filt, _Dummy(kind="GAS"))
+    assert _evaluate_rule_filter(_Dummy(kind="GAS"), rule_filter=filt)
 
 
 def test_rule_filter_matches_any_of():
     """Composite any_of evaluates to True when any child matches."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(
         any_of=[
@@ -37,22 +37,22 @@ def test_rule_filter_matches_any_of():
             RuleFilter(field="kind", op="eq", values=["gas"]),
         ]
     )
-    assert _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+    assert _evaluate_rule_filter(_Dummy(kind="gas"), rule_filter=filt)
 
 
 def test_rule_filter_matches_geq_numeric():
     """Numeric geq comparison works for thresholds."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="capacity", op="geq", values=[400])
-    assert _evaluate_rule_filter(filt, _Dummy(capacity=500.0))
-    assert not _evaluate_rule_filter(filt, _Dummy(capacity=300))
+    assert _evaluate_rule_filter(_Dummy(capacity=500.0), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(capacity=300), rule_filter=filt)
 
 
 def _run_rule_with_filter(filter_spec: RuleFilter, source_system: System) -> tuple[int, System]:
     """Apply a single filtered rule and return conversion count and target system."""
-    from r2x_core import PluginConfig, Rule, System, TranslationContext, apply_rules_to_context
+    from r2x_core import PluginConfig, PluginContext, Rule, System, apply_rules_to_context
 
     config = PluginConfig(models=FIXTURE_MODEL_MODULES)
     rule = Rule(
@@ -63,11 +63,12 @@ def _run_rule_with_filter(filter_spec: RuleFilter, source_system: System) -> tup
         filter=filter_spec,
     )
     target_system = System(name="FilteredTarget", auto_add_composed_components=True)
-    context = TranslationContext(
+    context = PluginContext(
         source_system=source_system,
         target_system=target_system,
         config=config,
-        rules=[rule],
+        rules=(rule,),
+        store=None,
     )
     result = apply_rules_to_context(context)
     return result.total_converted, target_system
@@ -103,21 +104,21 @@ def test_apply_rules_respects_filter_exclude(source_system):
 def test_rule_filter_startswith():
     """Test that 'startswith' operator works for RuleFilter."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="kind", op="startswith", values=["ga"])
-    assert _evaluate_rule_filter(filt, _Dummy(kind="gas"))
-    assert not _evaluate_rule_filter(filt, _Dummy(kind="coal"))
+    assert _evaluate_rule_filter(_Dummy(kind="gas"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(kind="coal"), rule_filter=filt)
 
 
 def test_rule_filter_not_startswith():
     """Test that 'not_startswith' operator works for RuleFilter."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="kind", op="not_startswith", values=["ga"])
-    assert _evaluate_rule_filter(filt, _Dummy(kind="coal"))
-    assert not _evaluate_rule_filter(filt, _Dummy(kind="gas"))
+    assert _evaluate_rule_filter(_Dummy(kind="coal"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(kind="gas"), rule_filter=filt)
 
 
 def test_apply_rules_respects_filter_prefix(source_system):
@@ -147,42 +148,42 @@ def test_apply_rules_respects_filter_not_prefix(source_system):
 def test_rule_filter_matches_endswith():
     """Leaf filters with endswith operator work as expected, including casefold."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     # Standard case
     filt = RuleFilter(field="name", op="endswith", values=["alpha"])
-    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+    assert _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="plant_beta"), rule_filter=filt)
 
     # Casefolded match
     filt_casefold = RuleFilter(field="name", op="endswith", values=["ALPHA"])
-    assert _evaluate_rule_filter(filt_casefold, _Dummy(name="plant_alpha"))
+    assert _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt_casefold)
 
     # Casefold disabled
     filt_nocase = RuleFilter(field="name", op="endswith", values=["ALPHA"], casefold=False)
-    assert not _evaluate_rule_filter(filt_nocase, _Dummy(name="plant_alpha"))
+    assert not _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt_nocase)
 
 
 def test_rule_filter_matches_startswith():
     """Leaf filters with startswith operator work as expected."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="name", op="startswith", values=["plant_"])
-    assert _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
-    assert _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
+    assert _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt)
+    assert _evaluate_rule_filter(_Dummy(name="plant_beta"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="station_alpha"), rule_filter=filt)
 
 
 def test_rule_filter_matches_not_startswith():
     """Leaf filters with not_startswith operator work as expected."""
     from r2x_core import RuleFilter
-    from r2x_core.rules_utils import _evaluate_rule_filter
+    from r2x_core.utils import _evaluate_rule_filter
 
     filt = RuleFilter(field="name", op="not_startswith", values=["plant_"])
-    assert _evaluate_rule_filter(filt, _Dummy(name="station_alpha"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_alpha"))
-    assert not _evaluate_rule_filter(filt, _Dummy(name="plant_beta"))
+    assert _evaluate_rule_filter(_Dummy(name="station_alpha"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="plant_alpha"), rule_filter=filt)
+    assert not _evaluate_rule_filter(_Dummy(name="plant_beta"), rule_filter=filt)
 
 
 def test_rulefilter_model_validator_leaf_and_children_error():
@@ -267,7 +268,7 @@ def test_rulefilter_model_validator_prefixes_type():
     from r2x_core import RuleFilter
 
     with pytest.raises(ValueError) as _:
-        RuleFilter(field="name", op="startswith", prefixes=[123])
+        RuleFilter(field="name", op="startswith", prefixes=cast(Any, [123]))
 
 
 def test_rulefilter_normalized_prefixes_casefold():

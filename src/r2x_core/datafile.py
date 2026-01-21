@@ -24,7 +24,7 @@ def _validate_optional_file_extension(path: Path | None, info: ValidationInfo) -
     """Run validate_file_extension when a path is provided."""
     if path is None:
         return None
-    return validate_file_extension(path, info)
+    return validate_file_extension(path, info=info)
 
 
 class FileInfo(BaseModel):
@@ -59,7 +59,7 @@ class FileInfo(BaseModel):
     units: Annotated[str | None, Field(description="Units for single-column data")] = None
 
 
-class ReaderConfig(BaseModel):  # type: ignore
+class ReaderConfig(BaseModel):
     """Reader configuration for file loading.
 
     Specifies how to read the data file, including keyword arguments for
@@ -267,7 +267,7 @@ class DataFile(BaseModel):
 
         return self
 
-    @computed_field  # type: ignore
+    @computed_field
     @property
     def file_type(self) -> FileFormat:
         """Computed file type based on file extension."""
@@ -288,7 +288,9 @@ class DataFile(BaseModel):
             msg = "Either fpath, relative_fpath, or glob must be set"
             raise ValueError(msg)
 
-        assert extension in EXTENSION_MAPPING, f"{extension=} not found on EXTENSION_MAPPING"
+        if extension not in EXTENSION_MAPPING:
+            msg = f"{extension=} not found on EXTENSION_MAPPING"
+            raise ValueError(msg)
         file_type_class = EXTENSION_MAPPING[extension]
 
         if self.info and self.info.is_timeseries and not file_type_class.supports_timeseries:
@@ -298,7 +300,7 @@ class DataFile(BaseModel):
         return file_type_class()
 
     @classmethod
-    def from_record(cls, record: dict[str, Any], folder_path: Path) -> "DataFile":
+    def from_record(cls, record: dict[str, Any], *, folder_path: Path) -> "DataFile":
         """Build a DataFile from a single record dictionary."""
         record_copy = dict(record)
         info = record_copy.get("info")
@@ -307,7 +309,7 @@ class DataFile(BaseModel):
         raw_path = record_copy["fpath"]
         resolved = cls._resolve_record_path(
             raw_path,
-            folder_path,
+            folder_path=folder_path,
             must_exist=not is_optional,
         )
         record_copy["fpath"] = resolved
@@ -315,14 +317,14 @@ class DataFile(BaseModel):
         return cls.model_validate(record_copy)
 
     @classmethod
-    def from_records(cls, records: list[dict[str, Any]], folder_path: Path) -> list["DataFile"]:
+    def from_records(cls, records: list[dict[str, Any]], *, folder_path: Path) -> list["DataFile"]:
         """Construct multiple DataFile instances from JSON records."""
         data_files: list[DataFile] = []
         errors: list[ValidationError] = []
 
         for idx, record in enumerate(records):
             try:
-                data_files.append(cls.from_record(record, folder_path))
+                data_files.append(cls.from_record(record, folder_path=folder_path))
 
             except (KeyError, TypeError) as exc:
                 errors.append(
@@ -372,12 +374,16 @@ class DataFile(BaseModel):
     @staticmethod
     def _resolve_record_path(
         raw_path: str | Path,
-        folder_path: Path,
         *,
+        folder_path: Path,
         must_exist: bool = True,
     ) -> Path:
         """Resolve a raw path into an absolute path with optional checking."""
-        result = resolve_path(raw_path, folder_path, must_exist=must_exist)
+        result = resolve_path(raw_path, base_folder=folder_path, must_exist=must_exist)
         if result.is_err():
             raise result.err()
-        return result.unwrap()
+
+        # Safe because we verified result is Ok above
+        path = result.ok()
+        assert path is not None, "Expected Path from Ok result"
+        return path

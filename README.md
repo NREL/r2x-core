@@ -19,13 +19,15 @@ R2X Core serves as the foundation for building translators between power system 
 
 ## Features
 
-- Plugin-based architecture - Singleton registry with automatic discovery and registration of parsers, exporters, system modifiers, and filters
+- Capability-based plugin architecture - Plugins implement only the hooks they need (validate, prepare, build, transform, translate, export, cleanup)
+- Declarative rule system - Define model translations through configuration, not code
+- Rule filters for selective translation - Composable filters to control which components rules process
 - Standardized component models - Power system components via [infrasys](https://github.com/NREL/infrasys)
 - Multiple file format support - Native support for CSV, HDF5, Parquet, JSON, and XML
-- Type-safe configuration - Pydantic-based `PluginConfig` for model-specific parameters with defaults loading
-- Data transformation pipeline - Built-in filters, column mapping, and reshaping operations
-- Abstract base classes - `BaseParser` and `BaseExporter` for implementing translators
-- Flexible data store - Automatic format detection and intelligent caching
+- Configurable HDF5 reader - Flexible configuration-driven approach for any HDF5 structure
+- Type-safe configuration - Pydantic-based `PluginConfig` with automatic validation
+- Per-unit system - Automatic unit handling with device-base, natural units, and system-base display modes
+- Flexible data store - Automatic format detection, intelligent caching, and component tracking
 - Entry point discovery - External packages can register plugins via setuptools/pyproject.toml entry points
 
 ## Installation
@@ -76,70 +78,89 @@ available_files = store.list_data()
 store.remove_data("generators")
 ```
 
-### Building a Model Translator
+### Building a Model Translator with Plugins
 
-Create parsers and exporters for your power system model:
+Create a plugin to translate power system models:
 
 ```python
-from r2x_core import BaseParser, BaseExporter, PluginConfig, DataStore
+from r2x_core import Plugin, PluginConfig, PluginContext, Rule, System, DataStore
+from rust_ok import Ok
 
 # Define type-safe configuration
 class MyModelConfig(PluginConfig):
-    folder: str
-    year: int
+    input_folder: str
+    model_year: int
+    scenario: str = "base"
 
-# Implement your parser
-class MyModelParser(BaseParser):
-    def build_system_components(self):
-        # Load data and build system components
-        gen_data = self.data_store.read_data("generators")
-        # ... create system components
+# Implement your translator plugin
+class MyModelTranslator(Plugin[MyModelConfig]):
+    def on_prepare(self):
+        # Load data and setup resources
         return Ok(None)
 
-    def build_time_series(self):
-        # Attach time series data
-        return Ok(None)
+    def on_build(self):
+        # Create system from input data
+        system = System(name=f"{self.config.scenario}_{self.config.model_year}")
+        return Ok(system)
 
-# Create a data store and parser
-config = MyModelConfig(folder="/path/to/data", year=2030)
-store = DataStore(path=config.folder)
-parser = MyModelParser(config, data_store=store)
-system = parser.build_system()
+    def on_translate(self):
+        # Define translation rules
+        rules = [
+            Rule(
+                name="translate_generators",
+                source_type="SourceGenerator",
+                target_type="Generator",
+                version=1,
+                field_map={
+                    "name": "name",
+                    "capacity": "p_max_mw",
+                    "location": "zone",
+                }
+            ),
+        ]
+        # Apply rules to create target system
+        return Ok(self.system)
+
+# Execute the translation
+config = MyModelConfig(input_folder="/path/to/data", model_year=2030)
+context = PluginContext(config=config)
+plugin = MyModelTranslator.from_context(context)
+result = plugin.run()
+print(f"Translated system: {result.system.name}")
 ```
 
 ### Plugin Registration and Discovery
 
-Create a manifest that describes each plugin explicitly:
-
-```python
-from r2x_core import PluginManifest, PluginSpec
-
-manifest = PluginManifest(package="my-model")
-
-manifest.add(
-    PluginSpec.parser(
-        name="my-model.parser",
-        entry="my_package.parser:MyModelParser",
-        config="my_package.config:MyModelConfig",
-    )
-)
-
-manifest.add(
-    PluginSpec.exporter(
-        name="my-model.exporter",
-        entry="my_package.exporter:MyModelExporter",
-        config="my_package.config:MyModelConfig",
-        config_optional=True,
-    )
-)
-```
-
-Make plugins discoverable via `pyproject.toml`:
+Register plugins via `pyproject.toml` entry points for automatic discovery:
 
 ```toml
-[project.entry-points.r2x_plugins]
-my_model = "my_package.plugins:manifest"
+[project.entry-points.r2x_plugin]
+my_model_translator = "my_package.plugins:MyModelTranslator"
+my_model_builder = "my_package.plugins:MyModelBuilder"
 ```
+
+The plugin system automatically discovers and introspects plugins to extract their capabilities:
+
+```python
+from r2x_core import Plugin
+
+# Get plugin metadata programmatically
+config_type = MyModelTranslator.get_config_type()
+print(f"Config type: {config_type.__name__}")
+
+# Discover which hooks are implemented
+hooks = MyModelTranslator.get_implemented_hooks()
+print(f"Implemented hooks: {hooks}")
+# Output: ['on_prepare', 'on_build', 'on_translate']
+
+# Introspect config fields
+import inspect
+fields = config_type.model_fields
+for field_name, field_info in fields.items():
+    print(f"  {field_name}: {field_info.annotation}")
+```
+
+Plugins are discovered, instantiated, and executed through a shared registry that handles dependency injection and lifecycle management.
 
 ## Documentation
 
@@ -148,17 +169,25 @@ Comprehensive documentation is available at [nrel.github.io/r2x-core](https://nr
 - **[Getting Started Tutorial](https://nrel.github.io/r2x-core/tutorials/getting-started/)** - Step-by-step guide to building your first translator
 - **[Installation Guide](https://nrel.github.io/r2x-core/install/)** - Detailed installation instructions and options
 - **[How-To Guides](https://nrel.github.io/r2x-core/how-tos/)** - Task-oriented guides for common workflows:
-  - [Configuration Management](https://nrel.github.io/r2x-core/how-tos/configuration/)
-  - [Data Reading](https://nrel.github.io/r2x-core/how-tos/data-reading/)
-  - [DataStore Management](https://nrel.github.io/r2x-core/how-tos/datastore-management/)
-  - [File Operations](https://nrel.github.io/r2x-core/how-tos/file-operations/)
-  - [Plugin Registration](https://nrel.github.io/r2x-core/how-tos/plugin-registration/)
-  - [System Operations](https://nrel.github.io/r2x-core/how-tos/system-operations/)
-  - [Unit Operations](https://nrel.github.io/r2x-core/how-tos/unit-operations/)
+  - [Read Data Files](https://nrel.github.io/r2x-core/how-tos/read-data-files/)
+  - [Configure Data Files](https://nrel.github.io/r2x-core/how-tos/configure-data-files/)
+  - [Define Rule Mappings](https://nrel.github.io/r2x-core/how-tos/define-rule-mappings/)
+  - [Apply Rules](https://nrel.github.io/r2x-core/how-tos/apply-rules/)
+  - [Register Plugins](https://nrel.github.io/r2x-core/how-tos/register-plugins/)
+  - [Manage DataStores](https://nrel.github.io/r2x-core/how-tos/manage-datastores/)
+  - [Manage Systems](https://nrel.github.io/r2x-core/how-tos/manage-systems/)
+  - [Convert Units](https://nrel.github.io/r2x-core/how-tos/convert-units/)
 - **[Explanations](https://nrel.github.io/r2x-core/explanations/)** - Deep dives into key concepts:
   - [Plugin System Architecture](https://nrel.github.io/r2x-core/explanations/plugin-system/)
-  - [Unit System](https://nrel.github.io/r2x-core/explanations/unit-system/)
-  - [HDF5 Readers](https://nrel.github.io/r2x-core/explanations/h5-readers/)
+  - [Rule System Architecture](https://nrel.github.io/r2x-core/explanations/rules-system/)
+  - [Unit System Design](https://nrel.github.io/r2x-core/explanations/unit-system/)
+  - [HDF5 Reader System](https://nrel.github.io/r2x-core/explanations/h5-readers/)
+  - [Data Management](https://nrel.github.io/r2x-core/explanations/data-management/)
+- **[Tutorials](https://nrel.github.io/r2x-core/tutorials/)** - In-depth walkthroughs:
+  - [Plugin System](https://nrel.github.io/r2x-core/tutorials/plugin-system/)
+  - [Plugin Context](https://nrel.github.io/r2x-core/tutorials/plugin-context/)
+  - [Plugin Discovery](https://nrel.github.io/r2x-core/tutorials/plugin-discovery/)
+  - [Working with Units](https://nrel.github.io/r2x-core/tutorials/working-with-units/)
 - **[API Reference](https://nrel.github.io/r2x-core/references/)** - Complete API documentation
 
 ## Roadmap

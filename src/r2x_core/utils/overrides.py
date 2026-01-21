@@ -3,8 +3,21 @@
 from typing import Any
 
 
-def override_dictionary(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
-    """Recurse and override base dictionary."""
+def merge_with_overrides(base: dict[str, Any], *, overrides: dict[str, Any]) -> dict[str, Any]:
+    """Merge base dictionary with overrides recursively.
+
+    Parameters
+    ----------
+    base : dict[str, Any]
+        The base dictionary to merge into
+    overrides : dict[str, Any]
+        The overrides to apply
+
+    Returns
+    -------
+    dict[str, Any]
+        The merged dictionary
+    """
     merged: dict[str, Any] = base.copy()
 
     for key, override_value in overrides.items():
@@ -16,7 +29,7 @@ def override_dictionary(base: dict[str, Any], overrides: dict[str, Any]) -> dict
 
         # Simple case if both are dictionary
         if isinstance(base_value, dict) and isinstance(override_value, dict):
-            merged[key] = override_dictionary(base_value, override_value)
+            merged[key] = merge_with_overrides(base_value, overrides=override_value)
             continue
 
         # Positional merge (list + list)
@@ -31,7 +44,7 @@ def override_dictionary(base: dict[str, Any], overrides: dict[str, Any]) -> dict
 
                 if isinstance(base_item, dict) and isinstance(override_item, dict):
                     # Recurse for inner indexes
-                    combined_list.append(override_dictionary(base_item, override_item))
+                    combined_list.append(merge_with_overrides(base_item, overrides=override_item))
                 else:
                     combined_list.append(override_item)
 
@@ -49,3 +62,9 @@ def override_dictionary(base: dict[str, Any], overrides: dict[str, Any]) -> dict
         merged[key] = override_value
 
     return merged
+
+
+# Backward compatibility alias
+def override_dictionary(base: dict[str, Any], *, overrides: dict[str, Any]) -> dict[str, Any]:
+    """Merge dict overrides with a base dict, maintaining backward compatibility."""
+    return merge_with_overrides(base, overrides=overrides)

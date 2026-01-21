@@ -1,6 +1,6 @@
 """Tests for :mod:`r2x_core.upgrader_utils` helpers."""
 
-from r2x_core.upgrader_utils import (
+from r2x_core.utils import (
     UpgradeStep,
     UpgradeType,
     run_upgrade_step,
@@ -31,7 +31,7 @@ def test_shall_we_upgrade_below_minimum_returns_false():
 
     result = shall_we_upgrade(step, current_version="1.5", strategy=strategy)
     assert result.is_ok()
-    assert result.value is False
+    assert result.unwrap() is False
 
 
 def test_shall_we_upgrade_above_maximum_returns_false():
@@ -40,7 +40,7 @@ def test_shall_we_upgrade_above_maximum_returns_false():
 
     result = shall_we_upgrade(step, current_version="6.0", strategy=strategy)
     assert result.is_ok()
-    assert result.value is False
+    assert result.unwrap() is False
 
 
 def test_shall_we_upgrade_within_range_returns_true():
@@ -49,7 +49,7 @@ def test_shall_we_upgrade_within_range_returns_true():
 
     result = shall_we_upgrade(step, current_version="2.0", strategy=strategy)
     assert result.is_ok()
-    assert result.value is True
+    assert result.unwrap() is True
 
 
 def test_run_upgrade_step_passes_context_when_supported():
@@ -64,9 +64,9 @@ def test_run_upgrade_step_passes_context_when_supported():
         upgrade_type=UpgradeType.FILE,
     )
 
-    result = run_upgrade_step(step, data=41, upgrader_context={"info": "value"})
+    result = run_upgrade_step(41, step=step, upgrader_context={"info": "value"})
     assert result.is_ok()
-    assert result.value == 42
+    assert result.unwrap() == 42
 
 
 def test_run_upgrade_step_wraps_exceptions():
@@ -80,6 +80,6 @@ def test_run_upgrade_step_wraps_exceptions():
         upgrade_type=UpgradeType.FILE,
     )
 
-    result = run_upgrade_step(step, data="ignored")
+    result = run_upgrade_step("ignored", step=step)
     assert result.is_err()
     assert "Failed broken-step" in result.err()

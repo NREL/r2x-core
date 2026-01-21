@@ -38,7 +38,7 @@ _PLACEHOLDER_PATTERN = re.compile(r"\{([^}]+)\}")
 
 
 def substitute_placeholders(
-    value: Any, placeholders: dict[str, Any] | None = None
+    value: Any, *, placeholders: dict[str, Any] | None = None
 ) -> Result[Any, ValueError]:
     """Replace {variable} placeholders in values using provided mapping.
 
@@ -117,7 +117,8 @@ def substitute_placeholders(
                 res = substitute_value(item)
                 if res.is_err():
                     return res  # propagate error
-                new_list.append(res.unwrap())
+                assert isinstance(res, Ok), "Result should be Ok after error check"
+                new_list.append(res.value)
             return Ok(new_list)
 
         elif isinstance(val, dict):
@@ -126,7 +127,8 @@ def substitute_placeholders(
                 res = substitute_value(v)
                 if res.is_err():
                     return res
-                new_dict[k] = res.unwrap()
+                assert isinstance(res, Ok), "Result should be Ok after error check"
+                new_dict[k] = res.value
             return Ok(new_dict)
 
         return Ok(val)
@@ -135,7 +137,7 @@ def substitute_placeholders(
 
 
 def process_tabular_data(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
     """Apply tabular data transformations sequentially.
 
@@ -144,10 +146,10 @@ def process_tabular_data(
 
     Parameters
     ----------
-    data_file : DataFile
-        File configuration providing context for logging and validation.
     data_frame : pl.LazyFrame
         Input tabular data in lazy evaluation mode.
+    data_file : DataFile
+        File configuration providing context for logging and validation.
     proc_spec : TabularProcessing
         Processing specification defining transformations to apply.
 
@@ -174,12 +176,12 @@ def process_tabular_data(
 
     output_data = data_frame
     for fp_function in pipeline:
-        output_data = fp_function(data_file=data_file, proc_spec=proc_spec, data_frame=output_data)
+        output_data = fp_function(output_data, data_file=data_file, proc_spec=proc_spec)
 
     return output_data
 
 
-def process_json_data(data_file: DataFile, json_data: JSONType, proc_spec: JSONProcessing) -> JSONType:
+def process_json_data(json_data: JSONType, *, data_file: DataFile, proc_spec: JSONProcessing) -> JSONType:
     """Apply JSON data transformations sequentially.
 
     Executes a pipeline of transformations (rename_keys, drop_columns, select_columns,
@@ -188,10 +190,10 @@ def process_json_data(data_file: DataFile, json_data: JSONType, proc_spec: JSONP
 
     Parameters
     ----------
-    data_file : DataFile
-        File configuration providing context for logging and validation.
     json_data : JSONType
         Input JSON data (dict, list of dicts, or nested structures).
+    data_file : DataFile
+        File configuration providing context for logging and validation.
     proc_spec : JSONProcessing
         Processing specification defining transformations to apply.
 
@@ -215,12 +217,14 @@ def process_json_data(data_file: DataFile, json_data: JSONType, proc_spec: JSONP
     ]
     result = json_data
     for transform_func in pipeline:
-        result = transform_func(data_file=data_file, json_data=result, proc_spec=proc_spec)
+        result = transform_func(result, data_file=data_file, proc_spec=proc_spec)
 
     return result
 
 
-def pl_pivot_on(data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing) -> pl.LazyFrame:
+def pl_pivot_on(
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
+) -> pl.LazyFrame:
     """Unpivot (melt) the DataFrame based on configuration."""
     if not proc_spec or not proc_spec.pivot_on:
         return data_frame
@@ -238,7 +242,9 @@ def pl_pivot_on(data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: Tabula
     return new_df.lazy()
 
 
-def pl_lowercase(data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing) -> pl.LazyFrame:
+def pl_lowercase(
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
+) -> pl.LazyFrame:
     """Convert all string columns to lowercase."""
     result = data_frame.with_columns(pl.col(pl.String).str.to_lowercase()).rename(
         {column: column.lower() for column in data_frame.collect_schema().names()}
@@ -248,7 +254,7 @@ def pl_lowercase(data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: Tabul
 
 
 def pl_drop_columns(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
     """Drop specified columns if they exist."""
     if not proc_spec or not proc_spec.drop_columns:
@@ -262,7 +268,7 @@ def pl_drop_columns(
 
 
 def pl_rename_columns(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
     """Rename columns based on mapping."""
     if not proc_spec or not proc_spec.column_mapping:
@@ -280,7 +286,7 @@ def pl_rename_columns(
 
 
 def pl_cast_schema(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
     """Cast columns to specified data types."""
     if not proc_spec or not proc_spec.column_schema:
@@ -289,11 +295,7 @@ def pl_cast_schema(
     cast_exprs = []
     for col, type_str in (proc_spec.column_schema or {}).items():
         if col in data_frame.collect_schema().names():
-            try:
-                polars_type = _get_polars_type(type_str)
-            except ValueError:
-                # Re-raise so callers/tests can observe the failure
-                raise
+            polars_type = _get_polars_type(type_str)
             cast_exprs.append(pl.col(col).cast(polars_type))
 
     if not cast_exprs:
@@ -303,14 +305,14 @@ def pl_cast_schema(
 
 
 def pl_apply_filters(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
     """Apply row filters."""
     if not proc_spec or not proc_spec.filter_by:
         return data_frame
 
     filters = [
-        pl_build_filter_expr(col, value)
+        pl_build_filter_expr(col, value=value)
         for col, value in (proc_spec.filter_by or {}).items()
         if col in data_frame.collect_schema().names()
     ]
@@ -325,28 +327,24 @@ def pl_apply_filters(
 
 
 def pl_select_columns(
-    data_file: DataFile, data_frame: pl.LazyFrame, proc_spec: TabularProcessing
+    data_frame: pl.LazyFrame, *, data_file: DataFile, proc_spec: TabularProcessing
 ) -> pl.LazyFrame:
-    """Select specific columns (index + value columns)."""
+    """Select specific columns."""
     if not proc_spec or not proc_spec.select_columns:
         return data_frame
 
-    cols_to_select = []
-    if proc_spec.set_index:
-        cols_to_select.extend(proc_spec.select_columns)
-    cols_to_select.extend(proc_spec.select_columns)
+    # Use dict.fromkeys to maintain order while removing duplicates
+    cols_to_select = list(dict.fromkeys(proc_spec.select_columns))
 
-    unique_cols = list(
-        dict.fromkeys(col for col in cols_to_select if col in data_frame.collect_schema().names())
-    )
-    if not unique_cols:
+    valid_cols = [col for col in cols_to_select if col in data_frame.collect_schema().names()]
+    if not valid_cols:
         return data_frame
 
-    logger.trace("Selecting {} columns from {}", len(unique_cols), data_file.name)
-    return data_frame.select(unique_cols)
+    logger.trace("Selecting {} columns from {}", len(valid_cols), data_file.name)
+    return data_frame.select(valid_cols)
 
 
-def json_rename_keys(data_file: DataFile, json_data: JSONType, proc_spec: JSONProcessing) -> JSONType:
+def json_rename_keys(json_data: JSONType, *, data_file: DataFile, proc_spec: JSONProcessing) -> JSONType:
     """Rename keys based on key mapping from JSONProcessing.
 
     Applies renaming recursively to nested dictionaries.
@@ -379,7 +377,7 @@ def json_rename_keys(data_file: DataFile, json_data: JSONType, proc_spec: JSONPr
     return rename_keys_recursive(json_data)
 
 
-def json_drop_columns(data_file: DataFile, json_data: JSONType, proc_spec: JSONProcessing) -> JSONType:
+def json_drop_columns(json_data: JSONType, *, data_file: DataFile, proc_spec: JSONProcessing) -> JSONType:
     """Drop specified columns/keys from JSON data recursively."""
     if not proc_spec or not proc_spec.drop_keys:
         return json_data
@@ -409,7 +407,7 @@ def json_drop_columns(data_file: DataFile, json_data: JSONType, proc_spec: JSONP
     return drop_keys_recursive(json_data)
 
 
-def json_select_columns(data_file: DataFile, json_data: JSONType, proc_spec: JSONProcessing) -> JSONType:
+def json_select_columns(json_data: JSONType, *, data_file: DataFile, proc_spec: JSONProcessing) -> JSONType:
     """Select specific columns/keys from JSON data."""
     if not proc_spec or not proc_spec.select_keys:
         return json_data
@@ -440,8 +438,9 @@ def json_select_columns(data_file: DataFile, json_data: JSONType, proc_spec: JSO
 
 
 def json_apply_filters(
-    data_file: DataFile,
     json_data: JSONType,
+    *,
+    data_file: DataFile,
     proc_spec: JSONProcessing | None,
 ) -> JSONType:
     """Filter JSON data by key-value pairs."""
@@ -465,7 +464,7 @@ def json_apply_filters(
         """
         if not isinstance(obj, dict):
             return False
-        return all(_matches_filter(obj.get(k), v) for k, v in filters.items())
+        return all(_matches_filter(obj.get(k), filter_value=v) for k, v in filters.items())
 
     logger.trace("Applying filter {} to {}", filters, data_file.name)
 
@@ -484,8 +483,9 @@ def json_apply_filters(
 
 
 def json_select_keys(
-    data_file: DataFile,
     json_data: JSONType,
+    *,
+    data_file: DataFile,
     proc_spec: JSONProcessing | None,
 ) -> JSONType:
     """Select specific keys from JSON data (dict or list of dicts)."""
@@ -504,13 +504,13 @@ def json_select_keys(
     return json_data
 
 
-def transform_xml_data(data: Any, data_file: DataFile) -> Any:
+def transform_xml_data(data: Any, *, data_file: DataFile) -> Any:
     """Transform XML data - placeholder for future implementation."""
     logger.debug("XML transformation placeholder for {}", data_file.name)
     return data
 
 
-TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[[DataFile, Any, Any], Any]] = {
+TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[..., Any]] = {
     pl.LazyFrame: process_tabular_data,
     dict: process_json_data,
     # We can add more as needed: tuple: transform_xml_data, etc.
@@ -518,8 +518,9 @@ TRANSFORMATIONS: dict[type | tuple[type, ...], Callable[[DataFile, Any, Any], An
 
 
 def apply_processing(
-    data_file: DataFile,
     data: Any,
+    *,
+    data_file: DataFile,
     proc_spec: FileProcessing | None,
     placeholders: dict[str, Any] | None = None,
 ) -> Result[Any, ValueError | ValidationError]:
@@ -527,10 +528,10 @@ def apply_processing(
 
     Parameters
     ----------
-    data_file : DataFile
-        Configuration with transformation instructions.
     data : Any
         Raw data to transform.
+    data_file : DataFile
+        Configuration with transformation instructions.
     proc_spec : FileProcessing | None
         Processing specification (TabularProcessing or JSONProcessing).
     placeholders : dict[str, Any] | None
@@ -551,26 +552,26 @@ def apply_processing(
         return Ok(data)
 
     if proc_spec.filter_by:
-        result_substitution = substitute_placeholders(proc_spec.filter_by, placeholders)
+        result_substitution = substitute_placeholders(proc_spec.filter_by, placeholders=placeholders)
 
         if result_substitution.is_err():
             error = result_substitution.err()
             return Err(error)
-
-        substituted = result_substitution.unwrap()
+        assert isinstance(result_substitution, Ok), "Result should be Ok after error check"
+        substituted = result_substitution.value
         new_proc = proc_spec.model_copy(update={"filter_by": substituted})
         data_file = data_file.model_copy(update={"proc_spec": new_proc})
         proc_spec = new_proc
 
     for registered_types, transform_func in TRANSFORMATIONS.items():
         if isinstance(data, registered_types):
-            return Ok(transform_func(data_file, data, proc_spec))
+            return Ok(transform_func(data, data_file=data_file, proc_spec=proc_spec))
 
     logger.debug("No transformation for type {} in {}", type(data).__name__, data_file.name)
     return Ok(data)
 
 
-def register_transformation(data_types: type | tuple[type, ...], func: Callable[..., Any]) -> None:
+def register_transformation(data_types: type | tuple[type, ...], *, func: Callable[..., Any]) -> None:
     """Register a custom transformation function.
 
     Parameters
@@ -585,12 +586,12 @@ def register_transformation(data_types: type | tuple[type, ...], func: Callable[
     >>> def transform_my_data(data_file: DataFile, data: MyType) -> MyType:
     ...     # Custom transformation logic
     ...     return data
-    >>> register_transformation(MyType, transform_my_data)
+    >>> register_transformation(MyType, func=transform_my_data)
     """
     TRANSFORMATIONS[data_types] = func
 
 
-def _matches_filter(value: Any, filter_value: Any) -> bool:
+def _matches_filter(value: Any, *, filter_value: Any) -> bool:
     """Check if value matches filter criteria.
 
     Supports both single value and list comparisons. For lists, checks membership.
@@ -655,7 +656,7 @@ def _get_polars_type(type_str: str) -> DataTypeClass:
     return polars_type
 
 
-def pl_build_filter_expr(column: str, value: Any) -> pl.Expr:
+def pl_build_filter_expr(column: str, *, value: Any) -> pl.Expr:
     """Build polars filter expression."""
     if column == "datetime" and isinstance(value, int | list):
         if isinstance(value, list):
@@ -669,4 +670,4 @@ def pl_build_filter_expr(column: str, value: Any) -> pl.Expr:
         return col_expr.cast(pl.Utf8).is_in(value)
 
     value = str(value)
-    return col_expr.cast(pl.Utf8) == value  # type: ignore[no-any-return]
+    return col_expr.cast(pl.Utf8) == value

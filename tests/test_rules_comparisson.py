@@ -85,4 +85,4 @@ def test_rule_post_init_filter_type_error():
     from r2x_core import Rule
 
     with pytest.raises(TypeError, match="must be a RuleFilter"):
-        Rule(source_type="A", target_type="B", version=1, field_map={}, filter="not_a_filter")
+        Rule(source_type="A", target_type="B", version=1, field_map={}, filter="not_a_filter")  # type: ignore[arg-type]

@@ -76,7 +76,7 @@ def test_backup_folder_nonexistent():
     result = backup_folder(nonexistent)
 
     assert result.is_err()
-    assert "does not exist" in result.error
+    assert result.error is not None and "does not exist" in result.error
 
 
 def test_backup_folder_string_path(tmp_path):
@@ -119,6 +119,6 @@ def test_resolve_glob_pattern_rejects_non_pattern(tmp_path):
     file_path = tmp_path / "exact.csv"
     file_path.write_text("data")
 
-    result = resolve_glob_pattern(tmp_path, "exact.csv")
+    result = resolve_glob_pattern("exact.csv", search_dir=tmp_path)
     assert result.is_err()
     assert "does not contain glob wildcards" in str(result.err())

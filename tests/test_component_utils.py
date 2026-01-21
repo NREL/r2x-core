@@ -1,7 +1,7 @@
 from infrasys import Component
 
-from r2x_core.component_utils import components_to_records, export_components_to_csv
 from r2x_core.system import System
+from r2x_core.utils import components_to_records, export_components_to_csv
 
 
 def test_components_to_records_returns_data():
@@ -60,7 +60,7 @@ def test_export_components_to_csv_to_file(tmp_path):
     system.add_components(Component(name="comp1"), Component(name="comp2"))
 
     output_file = tmp_path / "components.csv"
-    export_components_to_csv(system, output_file)
+    export_components_to_csv(system, file_path=output_file)
 
     assert output_file.exists()
 
@@ -79,6 +79,6 @@ def test_export_components_to_csv_empty(tmp_path):
     system.add_components(Component(name="test"))
 
     output_file = tmp_path / "empty.csv"
-    export_components_to_csv(system, output_file, filter_func=lambda c: False)
+    export_components_to_csv(system, file_path=output_file, filter_func=lambda c: False)
 
     assert not output_file.exists()

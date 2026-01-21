@@ -61,7 +61,7 @@ def nested_dir(tmp_path):
 def test_glob_single_match(data_reader, single_xml_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
-    result = data_reader.read_data_file(data_file, single_xml_dir)
+    result = data_reader.read_data_file(data_file, folder_path=single_xml_dir)
 
     assert result is not None
 
@@ -70,20 +70,20 @@ def test_glob_multiple_matches_raises_error(data_reader, multi_xml_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
     with pytest.raises(ValueError, match="Multiple files matched"):
-        data_reader.read_data_file(data_file, multi_xml_dir)
+        data_reader.read_data_file(data_file, folder_path=multi_xml_dir)
 
 
 def test_glob_no_matches_raises_error(data_reader, empty_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
     with pytest.raises(FileNotFoundError, match="No files found"):
-        data_reader.read_data_file(data_file, empty_dir)
+        data_reader.read_data_file(data_file, folder_path=empty_dir)
 
 
 def test_glob_specific_extension(data_reader, mixed_files_dir):
     data_file = DataFile(name="test_csv", glob="*.csv")
 
-    result = data_reader.read_data_file(data_file, mixed_files_dir)
+    result = data_reader.read_data_file(data_file, folder_path=mixed_files_dir)
 
     assert result is not None
     collected = result.collect()
@@ -94,7 +94,7 @@ def test_glob_with_prefix(data_reader, multi_xml_dir):
     (multi_xml_dir / "special_model.xml").write_text("<root>special</root>")
     data_file = DataFile(name="test_xml", glob="special_*.xml")
 
-    result = data_reader.read_data_file(data_file, multi_xml_dir)
+    result = data_reader.read_data_file(data_file, folder_path=multi_xml_dir)
 
     assert result is not None
 
@@ -102,7 +102,7 @@ def test_glob_with_prefix(data_reader, multi_xml_dir):
 def test_glob_non_recursive(data_reader, nested_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
-    result = data_reader.read_data_file(data_file, nested_dir)
+    result = data_reader.read_data_file(data_file, folder_path=nested_dir)
 
     assert result is not None
 
@@ -111,7 +111,7 @@ def test_glob_recursive_pattern(data_reader, nested_dir):
     data_file = DataFile(name="test_xml", glob="**/*.xml")
 
     with pytest.raises(ValueError, match="Multiple files matched"):
-        data_reader.read_data_file(data_file, nested_dir)
+        data_reader.read_data_file(data_file, folder_path=nested_dir)
 
 
 def test_glob_ignores_directories(tmp_path, data_reader):
@@ -123,13 +123,13 @@ def test_glob_ignores_directories(tmp_path, data_reader):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
     with pytest.raises(FileNotFoundError, match="No files found"):
-        data_reader.read_data_file(data_file, test_dir)
+        data_reader.read_data_file(data_file, folder_path=test_dir)
 
 
 def test_glob_optional_file_not_found(data_reader, empty_dir):
     data_file = DataFile(name="test_xml", glob="*.xml", info=FileInfo(is_optional=True))
 
-    assert data_reader.read_data_file(data_file, empty_dir) is None
+    assert data_reader.read_data_file(data_file, folder_path=empty_dir) is None
 
 
 def test_glob_character_wildcard(data_reader, tmp_path):
@@ -142,14 +142,14 @@ def test_glob_character_wildcard(data_reader, tmp_path):
     data_file = DataFile(name="test_xml", glob="file_?.xml")
 
     with pytest.raises(ValueError, match="Multiple files matched"):
-        data_reader.read_data_file(data_file, test_dir)
+        data_reader.read_data_file(data_file, folder_path=test_dir)
 
 
 def test_glob_error_message_includes_suggestions(data_reader, empty_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
     with pytest.raises(FileNotFoundError) as exc_info:
-        data_reader.read_data_file(data_file, empty_dir)
+        data_reader.read_data_file(data_file, folder_path=empty_dir)
 
     error_msg = str(exc_info.value)
     assert "No files found" in error_msg
@@ -159,7 +159,7 @@ def test_glob_multiple_matches_lists_files(data_reader, multi_xml_dir):
     data_file = DataFile(name="test_xml", glob="*.xml")
 
     with pytest.raises(ValueError) as exc_info:
-        data_reader.read_data_file(data_file, multi_xml_dir)
+        data_reader.read_data_file(data_file, folder_path=multi_xml_dir)
 
     error_msg = str(exc_info.value)
     assert "model_0.xml" in error_msg
@@ -173,9 +173,11 @@ def test_glob_with_reader_function(data_reader, single_xml_dir):
     def custom_reader(path):
         return path.read_text()
 
-    data_file = DataFile(name="test_xml", glob="*.xml", reader=ReaderConfig(function=custom_reader))
+    data_file = DataFile(
+        name="test_xml", glob="*.xml", reader=ReaderConfig(function=custom_reader, kwargs={})
+    )
 
-    result = data_reader.read_data_file(data_file, single_xml_dir)
+    result = data_reader.read_data_file(data_file, folder_path=single_xml_dir)
 
     assert isinstance(result, str)
     assert "<root>" in result
@@ -196,7 +198,7 @@ def test_glob_with_json_file(data_reader, tmp_path):
 
     data_file = DataFile(name="test_json", glob="*.json")
 
-    result = data_reader.read_data_file(data_file, test_dir)
+    result = data_reader.read_data_file(data_file, folder_path=test_dir)
 
     assert result is not None
     assert result["key"] == "value"
@@ -211,7 +213,7 @@ def test_glob_with_csv_file(data_reader, tmp_path):
 
     data_file = DataFile(name="test_csv", glob="*.csv")
 
-    result = data_reader.read_data_file(data_file, test_dir)
+    result = data_reader.read_data_file(data_file, folder_path=test_dir)
 
     assert result is not None
     collected = result.collect()
@@ -263,7 +265,7 @@ def test_glob_required_file_not_found(data_reader, empty_dir):
     data_file = DataFile(name="test", glob="*.xml", info=FileInfo(is_optional=False))
 
     with pytest.raises(FileNotFoundError, match="No files found matching pattern"):
-        data_reader.read_data_file(data_file, empty_dir)
+        data_reader.read_data_file(data_file, folder_path=empty_dir)
 
 
 def test_glob_model_validator_both_fpath_and_glob(tmp_path):

@@ -20,7 +20,7 @@ def test_unitspec_dict_input_no_base():
 
         power: Annotated[float, Unit("MW")]
 
-    model = SimpleModel(power={"value": 100.0, "unit": "MW"})
+    model = SimpleModel(power={"value": 100.0, "unit": "MW"})  # type: ignore[arg-type]
     assert model.power == 100.0
 
 
@@ -33,7 +33,7 @@ def test_unitspec_dict_input_with_conversion():
         base_power: Annotated[float, Unit("MVA")]
         rating: Annotated[float, Unit("pu", base="base_power")]
 
-    gen = Generator(name="Gen1", base_power=100.0, rating={"value": 80.0, "unit": "MVA"})
+    gen = Generator(name="Gen1", base_power=100.0, rating={"value": 80.0, "unit": "MVA"})  # type: ignore[arg-type]
     assert gen.rating == 0.8
 
 
@@ -46,13 +46,13 @@ def test_unitspec_invalid_input_type():
         value: Annotated[float, Unit("MVA")]
 
     with pytest.raises(ValidationError):
-        TestModel(value="invalid")
+        TestModel(value="invalid")  # type: ignore[arg-type]
 
     with pytest.raises(ValidationError):
-        TestModel(value=[1, 2, 3])
+        TestModel(value=[1, 2, 3])  # type: ignore[arg-type]
 
     with pytest.raises(ValidationError):
-        TestModel(value={"invalid": "dict"})
+        TestModel(value={"invalid": "dict"})  # type: ignore[arg-type]
 
 
 def test_unitspec_get_pydantic_json_schema():
@@ -62,7 +62,7 @@ def test_unitspec_get_pydantic_json_schema():
     def mock_handler(schema: core_schema.CoreSchema) -> JsonSchemaValue:
         return {"type": "number"}
 
-    result = spec.__get_pydantic_json_schema__(core_schema.float_schema(), mock_handler)
+    result = spec.__get_pydantic_json_schema__(core_schema.float_schema(), mock_handler)  # type: ignore[arg-type]
 
     # Should return the result of handler(core_schema.float_schema())
     assert result == {"type": "number"}
@@ -96,8 +96,8 @@ def test_unitspec_no_base_field():
     model1 = SimpleModel(voltage=13.8)
     assert model1.voltage == 13.8
 
-    model2 = SimpleModel(voltage={"value": 13.8, "unit": "kV"})
+    model2 = SimpleModel(voltage={"value": 13.8, "unit": "kV"})  # type: ignore[arg-type]
     assert model2.voltage == 13.8
 
-    model3 = SimpleModel(voltage={"value": 13800.0, "unit": "V"})
+    model3 = SimpleModel(voltage={"value": 13800.0, "unit": "V"})  # type: ignore[arg-type]
     assert model3.voltage == 13800.0

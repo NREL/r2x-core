@@ -31,7 +31,7 @@ class VersionStrategy(Protocol):
     """
 
     @abstractmethod
-    def compare_versions(self, current: Any, target: Any) -> int:
+    def compare_versions(self, current: Any, *, target: Any) -> int:
         """Compare two versions.
 
         Parameters
@@ -68,10 +68,9 @@ class SemanticVersioningStrategy(VersionStrategy):
     Notes
     -----
     Does not handle pre-release suffixes (rc, alpha, beta).
-    For complex semantic versioning, use packaging.version.Version instead.
     """
 
-    def compare_versions(self, current: str, target: str) -> int:
+    def compare_versions(self, current: str, *, target: str) -> int:
         """Compare two semantic versions using numeric comparison.
 
         Splits versions into components and compares numerically.
@@ -142,7 +141,7 @@ class GitVersioningStrategy(VersionStrategy):
 
         self.commit_history = tuple(commit_history)
 
-    def compare_versions(self, current: str | None, target: str) -> int:
+    def compare_versions(self, current: str | None, *, target: str) -> int:
         """Compare git versions by commit history position.
 
         Parameters

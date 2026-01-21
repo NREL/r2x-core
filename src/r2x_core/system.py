@@ -77,7 +77,7 @@ class System(InfrasysSystem):
         if name is not None:
             merged_kwargs["name"] = name
 
-        super_kwargs = filter_kwargs_by_signatures(merged_kwargs, InfrasysSystem)
+        super_kwargs = filter_kwargs_by_signatures(merged_kwargs, callables=[InfrasysSystem])
         super().__init__(**super_kwargs)
 
         self.base_power = system_base

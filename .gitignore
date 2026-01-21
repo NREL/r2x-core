@@ -444,4 +444,34 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks,data,macos,windows,linux,visualstudiocode,git,node
+# Claude Code agent profiles
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+CLAUDE_INSTRUCTIONS.md
+GEMINI_INSTRUCTIONS.md
+
+# Generated badge files
+docs/source/_static/docstr_coverage_badge.svg
+
+# Claude Code configuration
+.claude/
+.claude_config/
+
+# Gemini configuration
+.gemini/
+.gemini_config/
+
+# AI-specific prompt files
+ai_prompts/
+agent_instructions/
+*_agent_instructions.md
+*_agent_profile.md
+*.agent.md
+*.prompt.md
+
+# LLM prompt caches and history
+prompt_cache/
+prompt_history/
+*.prompt_cache
+prompt_logs/

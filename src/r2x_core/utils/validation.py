@@ -11,14 +11,35 @@ if TYPE_CHECKING:
     from pydantic import ValidationInfo
 
 
-def filter_valid_kwargs(func: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Filter kwargs to only include valid parameters for the given function."""
+def filter_kwargs_for(func: Callable[..., Any], *, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Filter kwargs to only include valid parameters for the given function.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to filter kwargs for
+    kwargs : dict[str, Any]
+        The keyword arguments to filter
+
+    Returns
+    -------
+    dict[str, Any]
+        Filtered kwargs containing only valid parameters
+    """
     sig = inspect.signature(func)
     valid_params = set(sig.parameters.keys())
     return {k: v for k, v in kwargs.items() if k in valid_params}
 
 
-def filter_kwargs_by_signatures(kwargs: dict[str, Any], *callables: Callable[..., Any]) -> dict[str, Any]:
+# Backward compatibility alias
+def filter_valid_kwargs(func: Callable[..., Any], *, kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Filter function kwargs, maintaining backward compatibility."""
+    return filter_kwargs_for(func, kwargs=kwargs)
+
+
+def filter_kwargs_by_signatures(
+    kwargs: dict[str, Any], *, callables: list[Callable[..., Any]]
+) -> dict[str, Any]:
     """Filter kwargs to those accepted by the provided callables."""
     valid_params: set[str] = set()
     for callable_obj in callables:
@@ -63,7 +84,7 @@ def validate_glob_pattern(pattern: str | None) -> str | None:
     return pattern
 
 
-def validate_file_extension(path: Path, info: "ValidationInfo") -> Path:
+def validate_file_extension(path: Path, *, info: "ValidationInfo") -> Path:
     """Validate that the file path has a supported extension.
 
     This is a Pydantic validator that checks if the file extension from the
@@ -96,8 +117,10 @@ def validate_file_extension(path: Path, info: "ValidationInfo") -> Path:
     This function is intended for use as a Pydantic model validator (e.g.,
     with `@field_validator` or `AfterValidator`) and should not be called directly.
     """
-    assert info is not None, "Pydantic validation context is missing."
-    assert isinstance(path, Path)
+    if info is None:
+        raise ValueError("Pydantic validation context is missing.")
+    if not isinstance(path, Path):
+        raise TypeError(f"Expected Path, got {type(path).__name__}")
     ext = path.suffix.lower()
     if ext not in EXTENSION_MAPPING:
         msg = f"{ext=} not found on `EXTENSION_MAPPING`. "

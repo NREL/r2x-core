@@ -60,8 +60,8 @@ def test_has_per_units_with_natural_unit_input():
         name="Gen2",
         base_power=100.0,
         rated_voltage=13.8,
-        rating={"value": 80.0, "unit": "MW"},
-        voltage={"value": 13.8, "unit": "kV"},
+        rating={"value": 80.0, "unit": "MW"},  # type: ignore[arg-type]
+        voltage={"value": 13.8, "unit": "kV"},  # type: ignore[arg-type]
     )
     assert gen.rating == pytest.approx(0.8, abs=1e-6)
     assert gen.voltage == pytest.approx(1.0, abs=1e-6)
@@ -173,7 +173,7 @@ def test_mixed_units_conversion():
         name="Gen3",
         base_power=100.0,
         rated_voltage=13.8,
-        rating={"value": 90.0, "unit": "MVA"},
+        rating={"value": 90.0, "unit": "MVA"},  # type: ignore[arg-type]
         voltage=1.05,
     )
     assert gen.rating == pytest.approx(0.9, abs=1e-6)

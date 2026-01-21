@@ -11,6 +11,7 @@ T = TypeVar("T", bound=Component)
 
 def create_component(
     component_class: type[T],
+    *,
     skip_none: bool = True,
     skip_validation: bool = False,
     **field_values: Any,
@@ -42,8 +43,10 @@ def create_component(
     >>> from infrasys import Generator
     >>> result = create_component(Generator, name="Gen1", capacity=100.0)
     >>> if result.is_ok():
-    ...     gen = result.unwrap()
+    ...     gen = result.value
     ...     print(gen.name)
+    >>> else:
+    ...     print(f"Error: {result.error}")
     """
     valid_fields = {
         k: v

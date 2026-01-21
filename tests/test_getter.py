@@ -14,7 +14,8 @@ def test_getter_without_parentheses_registers_function():
     from r2x_core.getters import GETTER_REGISTRY, getter
 
     @getter
-    def my_test_getter(ctx, comp):
+    def my_test_getter(comp, *, context):
+        _ = context
         return "test"
 
     assert "my_test_getter" in GETTER_REGISTRY
@@ -26,7 +27,8 @@ def test_getter_with_empty_parentheses_registers_function():
     from r2x_core.getters import GETTER_REGISTRY, getter
 
     @getter()
-    def my_empty_paren_getter(ctx, comp):
+    def my_empty_paren_getter(comp, *, context):
+        _ = context
         return "test"
 
     assert "my_empty_paren_getter" in GETTER_REGISTRY
@@ -38,7 +40,8 @@ def test_getter_with_custom_name_registers_with_that_name():
     from r2x_core.getters import GETTER_REGISTRY, getter
 
     @getter(name="custom_getter_name")
-    def some_function(ctx, comp):
+    def some_function(comp, *, context):
+        _ = context
         return "test"
 
     assert "custom_getter_name" in GETTER_REGISTRY
@@ -49,7 +52,8 @@ def test_getter_first_arg_with_name_kwarg_raises_error():
     """Passing callable as first arg with name kwarg raises error."""
     from r2x_core.getters import getter
 
-    def my_func(ctx, comp):
+    def my_func(comp, *, context):
+        _ = context
         return "test"
 
     with pytest.raises(TypeError, match="Cannot specify 'name' when using @getter without parentheses"):
@@ -61,7 +65,8 @@ def test_getter_with_parentheses_without_name_uses_function_name():
     from r2x_core.getters import GETTER_REGISTRY, getter
 
     @getter()
-    def function_with_parens(ctx, comp):
+    def function_with_parens(comp, *, context):
+        _ = context
         return "test"
 
     assert "function_with_parens" in GETTER_REGISTRY
@@ -72,30 +77,32 @@ def test_getter_rejects_non_callable_first_argument():
     from r2x_core.getters import getter
 
     with pytest.raises(TypeError, match="first argument must be callable or None"):
-        getter("not_a_function")
+        getter("not_a_function")  # type: ignore[arg-type]
 
 
 def test_getter_function_is_returned_unchanged():
     """@getter returns the function unchanged (no wrapper)."""
     from r2x_core.getters import getter
 
-    def original_func(ctx, comp):
+    def original_func(comp, *, context):
         """Original docstring."""
+        _ = context
         return "result"
 
     decorated_func = getter(original_func)
 
     assert decorated_func is original_func
     assert decorated_func.__doc__ == "Original docstring."
-    assert decorated_func(None, None) == "result"
+    assert decorated_func(None, context=None) == "result"
 
 
 def test_getter_with_empty_parentheses_returns_function_unchanged():
     """@getter() returns the decorated function unchanged."""
     from r2x_core.getters import getter
 
-    def original_func_empty_parens(ctx, comp):
+    def original_func_empty_parens(comp, *, context):
         """Original docstring."""
+        _ = context
         return "result"
 
     decorator = getter()
@@ -109,8 +116,9 @@ def test_getter_with_custom_name_returns_function_unchanged():
     """@getter(name="...") returns the decorated function unchanged."""
     from r2x_core.getters import getter
 
-    def original_func_with_custom_name(ctx, comp):
+    def original_func_with_custom_name(comp, *, context):
         """Original docstring."""
+        _ = context
         return "result"
 
     decorator = getter(name="custom_name_test")
@@ -130,13 +138,15 @@ def test_getter_prevents_duplicate_registration():
     try:
 
         @getter
-        def duplicate_name(ctx, comp):
+        def duplicate_name(comp, *, context):
+            _ = context
             return "first"
 
         with pytest.raises(ValueError, match="Getter 'duplicate_name' already registered"):
 
             @getter
-            def duplicate_name(ctx, comp):
+            def duplicate_name(comp, *, context):
+                _ = context
                 return "second"
 
     finally:
@@ -155,13 +165,15 @@ def test_getter_with_custom_name_prevents_duplicate():
     try:
 
         @getter(name="same_custom_name")
-        def first_func(ctx, comp):
+        def first_func(comp, *, context):
+            _ = context
             return "first"
 
         with pytest.raises(ValueError, match="Getter 'same_custom_name' already registered"):
 
             @getter(name="same_custom_name")
-            def second_func(ctx, comp):
+            def second_func(comp, *, context):
+                _ = context
                 return "second"
 
     finally:
@@ -173,13 +185,16 @@ def test_getter_callable_with_result_type():
     """@getter decorated function returns Result type correctly."""
     from rust_ok import Ok
 
-    from r2x_core.getters import getter
+    from r2x_core.getters import GETTER_REGISTRY, getter
 
     @getter
-    def test_getter_func(ctx, comp):
+    def test_getter_func(comp, *, context):
+        _ = context
         return Ok(42)
 
-    result = test_getter_func(None, None)
+    # Access the registered function to get the correct type
+    getter_func = GETTER_REGISTRY["test_getter_func"]
+    result = getter_func(None, context=None)
     assert result.is_ok()
     assert result.unwrap() == 42
 
@@ -188,7 +203,8 @@ def test_preprocess_rule_getters_passes_through_callables():
     """Callables in getter dict remain unchanged."""
     from r2x_core.getters import _preprocess_rule_getters
 
-    def compute(ctx, comp):
+    def compute(comp, *, context):
+        _ = context
         return "value"
 
     result = _preprocess_rule_getters({"field": compute})
@@ -208,7 +224,8 @@ def test_preprocess_rule_getters_resolves_registry_names():
     if unique_name not in GETTER_REGISTRY:
 
         @getter(name=unique_name)
-        def registry_lookup_getter(ctx, comp):
+        def registry_lookup_getter(comp, *, context):
+            _ = context
             return Ok("from_registry")
 
     result = _preprocess_rule_getters({"field": unique_name})
@@ -241,7 +258,7 @@ def test_preprocess_rule_getters_builds_attr_getter():
     result = _preprocess_rule_getters({"field": "child.value"})
     assert result.is_ok()
     getter_fn = result.unwrap()["field"]
-    out = getter_fn(None, Parent())
+    out = getter_fn(Parent(), context=None)
     assert out.is_ok()
     assert out.unwrap() == 123
 

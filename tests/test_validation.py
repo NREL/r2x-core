@@ -22,7 +22,7 @@ class TestFilterValidKwargs:
             pass
 
         kwargs = {"a": 1, "b": 2, "c": 3}
-        result = filter_valid_kwargs(sample_func, kwargs)
+        result = filter_valid_kwargs(sample_func, kwargs=kwargs)
         assert result == {"a": 1, "b": 2, "c": 3}
 
     def test_filter_valid_kwargs_some_invalid(self):
@@ -32,7 +32,7 @@ class TestFilterValidKwargs:
             pass
 
         kwargs = {"a": 1, "b": 2, "c": 3, "d": 4}
-        result = filter_valid_kwargs(sample_func, kwargs)
+        result = filter_valid_kwargs(sample_func, kwargs=kwargs)
         assert result == {"a": 1, "b": 2}
 
     def test_filter_valid_kwargs_empty(self):
@@ -42,7 +42,7 @@ class TestFilterValidKwargs:
             pass
 
         kwargs = {}
-        result = filter_valid_kwargs(sample_func, kwargs)
+        result = filter_valid_kwargs(sample_func, kwargs=kwargs)
         assert result == {}
 
     def test_filter_valid_kwargs_all_invalid(self):
@@ -52,7 +52,7 @@ class TestFilterValidKwargs:
             pass
 
         kwargs = {"c": 3, "d": 4}
-        result = filter_valid_kwargs(sample_func, kwargs)
+        result = filter_valid_kwargs(sample_func, kwargs=kwargs)
         assert result == {}
 
     def test_filter_valid_kwargs_with_kwargs_param(self):
@@ -62,7 +62,7 @@ class TestFilterValidKwargs:
             pass
 
         params = {"a": 1, "b": 2, "c": 3}
-        result = filter_valid_kwargs(sample_func, params)
+        result = filter_valid_kwargs(sample_func, kwargs=params)
         assert result == {"a": 1}
 
 
@@ -134,56 +134,56 @@ class TestValidateFileExtension:
         """Test validate_file_extension with valid .csv extension."""
         path = Path("data.csv")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_valid_h5(self):
         """Test validate_file_extension with valid .h5 extension."""
         path = Path("data.h5")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_valid_hdf5(self):
         """Test validate_file_extension with valid .hdf5 extension."""
         path = Path("data.hdf5")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_valid_json(self):
         """Test validate_file_extension with valid .json extension."""
         path = Path("data.json")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_valid_xml(self):
         """Test validate_file_extension with valid .xml extension."""
         path = Path("data.xml")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_valid_tsv(self):
         """Test validate_file_extension with valid .tsv extension."""
         path = Path("data.tsv")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_valid_parquet(self):
         """Test validate_file_extension with valid .parquet extension."""
         path = Path("data.parquet")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_uppercase_extension(self):
         """Test validate_file_extension with uppercase extension converts to lowercase."""
         path = Path("data.CSV")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_invalid_extension(self):
@@ -191,41 +191,41 @@ class TestValidateFileExtension:
         path = Path("data.txt")
         info = MagicMock()
         with pytest.raises(KeyError, match="not found on `EXTENSION_MAPPING`"):
-            validate_file_extension(path, info)
+            validate_file_extension(path, info=info)
 
     def test_validate_file_extension_unsupported_format(self):
         """Test validate_file_extension with unsupported file format raises KeyError."""
         path = Path("data.pdf")
         info = MagicMock()
         with pytest.raises(KeyError, match="not found on `EXTENSION_MAPPING`"):
-            validate_file_extension(path, info)
+            validate_file_extension(path, info=info)
 
     def test_validate_file_extension_message_contains_mapping_keys(self):
         """Test validate_file_extension error message contains supported formats."""
         path = Path("data.xyz")
         info = MagicMock()
         with pytest.raises(KeyError) as exc_info:
-            validate_file_extension(path, info)
+            validate_file_extension(path, info=info)
         error_msg = str(exc_info.value)
         assert "EXTENSION_MAPPING" in error_msg
         assert "FileFormat" in error_msg
 
     def test_validate_file_extension_none_info_assertion(self):
-        """Test validate_file_extension with None info raises AssertionError."""
+        """Test validate_file_extension with None info raises ValueError."""
         path = Path("data.csv")
-        with pytest.raises(AssertionError, match="Pydantic validation context is missing"):
-            validate_file_extension(path, None)
+        with pytest.raises(ValueError, match="Pydantic validation context is missing"):
+            validate_file_extension(path, info=None)  # type: ignore[arg-type]
 
     def test_validate_file_extension_path_with_directory(self):
         """Test validate_file_extension with path containing directories."""
         path = Path("some/directory/data.csv")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path
 
     def test_validate_file_extension_mixed_case(self):
         """Test validate_file_extension with mixed case extension."""
         path = Path("data.CsV")
         info = MagicMock()
-        result = validate_file_extension(path, info)
+        result = validate_file_extension(path, info=info)
         assert result == path

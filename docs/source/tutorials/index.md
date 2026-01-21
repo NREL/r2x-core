@@ -5,6 +5,10 @@
 
 getting-started
 working-with-units
+plugin-system
+plugin-context
+plugin-discovery
+plugin-utilities
 ```
 
 ## Learning Path

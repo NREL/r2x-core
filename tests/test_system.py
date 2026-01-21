@@ -31,10 +31,10 @@ def test_to_json_raises_on_existing_file_without_overwrite(tmp_path):
     """Test that to_json raises error when file exists and overwrite=False."""
     system = System(name="TestSystem")
     output_file = tmp_path / "system.json"
-    system.to_json(output_file)
+    system.to_json(fname=output_file)
 
     with pytest.raises(ISFileExists):
-        system.to_json(output_file, overwrite=False)
+        system.to_json(fname=output_file, overwrite=False)
 
 
 def test_system_accessors(example_system):
@@ -82,7 +82,7 @@ def test_to_json_with_fname(fname, tmp_path, example_system):
 
     system = example_system
     out_path = tmp_path / fname
-    system.to_json(out_path, overwrite=True, indent=2)
+    system.to_json(fname=out_path, overwrite=True, indent=2)
     assert out_path.exists()
     content = json.loads(out_path.read_text())
     assert "name" in content.get("system", content)
@@ -121,7 +121,7 @@ def test_roundtrip_serialization(tmp_path):
 
     original.add_components(Component(name="dummy"))
     file_path = tmp_path / "roundtrip.json"
-    original.to_json(file_path)
+    original.to_json(fname=file_path)
     loaded = System.from_json(file_path)
 
     assert loaded.name == original.name
@@ -137,10 +137,10 @@ def test_to_json_with_overwrite(tmp_path):
     system2.add_components(Component(name="dummy2"))
     output_file = tmp_path / "system.json"
 
-    system1.to_json(output_file)
+    system1.to_json(fname=output_file)
     assert output_file.exists()
 
-    system2.to_json(output_file, overwrite=True)
+    system2.to_json(fname=output_file, overwrite=True)
 
     loaded = System.from_json(output_file)
     assert loaded.name == "System2"
@@ -151,10 +151,10 @@ def test_to_json_no_overwrite_raises(tmp_path):
     system = System(name="TestSystem")
     output_file = tmp_path / "system.json"
 
-    system.to_json(output_file)
+    system.to_json(fname=output_file)
 
     with pytest.raises(ISFileExists):
-        system.to_json(output_file, overwrite=False)
+        system.to_json(fname=output_file, overwrite=False)
 
 
 def test_to_json_bytes_with_time_series(caplog):
@@ -176,6 +176,7 @@ def test_to_json_bytes_with_time_series(caplog):
     original_system.add_time_series(ts_data, component)
 
     json_bytes = original_system.to_json()
+    assert json_bytes is not None
 
     deserialized_system = System.from_json(json_bytes)
     assert isinstance(deserialized_system, System)
@@ -202,7 +203,7 @@ def test_from_json_bytes_missing_directory_raises():
 def test_from_json_with_invalid_source_type_raises():
     """Non-str/path/bytes source should raise NotImplementedError."""
     with pytest.raises(NotImplementedError):
-        System.from_json(123)
+        System.from_json(123)  # type: ignore[arg-type]
 
 
 def test_from_json_sets_system_base_on_has_per_unit_component():
@@ -212,6 +213,7 @@ def test_from_json_sets_system_base_on_has_per_unit_component():
     system.add_components(component)
 
     json_bytes = system.to_json()
+    assert json_bytes is not None
 
     loaded = System.from_json(json_bytes)
     loaded_component = loaded.get_component(PerUnitComponentFixture, name="HasPU")

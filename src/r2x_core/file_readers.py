@@ -14,7 +14,7 @@ from .file_types import H5Format, JSONFormat, TableFormat, XMLFormat
 
 
 @singledispatch
-def read_file_by_type(file_type_instance: Any, file_path: Path, **reader_kwargs: dict[str, Any]) -> Any:
+def read_file_by_type(file_type_instance: Any, *, file_path: Path, **reader_kwargs: dict[str, Any]) -> Any:
     """Read file based on FileFormat instance using single dispatch.
 
     This is the main dispatch function that routes to specific readers
@@ -44,7 +44,7 @@ def read_file_by_type(file_type_instance: Any, file_path: Path, **reader_kwargs:
 
 
 @read_file_by_type.register
-def _(file_type_class: TableFormat, file_path: Path, **reader_kwargs: Any) -> LazyFrame:
+def _(file_type_class: TableFormat, *, file_path: Path, **reader_kwargs: Any) -> LazyFrame:
     """Read CSV/TSV files as LazyFrame.
 
     Parameters
@@ -68,7 +68,7 @@ def _(file_type_class: TableFormat, file_path: Path, **reader_kwargs: Any) -> La
 
 
 @read_file_by_type.register
-def _(file_type_class: H5Format, file_path: Path, **reader_kwargs: Any) -> LazyFrame:
+def _(file_type_class: H5Format, *, file_path: Path, **reader_kwargs: Any) -> LazyFrame:
     """Read HDF5 files as LazyFrame.
 
     Parameters
@@ -133,7 +133,7 @@ def _(file_type_class: H5Format, file_path: Path, **reader_kwargs: Any) -> LazyF
 
 
 @read_file_by_type.register
-def _(file_type_class: JSONFormat, file_path: Path, **reader_kwargs: Any) -> dict[str, Any]:
+def _(file_type_class: JSONFormat, *, file_path: Path, **reader_kwargs: Any) -> dict[str, Any]:
     """Read JSON files as dictionary.
 
     Parameters
@@ -157,7 +157,7 @@ def _(file_type_class: JSONFormat, file_path: Path, **reader_kwargs: Any) -> dic
 
 
 @read_file_by_type.register
-def _(file_type_class: XMLFormat, file_path: Path, **reader_kwargs: dict[str, Any]) -> ElementTree.Element:
+def _(file_type_class: XMLFormat, *, file_path: Path, **reader_kwargs: dict[str, Any]) -> ElementTree.Element:
     """Read XML files and return the root element.
 
     Parameters

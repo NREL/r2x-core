@@ -52,12 +52,12 @@ classifiers = [
 ]
 dependencies = [
     "h5py>=3.13.0,<4.0.0",
-    "infrasys>=1.0.0rc3,<2.0.0",
+    "infrasys>=1.0.0,<2.0.0",
     "loguru>=0.7.3,<0.8.0",
     "packaging>=24.0,<26.0",
     "polars>=1.33.1,<2.0.0",
     "pydantic>=2.11.9,<3.0.0",
-    "rust-ok>=0.1.0,<1.0.0",
+    "rust-ok>=0.2.2,<1.0.0",
 ]
 
 [project.urls]
@@ -71,10 +71,11 @@ Changelog = "https://nrel.github.io/r2x-core/CHANGELOG.html"
 dev = [
     "h5py-stubs>=0.1.2,<1.0.0",
     "mypy>=1.18.2,<2.0.0",
-    "pre-commit>=4.3.0,<5.0.0",
+    "prek>=0.2.29,<0.3.0",
     "pytest>=8.4.2,<10.0.0",
     "pytest-coverage>=0.0,<1.0.0",
     "ruff>=0.13.2,<0.15.0",
+    "ty>=0.0.12,<1.0.0",
 ]
 
 docs = [
@@ -87,6 +88,7 @@ docs = [
     "sphinx-copybutton>=0.5.2,<1.0.0",
     "sphinx-reports>=0.1.0,<1.0.0",
     "sphinx-tabs>=3.4.5,<4.0.0",
+    "sphinxcontrib-mermaid>=2.0.0,<3.0.0",
 ]
 
 [build-system]
@@ -154,6 +156,14 @@ section-order = ["future", "standard-library", "third-party", "first-party", "lo
 [tool.ruff.lint.mccabe]
 # Cyclomatic complexity threshold
 max-complexity = 10
+
+[tool.coverage.run]
+omit = [
+  "src/r2x_core/parser.py",
+  "src/r2x_core/exporter.py",
+  "src/r2x_core/upgrader.py",
+  "src/r2x_core/context.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [

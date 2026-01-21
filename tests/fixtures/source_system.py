@@ -62,21 +62,21 @@ def build_source_system() -> System:
 
     bus_component = BusComponent(
         name="bus_a",
-        uuid=str(uuid4()),
+        uuid=uuid4(),
         voltage_kv=230.0,
         load_mw=150.0,
         zone="north",
     )
     line_component = LineComponent(
         name="line_ab",
-        uuid=str(uuid4()),
+        uuid=uuid4(),
         resistance_ohm=0.02,
         reactance_ohm=0.18,
         thermal_limit_mw=300.0,
     )
     plant_component = PlantComponent(
         name="plant_alpha",
-        uuid=str(uuid4()),
+        uuid=uuid4(),
         capacity_mw=500.0,
         min_stable_level_mw=100.0,
         fuel_type="gas",

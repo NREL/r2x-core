@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
 
 from loguru import logger
 from rust_ok import Err, Ok
 
-from .context import TranslationContext
-
 if TYPE_CHECKING:
     from rust_ok import Result
 
-GetterFunc = Callable[[TranslationContext, Any], Any]
+
+GetterFunc: TypeAlias = Callable[..., Any]
+
+
 F = TypeVar("F", bound=GetterFunc)
 
 GETTER_REGISTRY: dict[str, GetterFunc] = {}
@@ -53,7 +54,7 @@ def getter(func: F | None = None, *, name: str | None = None) -> F | Callable[[F
 
 def _preprocess_rule_getters(getters_dict: dict[str, Any]) -> Result[dict[str, Any], TypeError]:
     """Convert string-based getters in a rule into callables."""
-    from .rules_utils import _make_attr_getter
+    from .utils import _make_attr_getter
 
     resolved: dict[str, GetterFunc] = {}
     for field, getter in getters_dict.items():
