@@ -335,7 +335,7 @@ class DataFile(BaseModel):
                                 "type": "value_error",
                                 "input": str(exc),
                                 "loc": ("fpath",),
-                                "ctx": {"error": str(exc)},
+                                "ctx": {"error": str(exc), "exc_type": type(exc).__name__},
                             }
                         ],
                     )
@@ -350,7 +350,7 @@ class DataFile(BaseModel):
                                 "type": "value_error",
                                 "input": str(exc),
                                 "loc": ("fpath",),
-                                "ctx": {"error": str(exc)},
+                                "ctx": {"error": str(exc), "exc_type": type(exc).__name__},
                             }
                         ],
                     )

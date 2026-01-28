@@ -4,17 +4,21 @@ Provides a high-level interface for managing data file configurations,
 loading data, caching.
 """
 
+from __future__ import annotations
+
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
+from pydantic import ValidationError
 
 from .datafile import DataFile, FileProcessing, TabularProcessing
 from .plugin_config import PluginConfig
 from .reader import DataReader
 from .utils import filter_valid_kwargs
+from .utils._upgrade_coordinator import UpgradeCoordinator
 
 
 class DataStore:
@@ -33,6 +37,8 @@ class DataStore:
     reader : DataReader | None, optional
         Custom :class:`DataReader` instance. If None, a default reader
         is created. Default is None.
+    upgrade_handler : Callable[..., Any] | None, optional
+        Optional upgrade handler to run when missing files require migration.
 
     Attributes
     ----------
@@ -78,6 +84,7 @@ class DataStore:
         path: str | Path | None = None,
         *,
         reader: DataReader | None = None,
+        upgrade_handler: Callable[..., Any] | None = None,
     ) -> None:
         """Initialize the DataStore."""
         if path is None:
@@ -99,6 +106,7 @@ class DataStore:
         self._reader = reader or DataReader()
         self._folder = folder_path.resolve()
         self._cache: dict[str, DataFile] = {}
+        self._upgrade = UpgradeCoordinator(handler=upgrade_handler)
         logger.debug("Initialized DataStore with folder: {}", self.folder)
 
         if mapping_path is not None:
@@ -128,7 +136,8 @@ class DataStore:
         data_files: list[DataFile],
         *,
         path: Path | str | None = None,
-    ) -> "DataStore":
+        upgrade_handler: Callable[..., Any] | None = None,
+    ) -> DataStore:
         """Create a :class:`DataStore` from a list of :class:`DataFile` instances.
 
         Parameters
@@ -137,13 +146,15 @@ class DataStore:
             List of DataFile instances to add to the store.
         path : Path | str | None, optional
             Path to the folder containing data files. Default is None.
+        upgrade_handler : Callable[..., Any] | None, optional
+            Optional upgrade handler for missing files during reads.
 
         Returns
         -------
         DataStore
             New DataStore instance with provided data files.
         """
-        store = cls(path=path)
+        store = cls(path=path, upgrade_handler=upgrade_handler)
         store.add_data(data_files)
         return store
 
@@ -153,7 +164,8 @@ class DataStore:
         json_fpath: Path | str,
         *,
         path: Path | str | None = None,
-    ) -> "DataStore":
+        upgrade_handler: Callable[..., Any] | None = None,
+    ) -> DataStore:
         """Create a :class:`DataStore` from a JSON configuration file.
 
         Parameters
@@ -162,6 +174,8 @@ class DataStore:
             Path to the JSON file containing data file configurations.
         path : Path | str | None
             Path to the folder containing data files. Defaults to the JSON's parent folder.
+        upgrade_handler : Callable[..., Any] | None, optional
+            Optional upgrade handler for missing files during reads.
 
         Returns
         -------
@@ -186,7 +200,7 @@ class DataStore:
         if not folder_path.exists():
             raise FileNotFoundError(f"Data folder not found: {folder_path}")
 
-        store = cls(path=folder_path)
+        store = cls(path=folder_path, upgrade_handler=upgrade_handler)
         store._load_file_mapping(json_fpath)
         return store
 
@@ -196,7 +210,8 @@ class DataStore:
         plugin_config: PluginConfig,
         *,
         path: Path | str,
-    ) -> "DataStore":
+        upgrade_handler: Callable[..., Any] | None = None,
+    ) -> DataStore:
         """Create a :class:`DataStore` from a :class:`PluginConfig` instance.
 
         Parameters
@@ -205,6 +220,9 @@ class DataStore:
             Plugin configuration containing file mappings.
         path : Path | str
             Path to the folder containing data files.
+        upgrade_handler : Callable[..., Any] | None, optional
+            Optional upgrade handler to run if file mappings fail to validate.
+            If None, the store attempts to resolve a handler from the plugin package.
 
         Returns
         -------
@@ -215,6 +233,7 @@ class DataStore:
         logger.info("Loading DataStore from plugin config: {}", type(plugin_config).__name__)
         logger.debug("File mapping path: {}", json_fpath)
         store = cls(path=path)
+        store.configure_upgrades(plugin_config=plugin_config, upgrade_handler=upgrade_handler)
         if not json_fpath.exists():
             logger.warning(
                 "File mapping not found for {} at {}; continuing with empty DataStore.",
@@ -222,7 +241,14 @@ class DataStore:
                 json_fpath,
             )
             return store
-        store._load_file_mapping(json_fpath)
+        try:
+            store._load_file_mapping(json_fpath)
+        except ValidationError as exc:
+            if store._upgrade.should_attempt(exc):
+                store._upgrade.run(store=store, reason="file mapping validation failed")
+                store._load_file_mapping(json_fpath)
+            else:
+                raise
         return store
 
     @classmethod
@@ -334,6 +360,19 @@ class DataStore:
             If the data file name is not in the store.
         """
         return self._read_data_file_by_name(name=name, placeholders=placeholders)
+
+    def configure_upgrades(
+        self,
+        *,
+        plugin_config: PluginConfig | None = None,
+        upgrade_handler: Callable[..., Any] | None = None,
+    ) -> None:
+        """Configure upgrade handling for this store."""
+        self._upgrade = UpgradeCoordinator(
+            plugin_config=plugin_config,
+            handler=upgrade_handler,
+        )
+        self._upgrade.resolve()
 
     def remove_data(self, *names: str) -> None:
         """Remove one or more data files from the store.
@@ -461,11 +500,22 @@ class DataStore:
             raise KeyError(f"'{name}' not present in store.")
 
         data_file = self._cache[name]
-        return self.reader.read_data_file(
-            data_file,
-            folder_path=self.folder,
-            placeholders=placeholders,
-        )
+        try:
+            return self.reader.read_data_file(
+                data_file,
+                folder_path=self.folder,
+                placeholders=placeholders,
+            )
+        except FileNotFoundError as exc:
+            if not self._upgrade.can_run:
+                raise
+            logger.warning("Missing data file; attempting upgrade before retrying: {}", exc)
+            self._upgrade.run(store=self, reason="missing data file during read")
+            return self.reader.read_data_file(
+                data_file,
+                folder_path=self.folder,
+                placeholders=placeholders,
+            )
 
     def _load_file_mapping(self, mapping_path: Path) -> None:
         """Load DataFile definitions from a file-mapping JSON."""

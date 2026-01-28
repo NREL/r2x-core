@@ -26,7 +26,7 @@ def test_expose_marks_function():
         return Ok(system)
 
     assert hasattr(my_transform, "__r2x_exposed__")
-    assert my_transform.__r2x_exposed__ is True  # type: ignore[attr-defined]
+    assert my_transform.__r2x_exposed__ is True
 
 
 def test_expose_returns_function_unchanged():

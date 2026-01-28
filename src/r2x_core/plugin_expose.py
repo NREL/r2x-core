@@ -56,5 +56,5 @@ def expose_plugin(func: F) -> F:
     if not callable(func):
         raise TypeError(f"expose_plugin() argument must be callable, got {type(func).__name__}")
 
-    func.__r2x_exposed__ = True  # type: ignore[attr-defined]
+    func.__r2x_exposed__ = True
     return func
