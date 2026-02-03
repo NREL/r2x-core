@@ -1,8 +1,12 @@
 """Logging configuration for R2X Core using loguru.
 
-This module provides a dual-format sink. When stderr is a TTY, logs are rendered
-with a compact, colorized layout. Otherwise, logs are emitted as JSON Lines for
-easy piping and structured ingestion.
+When stderr is a TTY, logs render with a compact colorized layout (Rich when
+available, plain text otherwise). When stderr is not a TTY, logs emit as JSON
+Lines for structured ingestion.
+
+Library consumers get silence by default (loguru is disabled in __init__.py).
+Call setup_logging() to activate, works naturally from IPython, scripts, or the
+CLI.
 """
 
 from __future__ import annotations
@@ -11,7 +15,12 @@ import json
 import os
 import sys
 import traceback
-from typing import Any
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import loguru
+    from rich.console import Console
 
 LEVEL_NAMES = {
     "TRACE": "TRACE",
@@ -30,7 +39,6 @@ LEVEL_COLORS = {
     "CRITICAL": "color(169) reverse",  # inverted pink
 }
 
-# Verbosity level constants
 VERBOSITY_TRACE = 2
 VERBOSITY_INFO = 1
 DEFAULT_LOG_LEVEL = "WARNING"
@@ -50,99 +58,90 @@ JSON_LEVEL_NAMES = {
 DEFAULT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.{ms}"
 
 _verbosity: int = 0
-_console: Any | None = None
 
 
-def _get_console() -> Any | None:
-    """Get or create a Rich Console instance for TTY output.
-
-    Returns None if Rich is not installed or if TTY is not available.
-    Caches the console instance globally to avoid repeated imports.
-    """
-    global _console
-    if _console is not None:
-        return _console or None
+@lru_cache(maxsize=1)
+def _get_console() -> Console | None:
+    """Return a cached Rich Console for stderr, or None if Rich is missing."""
     try:
         from rich.console import Console
     except ImportError:
-        _console = False
         return None
-    _console = Console(stderr=True, force_terminal=True)
-    return _console
+    return Console(stderr=True, force_terminal=True)
 
 
 def _format_timestamp(record: dict[str, Any]) -> str:
-    """Format a log record's timestamp using LOG_TIME_FORMAT env var or default.
-
-    Substitutes milliseconds ({ms}) in the format string with zero-padded microseconds.
-    """
+    """Format a log record's timestamp using LOG_TIME_FORMAT env var or default."""
     time_format = os.environ.get("LOG_TIME_FORMAT", DEFAULT_TIME_FORMAT)
     ms = f"{record['time'].microsecond // 1000:03d}"
     return record["time"].strftime(time_format.replace("{ms}", ms))
 
 
-def _render_exception(record: dict[str, Any], console: Any | None) -> None:
-    """Render exception traceback from log record to stderr.
-
-    Prefers Rich-formatted tracebacks if console is available and Rich is installed.
-    Falls back to standard Python traceback formatting.
-    """
+def _render_exception(record: dict[str, Any], console: Console | None) -> None:
+    """Render exception traceback to stderr. Prefers Rich when available."""
     exc = record["exception"]
-    if not exc or not exc.type or not exc.value:
+    if not exc or not exc.type or not exc.value or not exc.traceback:
         return
 
-    if console is not None and exc.traceback:
+    if console is not None:
         try:
             from rich.traceback import Traceback
         except ImportError:
-            console = None
+            pass
         else:
             console.print(Traceback.from_exception(exc.type, exc.value, exc.traceback))
             return
 
-    if exc.traceback:
-        lines = traceback.format_exception(exc.type, exc.value, exc.traceback)
-        print("".join(lines), file=sys.stderr)
+    lines = traceback.format_exception(exc.type, exc.value, exc.traceback)
+    print("".join(lines), file=sys.stderr)
+
+
+def _extract_extras(record: dict[str, Any]) -> dict[str, Any]:
+    """Pull user-supplied extras from a record, excluding the internal 'name' key."""
+    return {k: v for k, v in record["extra"].items() if k != "name"}
 
 
 def format_tty(record: dict[str, Any]) -> None:
     """Format log record for terminal output."""
     level = record["level"].name
     level_name = LEVEL_NAMES.get(level, f"{level:>5}")
-    color = LEVEL_COLORS.get(level, "white")
+    extras = _extract_extras(record)
     console = _get_console()
 
-    extras = {key: value for key, value in record["extra"].items() if key != "name"}
+    show_timestamp = _verbosity >= VERBOSITY_TRACE
+    extras_str = "  ".join(f"{k}={v}" for k, v in extras.items()) if extras else ""
+
+    rich_printed = False
     if console is not None:
         try:
             from rich.text import Text
-        except ImportError:
-            console = None
-        else:
+
+            color = LEVEL_COLORS.get(level, "white")
             text = Text()
-            if _verbosity >= 2:
+            if show_timestamp:
                 text.append(_format_timestamp(record), style="dim")
                 text.append(" ")
             text.append(level_name, style=f"{color} bold")
             text.append(" ")
             text.append(record["message"])
-            if extras:
-                pairs = "  ".join(f"{key}={value}" for key, value in extras.items())
-                text.append(f"  {pairs}", style="dim")
+            if extras_str:
+                text.append(f"  {extras_str}", style="dim")
             console.print(text)
-            _render_exception(record, console)
-            return
+            rich_printed = True
+        except ImportError:
+            pass
 
-    parts = []
-    if _verbosity >= 2:
-        parts.append(_format_timestamp(record))
-    parts.append(level_name)
-    parts.append(record["message"])
-    if extras:
-        pairs = "  ".join(f"{key}={value}" for key, value in extras.items())
-        parts.append(pairs)
-    print(" ".join(parts), file=sys.stderr)
-    _render_exception(record, None)
+    if not rich_printed:
+        parts: list[str] = []
+        if show_timestamp:
+            parts.append(_format_timestamp(record))
+        parts.append(level_name)
+        parts.append(record["message"])
+        if extras_str:
+            parts.append(extras_str)
+        print(" ".join(parts), file=sys.stderr)
+
+    _render_exception(record, console if rich_printed else None)
 
 
 def format_json(record: dict[str, Any]) -> str:
@@ -162,7 +161,7 @@ def format_json(record: dict[str, Any]) -> str:
         obj["file"] = record["file"].path
         obj["line"] = record["line"]
 
-    extras = {key: value for key, value in record["extra"].items() if key != "name"}
+    extras = _extract_extras(record)
     if extras:
         obj.update(extras)
 
@@ -179,7 +178,7 @@ def format_json(record: dict[str, Any]) -> str:
 
 
 def structured_sink(message: Any) -> None:
-    """Format logs based on TTY detection."""
+    """Route logs to TTY or JSON format based on stderr detection."""
     record = message.record
     if sys.stderr.isatty():
         format_tty(record)
@@ -187,14 +186,28 @@ def structured_sink(message: Any) -> None:
         print(format_json(record), file=sys.stderr)
 
 
-def setup_logging(verbosity: int = 0) -> None:
-    """Configure loguru with the dual-format sink.
+def setup_logging(
+    verbosity: int = 0,
+    *,
+    log_file: str | None = None,
+    log_to_console: bool = True,
+) -> None:
+    """Configure loguru with file and optional console sinks.
 
-    Verbosity levels:
+    Always writes to log_file when provided (at TRACE level to capture everything).
+    Only writes to console/stderr when log_to_console is True.
+
+    Verbosity levels (for console output):
         0: WARNING and above (default)
        -v: INFO and above, no timestamps
       -vv: TRACE and above, with timestamps
     """
+    if not log_file and not log_to_console:
+        raise ValueError(
+            "setup_logging called with no sinks: log_file is None and log_to_console is False. "
+            "At least one output must be enabled."
+        )
+
     global _verbosity
     from loguru import logger
 
@@ -205,15 +218,27 @@ def setup_logging(verbosity: int = 0) -> None:
     level = _VERBOSITY_TO_LEVEL.get(verbosity, DEFAULT_LOG_LEVEL)
 
     logger.remove()
-    logger.add(
-        structured_sink,
-        level=level,
-        backtrace=True,
-        diagnose=True,
-    )
+
+    if log_file:
+        logger.add(
+            log_file,
+            level="TRACE",
+            format="[{time:YYYY-MM-DD HH:mm:ss}] [PYTHON] {level} {message}",
+            backtrace=True,
+            diagnose=True,
+            mode="a",
+        )
+
+    if log_to_console:
+        logger.add(
+            structured_sink,
+            level=level,
+            backtrace=True,
+            diagnose=True,
+        )
 
 
-def get_logger(name: str) -> Any:
+def get_logger(name: str) -> loguru.Logger:
     """Get a logger for a specific component or plugin."""
     from loguru import logger
 
