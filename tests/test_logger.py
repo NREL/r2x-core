@@ -23,7 +23,6 @@ from r2x_core.logger import (
 )
 
 
-# Tests for _format_timestamp
 def test_format_timestamp_default_format():
     """Test timestamp formatting with default format."""
     record = {
@@ -52,11 +51,9 @@ def test_format_timestamp_with_milliseconds():
     assert "500" in result
 
 
-# Tests for _render_exception
 def test_render_exception_with_no_exception():
     """Test _render_exception with no exception."""
     record = {"exception": None}
-    # Should not raise
     _render_exception(record, None)
 
 
@@ -65,7 +62,6 @@ def test_render_exception_with_incomplete_exception():
     exc = mock.Mock()
     exc.type = None
     record = {"exception": exc}
-    # Should not raise
     _render_exception(record, None)
 
 
@@ -88,7 +84,6 @@ def test_render_exception_with_traceback_no_rich(capsys):
         assert "ValueError" in output or "Test error" in output
 
 
-# Tests for format_tty
 def test_format_tty_basic(capsys):
     """Test TTY formatting basic output."""
     import r2x_core.logger as logger_module
@@ -153,7 +148,6 @@ def test_format_tty_with_extras(capsys):
     assert "warn message" in output
 
 
-# Tests for format_json
 def test_format_json_basic():
     """Test JSON formatting with basic record."""
     level_mock = mock.Mock()
@@ -270,7 +264,6 @@ def test_format_json_with_extras():
     assert "name" not in payload
 
 
-# Tests for structured_sink
 def test_structured_sink_json_mode(monkeypatch, capsys):
     """Test structured_sink in JSON mode."""
     monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
@@ -296,7 +289,6 @@ def test_structured_sink_json_mode(monkeypatch, capsys):
     assert payload["msg"] == "json message"
 
 
-# Tests for get_logger
 def test_get_logger_returns_bound_logger():
     """Test that get_logger returns a bound logger."""
     custom_logger = get_logger("my.component")
@@ -314,7 +306,6 @@ def test_get_logger_with_different_names():
     assert logger2 is not None
 
 
-# Tests for logging constants
 def test_level_names_coverage():
     """Test that LEVEL_NAMES contains expected levels."""
     expected_levels = {"TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
@@ -335,25 +326,20 @@ def test_default_constants():
     assert DEFAULT_TIME_FORMAT == "%Y-%m-%dT%H:%M:%S.{ms}"
 
 
-def test_get_console_returns_cached_false(monkeypatch):
-    """Test _get_console returns None when Rich is unavailable."""
-    import r2x_core.logger as logger_module
-
-    logger_module._console = False
+def test_get_console_returns_console_or_none():
+    """Test _get_console returns a Console (if Rich installed) or None."""
+    _get_console.cache_clear()
     result = _get_console()
-    assert result is None
-
-
-def test_get_console_initialization():
-    """Test _get_console initializes console when available."""
-    import r2x_core.logger as logger_module
-
-    logger_module._console = None
-    result = _get_console()
-    # If Rich is available, it should return a Console object
-    # If not available, it should return None
     if result is not None:
         assert hasattr(result, "print")
+
+
+def test_get_console_is_cached():
+    """Test _get_console returns the same instance on repeated calls."""
+    _get_console.cache_clear()
+    first = _get_console()
+    second = _get_console()
+    assert first is second
 
 
 def test_format_tty_with_rich_text_output(capsys):
@@ -361,7 +347,7 @@ def test_format_tty_with_rich_text_output(capsys):
     import r2x_core.logger as logger_module
 
     logger_module._verbosity = 0
-    logger_module._console = None
+    _get_console.cache_clear()
 
     level_mock = mock.Mock()
     level_mock.name = "ERROR"
@@ -384,7 +370,8 @@ def test_format_tty_fallback_no_rich(monkeypatch, capsys):
     import r2x_core.logger as logger_module
 
     logger_module._verbosity = 0
-    logger_module._console = False
+    _get_console.cache_clear()
+    monkeypatch.setattr("r2x_core.logger._get_console", lambda: None)
 
     level_mock = mock.Mock()
     level_mock.name = "DEBUG"
@@ -404,10 +391,7 @@ def test_format_tty_fallback_no_rich(monkeypatch, capsys):
 
 def test_render_exception_with_traceback_and_rich(capsys):
     """Test exception rendering with Rich traceback."""
-    import r2x_core.logger as logger_module
-
-    # Reset console to force initialization
-    logger_module._console = None
+    _get_console.cache_clear()
     console = _get_console()
 
     try:
@@ -422,8 +406,6 @@ def test_render_exception_with_traceback_and_rich(capsys):
             ),
         }
         _render_exception(record, console)
-        # Just verify it doesn't crash
-        assert True
 
 
 def test_structured_sink_tty_mode(monkeypatch, capsys):
@@ -432,7 +414,8 @@ def test_structured_sink_tty_mode(monkeypatch, capsys):
 
     monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
     logger_module._verbosity = 0
-    logger_module._console = False
+    _get_console.cache_clear()
+    monkeypatch.setattr("r2x_core.logger._get_console", lambda: None)
 
     level_mock = mock.Mock()
     level_mock.name = "INFO"
@@ -450,9 +433,8 @@ def test_structured_sink_tty_mode(monkeypatch, capsys):
 
     structured_sink(message)
     output = capsys.readouterr().err
-    # Should use TTY formatting, not JSON
     assert "tty message" in output
-    assert "{" not in output  # Not JSON
+    assert "{" not in output
 
 
 def test_setup_logging_with_verbosity_trace():
@@ -479,12 +461,13 @@ def test_setup_logging_default_verbosity():
     assert logger_module._verbosity == 0
 
 
-def test_format_tty_fallback_with_timestamp_and_extras(capsys):
+def test_format_tty_fallback_with_timestamp_and_extras(monkeypatch, capsys):
     """Test fallback TTY formatting with both timestamp and extras."""
     import r2x_core.logger as logger_module
 
     logger_module._verbosity = VERBOSITY_TRACE
-    logger_module._console = False
+    _get_console.cache_clear()
+    monkeypatch.setattr("r2x_core.logger._get_console", lambda: None)
 
     level_mock = mock.Mock()
     level_mock.name = "INFO"
@@ -501,18 +484,17 @@ def test_format_tty_fallback_with_timestamp_and_extras(capsys):
     output = capsys.readouterr().err
     assert "test with everything" in output
     assert "INFO" in output
-    # Should include timestamp in fallback path
     assert "2026-01" in output or "10:30" in output
-    # Should include extras
     assert "request_id" in output or "12345" in output
 
 
-def test_format_tty_fallback_only_extras(capsys):
+def test_format_tty_fallback_only_extras(monkeypatch, capsys):
     """Test fallback TTY formatting with extras but no timestamp."""
     import r2x_core.logger as logger_module
 
     logger_module._verbosity = 0
-    logger_module._console = False
+    _get_console.cache_clear()
+    monkeypatch.setattr("r2x_core.logger._get_console", lambda: None)
 
     level_mock = mock.Mock()
     level_mock.name = "WARNING"
@@ -528,7 +510,6 @@ def test_format_tty_fallback_only_extras(capsys):
     output = capsys.readouterr().err
     assert "warning with extras" in output
     assert "WARN" in output
-    # Should include extras in fallback
     assert "code" in output or "500" in output
 
 
@@ -553,8 +534,8 @@ def test_format_json_with_no_file():
     assert "line" not in payload
 
 
-def test_render_exception_no_traceback(capsys):
-    """Test _render_exception with exception but no traceback."""
+def test_render_exception_no_traceback():
+    """Test _render_exception with exception but no traceback does nothing."""
     exc = mock.Mock()
     exc.type = ValueError
     exc.value = ValueError("test")
@@ -562,8 +543,6 @@ def test_render_exception_no_traceback(capsys):
 
     record = {"exception": exc}
     _render_exception(record, None)
-    # Should handle gracefully without output
-    assert True
 
 
 def test_format_json_with_exception_no_traceback():
@@ -590,5 +569,123 @@ def test_format_json_with_exception_no_traceback():
     assert "error" in payload
     assert payload["error"]["type"] == "RuntimeError"
     assert payload["error"]["message"] == "No trace"
-    # Should not have traceback in the error object
     assert "traceback" not in payload["error"]
+
+
+def test_setup_logging_no_sinks_raises():
+    """Test that setup_logging raises ValueError when both sinks are disabled."""
+    import pytest
+
+    with pytest.raises(ValueError, match="no sinks"):
+        setup_logging(verbosity=0, log_file=None, log_to_console=False)
+
+
+def test_setup_logging_with_log_file(tmp_path):
+    """Test setup_logging writes to file when log_file is provided."""
+    from loguru import logger as loguru_logger
+
+    log_file = tmp_path / "test.log"
+    setup_logging(verbosity=VERBOSITY_TRACE, log_file=str(log_file))
+
+    loguru_logger.enable("r2x_core")
+    loguru_logger.info("file sink test message")
+
+    import time
+
+    time.sleep(0.1)
+
+    contents = log_file.read_text()
+    assert "file sink test message" in contents
+    assert "[PYTHON]" in contents
+
+
+def test_setup_logging_without_log_file():
+    """Test setup_logging works without log_file (no file sink added)."""
+    import r2x_core.logger as logger_module
+
+    setup_logging(verbosity=VERBOSITY_INFO)
+    assert logger_module._verbosity == VERBOSITY_INFO
+
+
+def test_setup_logging_log_to_console_false_no_stderr(tmp_path, capsys):
+    """Test setup_logging with log_to_console=False produces no stderr output."""
+    from loguru import logger as loguru_logger
+
+    log_file = tmp_path / "console_off.log"
+    setup_logging(verbosity=VERBOSITY_TRACE, log_file=str(log_file), log_to_console=False)
+
+    loguru_logger.enable("r2x_core")
+    loguru_logger.info("should not appear on console")
+
+    output = capsys.readouterr().err
+    assert "should not appear on console" not in output
+
+
+def test_setup_logging_log_to_console_true_has_stderr(monkeypatch, capsys):
+    """Test setup_logging with log_to_console=True writes to stderr."""
+    _get_console.cache_clear()
+    monkeypatch.setattr("r2x_core.logger._get_console", lambda: None)
+
+    from loguru import logger as loguru_logger
+
+    setup_logging(verbosity=VERBOSITY_TRACE, log_to_console=True)
+
+    loguru_logger.enable("r2x_core")
+    loguru_logger.info("should appear on console")
+
+    output = capsys.readouterr().err
+    assert "should appear on console" in output
+
+
+def test_setup_logging_file_and_console(tmp_path, monkeypatch, capsys):
+    """Test setup_logging with both file and console sinks active."""
+    _get_console.cache_clear()
+    monkeypatch.setattr("r2x_core.logger._get_console", lambda: None)
+
+    from loguru import logger as loguru_logger
+
+    log_file = tmp_path / "both.log"
+    setup_logging(
+        verbosity=VERBOSITY_TRACE,
+        log_file=str(log_file),
+        log_to_console=True,
+    )
+
+    loguru_logger.enable("r2x_core")
+    loguru_logger.info("dual sink message")
+
+    import time
+
+    time.sleep(0.1)
+
+    contents = log_file.read_text()
+    assert "dual sink message" in contents
+
+    output = capsys.readouterr().err
+    assert "dual sink message" in output
+
+
+def test_setup_logging_file_captures_all_levels(tmp_path):
+    """Test that the file sink captures TRACE level even when console would filter."""
+    from loguru import logger as loguru_logger
+
+    log_file = tmp_path / "trace.log"
+    setup_logging(
+        verbosity=0,  # Console would only show WARNING+
+        log_file=str(log_file),
+        log_to_console=False,
+    )
+
+    loguru_logger.enable("r2x_core")
+    loguru_logger.trace("trace level message")
+    loguru_logger.debug("debug level message")
+    loguru_logger.warning("warning level message")
+
+    import time
+
+    time.sleep(0.1)
+
+    contents = log_file.read_text()
+    assert "trace level message" in contents
+    assert "debug level message" in contents
+    assert "warning level message" in contents
