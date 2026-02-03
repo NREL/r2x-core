@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.1](https://github.com/NatLabRockies/r2x-core/compare/v0.4.0...v0.4.1) (2026-02-03)
+
+
+### Bug Fixes
+
+* Adding back upgrader for automatic data upgrades on data store initialization ([#79](https://github.com/NatLabRockies/r2x-core/issues/79)) ([17f10ff](https://github.com/NatLabRockies/r2x-core/commit/17f10ffc98bd865861c356d1810130347394252d))
+* Adding correct way of handling logger ([#80](https://github.com/NatLabRockies/r2x-core/issues/80)) ([584e80a](https://github.com/NatLabRockies/r2x-core/commit/584e80a0aa80798ba1a71ce7a914d9cb448aa14f))
+
+
+### Build
+
+* **deps-dev:** update uv-build requirement ([#74](https://github.com/NatLabRockies/r2x-core/issues/74)) ([14e2540](https://github.com/NatLabRockies/r2x-core/commit/14e254026f7c4f935b8b2066f512b28ddc1bdcbf))
+
 ## [0.4.0](https://github.com/NREL/r2x-core/compare/v0.3.1...v0.4.0) (2026-01-21)
 
 
