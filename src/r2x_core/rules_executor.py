@@ -158,6 +158,8 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
                     return conversion_result.map(lambda _: RuleApplicationStats(converted=0, skipped=0))
 
                 converted += 1
+        else:
+            logger.warning("No components found for source type '{}' in rule {}", source_type, rule)
 
     logger.debug("Rule {}: {} converted", rule, converted)
     return Ok(RuleApplicationStats(converted=converted, skipped=0))
