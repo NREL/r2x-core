@@ -142,11 +142,14 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
             rule_filter = rule.filter
             filter_func = lambda comp: _evaluate_rule_filter(comp, rule_filter=rule_filter)  # noqa: E731, B023
 
+        found_component = False
+
         for src_component in _iter_system_components(
             read_system,
             class_type=source_class,
             filter_func=filter_func,
         ):
+            found_component = True
             for target_type in rule.get_target_types():
                 # Chain conversions: convert then attach using and_then
                 conversion_result = _convert_component(
@@ -158,6 +161,9 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
                     return conversion_result.map(lambda _: RuleApplicationStats(converted=0, skipped=0))
 
                 converted += 1
+
+        if not found_component:
+            logger.warning("No components found for source type '{}' in rule {}", source_type, rule)
 
     logger.debug("Rule {}: {} converted", rule, converted)
     return Ok(RuleApplicationStats(converted=converted, skipped=0))

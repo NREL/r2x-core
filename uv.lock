@@ -1178,7 +1178,7 @@ requires-dist = [
     { name = "packaging", specifier = ">=24.0,<26.0" },
     { name = "polars", specifier = ">=1.33.1,<2.0.0" },
     { name = "pydantic", specifier = ">=2.11.9,<3.0.0" },
-    { name = "rust-ok", specifier = ">=0.2.2,<1.0.0" },
+    { name = "rust-ok", specifier = ">=0.3.0,<1.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1260,11 +1260,11 @@ wheels = [
 
 [[package]]
 name = "rust-ok"
-version = "0.2.2"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4b/d8/1316ea15a56650f6dd971b1e385175e500dcca09b36149d2c53f6d4f1bb7/rust_ok-0.2.2.tar.gz", hash = "sha256:420a3b55151f8506bdef14db4036e1c9747786fabf3f0d2d8c0f0e4cd0348474", size = 5208, upload-time = "2026-01-17T00:20:31.528Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d4/b4/87573f97dfecc11158ac35e8cb57045dc8759c51b56010a1423194481cdc/rust_ok-0.3.0.tar.gz", hash = "sha256:7d79997d87b31fa8d960180ecb3abb2c989c6294c65ffad642963baf5da21447", size = 5298, upload-time = "2026-02-03T21:07:06.738Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/55/29444a8895d9bf7bccf2ac9929cc13402facfd16869ee260cefb511703cb/rust_ok-0.2.2-py3-none-any.whl", hash = "sha256:93fa556ce8f44b8c2bc8a3964bcdf8b7231773c50b51e221286b83d29ee3b9d7", size = 7212, upload-time = "2026-01-17T00:20:29.932Z" },
+    { url = "https://files.pythonhosted.org/packages/45/6a/606fc68d1d16725915832577bf0fe62621dbb0dcc931cd5b4bade72e9099/rust_ok-0.3.0-py3-none-any.whl", hash = "sha256:4b1635c0623c1a3a3f039a739fd47271bcdb4b5f4fc4fc833e70d197708d65c5", size = 7330, upload-time = "2026-02-03T21:07:05.696Z" },
 ]
 
 [[package]]

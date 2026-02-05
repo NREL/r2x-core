@@ -10,6 +10,7 @@ from r2x_core.logger import (
     DEFAULT_TIME_FORMAT,
     LEVEL_COLORS,
     LEVEL_NAMES,
+    VERBOSITY_DEBUG,
     VERBOSITY_INFO,
     VERBOSITY_TRACE,
     _format_timestamp,
@@ -321,8 +322,9 @@ def test_level_colors_coverage():
 def test_default_constants():
     """Test default constants are set correctly."""
     assert DEFAULT_LOG_LEVEL == "WARNING"
+    assert VERBOSITY_INFO == 0
+    assert VERBOSITY_DEBUG == 1
     assert VERBOSITY_TRACE == 2
-    assert VERBOSITY_INFO == 1
     assert DEFAULT_TIME_FORMAT == "%Y-%m-%dT%H:%M:%S.{ms}"
 
 
