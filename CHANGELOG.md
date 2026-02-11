@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/NatLabRockies/r2x-core/compare/v0.4.1...v0.4.2) (2026-02-11)
+
+
+### Bug Fixes
+
+* update logger level to include debug ([#81](https://github.com/NatLabRockies/r2x-core/issues/81)) ([50f0817](https://github.com/NatLabRockies/r2x-core/commit/50f08176ecfa700aea890d892798d4c140f35482))
+
 ## [0.4.1](https://github.com/NatLabRockies/r2x-core/compare/v0.4.0...v0.4.1) (2026-02-03)
 
 
