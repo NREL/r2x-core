@@ -115,42 +115,42 @@ def build_component_kwargs(
         Active context passed to getters.
     """
     source_obj = _as_attr_source(source_component)
-    field_map = getattr(rule, "field_map", {})
-    getters = getattr(rule, "getters", {})
-    defaults = getattr(rule, "defaults", {})
+    defaults = rule.defaults
     kwargs: dict[str, Any] = {}
 
-    for target_field, source_field in field_map.items():
+    for target_field, source_field in rule.field_map.items():
         if isinstance(source_field, list):
-            # Multi-field mappings must be handled by a getter; skip direct assignment.
             continue
         value = getattr(source_obj, source_field, None)
-        if value is None and target_field in defaults:
-            value = defaults[target_field]
-        elif value is None:
+        if value is None:
+            value = defaults.get(target_field)
+        if value is None:
             return Err(
                 ValueError(
                     f"No attribute '{source_field}' on source component and no default for '{target_field}'"
                 )
             )
-
         kwargs[target_field] = value
 
-    for target_field, getter_func in getters.items():
-        if callable(getter_func):
-            result = getter_func(source_obj, context=context)
-        else:
+    for target_field, getter_func in rule.getters.items():
+        if not callable(getter_func):
             return Err(ValueError(f"Getter for '{target_field}' is not callable: {getter_func}"))
 
-        match result:
-            case Ok(value):
-                if value is not None:
-                    kwargs[target_field] = value
+        match getter_func(source_obj, context=context):
+            case Ok(value) if value is not None:
+                kwargs[target_field] = value
+            case Ok():
+                if target_field not in kwargs and target_field in defaults:
+                    kwargs[target_field] = defaults[target_field]
             case Err(e):
                 if target_field in defaults:
                     kwargs[target_field] = defaults[target_field]
                 else:
                     return Err(ValueError(f"Getter for '{target_field}' failed: {e}"))
+
+    for target_field, default_value in defaults.items():
+        if target_field not in kwargs:
+            kwargs[target_field] = default_value
 
     return Ok(kwargs)
 
