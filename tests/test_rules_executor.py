@@ -1,5 +1,7 @@
 """Tests for the translation rule executor helpers."""
 
+from uuid import uuid4
+
 import pytest
 from fixtures.context import FIXTURE_MODEL_MODULES
 from fixtures.source_system import BusComponent, BusGeographicInfo
@@ -133,3 +135,40 @@ def test_attach_component_non_supplemental_success(source_system):
     bus = next(source_system.get_components(BusComponent))
     result = _attach_component(bus, bus, context)
     assert result.is_ok()
+
+
+def test_apply_single_rule_resolves_target_type_once_per_target(monkeypatch, target_system):
+    """Target type resolution runs once per target type, not once per component."""
+    source_system = System(name="executor-source-many")
+    source_system.add_components(
+        BusComponent(name="bus_1", uuid=uuid4()),
+        BusComponent(name="bus_2", uuid=uuid4()),
+    )
+
+    rule = Rule(
+        source_type="BusComponent",
+        target_type="NodeComponent",
+        version=1,
+        field_map={"name": "name", "uuid": "uuid"},
+    )
+    context = _build_context(
+        rules=[rule],
+        source_system=source_system,
+        target_system=target_system,
+    )
+
+    from r2x_core.rules_executor import _resolve_component_type as original_resolve
+
+    call_counts: dict[str, int] = {}
+
+    def counting_resolve(type_name: str, *, context: PluginContext):
+        call_counts[type_name] = call_counts.get(type_name, 0) + 1
+        return original_resolve(type_name, context=context)
+
+    monkeypatch.setattr("r2x_core.rules_executor._resolve_component_type", counting_resolve)
+
+    result = apply_single_rule(rule, context=context)
+
+    assert result.is_ok()
+    assert result.unwrap().converted == 2
+    assert call_counts["NodeComponent"] == 1

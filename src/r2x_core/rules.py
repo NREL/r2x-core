@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     pass
 
 
+_CACHE_INPUT_FIELDS = frozenset({"values", "prefixes", "casefold"})
+
+
 class RuleFilter(BaseModel):
     """Declarative predicate for selecting source components."""
 
@@ -25,6 +28,21 @@ class RuleFilter(BaseModel):
     casefold: bool = True
     on_missing: Literal["include", "exclude"] = "exclude"
     _normalized_prefixes: list[str] | None = PrivateAttr(None)
+    _normalized_values: tuple[Any, ...] | None = PrivateAttr(None)
+    _normalized_values_set: frozenset[Any] | None = PrivateAttr(None)
+    _has_unhashable_values: bool = PrivateAttr(False)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Invalidate cached normalized values when filter inputs change."""
+        super().__setattr__(name, value)
+        if name in _CACHE_INPUT_FIELDS:
+            self._invalidate_normalized_cache()
+
+    def _invalidate_normalized_cache(self) -> None:
+        self._normalized_prefixes = None
+        self._normalized_values = None
+        self._normalized_values_set = None
+        self._has_unhashable_values = False
 
     @model_validator(mode="after")
     def _validate_structure(self) -> RuleFilter:
@@ -74,12 +92,31 @@ class RuleFilter(BaseModel):
     def normalized_prefixes(self) -> list[str]:
         """Return the cached prefix values ready for prefix comparisons."""
         if self._normalized_prefixes is None:
-            prefixes: list[str] = []
-            for value in self.values or []:
-                normalized = value.casefold() if self.casefold else value
-                prefixes.append(normalized)
-            self._normalized_prefixes = prefixes
+            self._normalized_prefixes = [
+                value.casefold() if self.casefold else value for value in (self.values or [])
+            ]
         return self._normalized_prefixes
+
+    def normalized_values(self) -> tuple[Any, ...]:
+        """Return cached values normalized for case-insensitive comparisons."""
+        if self._normalized_values is None:
+            self._normalized_values = tuple(
+                str(value).casefold() if self.casefold and isinstance(value, str) else value
+                for value in (self.values or [])
+            )
+        return self._normalized_values
+
+    def normalized_values_set(self) -> frozenset[Any] | None:
+        """Return cached normalized value set when values are hashable."""
+        if self._has_unhashable_values:
+            return None
+        if self._normalized_values_set is None:
+            try:
+                self._normalized_values_set = frozenset(self.normalized_values())
+            except TypeError:
+                self._has_unhashable_values = True
+                return None
+        return self._normalized_values_set
 
 
 RuleGetter: TypeAlias = Callable[..., Result[Any, ValueError]]

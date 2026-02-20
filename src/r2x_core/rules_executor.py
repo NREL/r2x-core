@@ -115,32 +115,37 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
 
     """
     converted = 0
-    should_regenerate_uuid = len(rule.get_target_types()) > 1
+    target_types = rule.get_target_types()
+    should_regenerate_uuid = len(target_types) > 1
 
     read_system = context.target_system if rule.system == "target" else context.source_system
     if read_system is None:
         return Err(ValueError(f"System '{rule.system}' is not set in context"))
-    assert read_system is not None  # Type guard for type checker
+
+    resolved_target_classes: dict[str, type[Component]] = {}
+    for target_type in target_types:
+        target_class_result = _resolve_component_type(target_type, context=context)
+        if target_class_result.is_err():
+            return Err(
+                ValueError(f"Failed to resolve target type '{target_type}': {target_class_result.err()}")
+            )
+        resolved_target_classes[target_type] = cast(type[Component], target_class_result.ok())
+
+    filter_func: Callable[[Any], bool] | None = None
+    if rule.filter is not None:
+        rule_filter = rule.filter
+
+        def filter_func(component: Any) -> bool:
+            return _evaluate_rule_filter(component, rule_filter=rule_filter)
 
     for source_type in rule.get_source_types():
-        # Resolve source class, converting TypeError to ValueError
-        source_class_result = _resolve_component_type(source_type, context=context).map_err(
-            lambda e, st=source_type: ValueError(f"Failed to resolve source type '{st}': {e}")
-        )
-
-        # Skip this source type if resolution failed, but return errors from conversions
+        source_class_result = _resolve_component_type(source_type, context=context)
         if source_class_result.is_err():
-            logger.error("Source type resolution error: {}", source_class_result.err())
-            # Return the error properly typed
-            return source_class_result.map(lambda _: RuleApplicationStats(converted=0, skipped=0))
+            return Err(
+                ValueError(f"Failed to resolve source type '{source_type}': {source_class_result.err()}")
+            )
 
-        # Extract resolved source class (safe because is_ok() check passed)
         source_class = cast(type[Component], source_class_result.ok())
-
-        filter_func: Callable[[Any], bool] | None = None
-        if rule.filter is not None:
-            rule_filter = rule.filter
-            filter_func = lambda comp: _evaluate_rule_filter(comp, rule_filter=rule_filter)  # noqa: E731, B023
 
         found_component = False
 
@@ -150,15 +155,21 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
             filter_func=filter_func,
         ):
             found_component = True
-            for target_type in rule.get_target_types():
-                # Chain conversions: convert then attach using and_then
+            for target_type in target_types:
                 conversion_result = _convert_component(
-                    rule, src_component, target_type, context, should_regenerate_uuid
-                ).and_then(lambda component, sc=src_component: _attach_component(component, sc, context))
+                    rule=rule,
+                    source_component=src_component,
+                    target_class=resolved_target_classes[target_type],
+                    context=context,
+                    regenerate_uuid=should_regenerate_uuid,
+                )
 
-                # Return early on conversion failure
                 if conversion_result.is_err():
-                    return conversion_result.map(lambda _: RuleApplicationStats(converted=0, skipped=0))
+                    return Err(cast(ValueError, conversion_result.err()))
+
+                attach_result = _attach_component(cast(Any, conversion_result.ok()), src_component, context)
+                if attach_result.is_err():
+                    return Err(cast(ValueError, attach_result.err()))
 
                 converted += 1
 
@@ -172,7 +183,7 @@ def apply_single_rule(rule: Rule, *, context: PluginContext) -> Result[RuleAppli
 def _convert_component(
     rule: Rule,
     source_component: Any,
-    target_type: str,
+    target_class: type[Component],
     context: PluginContext,
     regenerate_uuid: bool,
 ) -> Result[Any, ValueError]:
@@ -187,8 +198,6 @@ def _convert_component(
         The transformation rule
     source_component : Any
         The source component to convert
-    target_type : str
-        The target component type name
     context : PluginContext
         The plugin context
     regenerate_uuid : bool
@@ -199,31 +208,16 @@ def _convert_component(
     Result[Any, ValueError]
         Ok with the created component if conversion succeeds, Err otherwise
     """
-    # Resolve target class, converting TypeError to ValueError
-    target_class_result = _resolve_component_type(target_type, context=context).map_err(
-        lambda e: ValueError(f"Failed to resolve target type '{target_type}': {e}")
-    )
+    fields_result = _build_target_fields(source_component, rule=rule, context=context)
+    if fields_result.is_err():
+        return Err(ValueError(f"Failed to build fields for {source_component.label}: {fields_result.err()}"))
 
-    # Build fields and chain with target class resolution
-    def build_and_create(target_class: type) -> Result[Any, ValueError]:
-        """Build fields and create the target component."""
-        fields_result = _build_target_fields(source_component, rule=rule, context=context).map_err(
-            lambda e: ValueError(f"Failed to build fields for {source_component.label}: {e}")
-        )
+    kwargs = cast(dict[str, Any], fields_result.ok())
+    if regenerate_uuid and "uuid" in kwargs:
+        kwargs = dict(kwargs)
+        kwargs["uuid"] = str(uuid4())
 
-        # Use and_then to chain field building with component creation
-        def create_component(kwargs: dict[str, Any]) -> Result[Any, ValueError]:
-            """Create target component with optional UUID regeneration."""
-            if regenerate_uuid and "uuid" in kwargs:
-                kwargs = dict(kwargs)
-                kwargs["uuid"] = str(uuid4())
-
-            return Ok(_create_target_component(target_class, kwargs=kwargs))
-
-        return fields_result.and_then(create_component)
-
-    # Chain target class resolution with field building and component creation
-    return target_class_result.and_then(build_and_create)
+    return Ok(_create_target_component(target_class, kwargs=kwargs))
 
 
 def _is_supplemental_attribute(component: Component) -> bool:

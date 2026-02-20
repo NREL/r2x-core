@@ -170,19 +170,18 @@ def _evaluate_rule_filter(component: Any, *, rule_filter: RuleFilter) -> bool:
         return rule_filter.on_missing == "include"
 
     candidate = str(attr).casefold() if rule_filter.casefold and isinstance(attr, str) else attr
-    values = [
-        str(val).casefold() if rule_filter.casefold and isinstance(val, str) else val
-        for val in rule_filter.values
-    ]
+    values = rule_filter.normalized_values()
 
     if rule_filter.op == "eq":
         return candidate == values[0]
     if rule_filter.op == "neq":
         return candidate != values[0]
     if rule_filter.op == "in":
-        return candidate in values
+        values_set = rule_filter.normalized_values_set()
+        return candidate in values_set if values_set is not None else candidate in values
     if rule_filter.op == "not_in":
-        return candidate not in values
+        values_set = rule_filter.normalized_values_set()
+        return candidate not in values_set if values_set is not None else candidate not in values
     if rule_filter.op == "geq":
         try:
             cand_num = float(candidate)
@@ -191,11 +190,14 @@ def _evaluate_rule_filter(component: Any, *, rule_filter: RuleFilter) -> bool:
             return False
         return cand_num >= threshold
     if rule_filter.op == "startswith":
-        return any(str(candidate).startswith(val) for val in values)
+        candidate_str = str(candidate)
+        return any(candidate_str.startswith(val) for val in rule_filter.normalized_prefixes())
     if rule_filter.op == "not_startswith":
-        return all(not str(candidate).startswith(val) for val in values)
+        candidate_str = str(candidate)
+        return all(not candidate_str.startswith(val) for val in rule_filter.normalized_prefixes())
     if rule_filter.op == "endswith":
-        return any(str(candidate).endswith(val) for val in values)
+        candidate_str = str(candidate)
+        return any(candidate_str.endswith(val) for val in values)
     return False
 
 
