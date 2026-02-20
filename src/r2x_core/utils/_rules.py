@@ -115,42 +115,42 @@ def build_component_kwargs(
         Active context passed to getters.
     """
     source_obj = _as_attr_source(source_component)
-    field_map = getattr(rule, "field_map", {})
-    getters = getattr(rule, "getters", {})
-    defaults = getattr(rule, "defaults", {})
+    defaults = rule.defaults
     kwargs: dict[str, Any] = {}
 
-    for target_field, source_field in field_map.items():
+    for target_field, source_field in rule.field_map.items():
         if isinstance(source_field, list):
-            # Multi-field mappings must be handled by a getter; skip direct assignment.
             continue
         value = getattr(source_obj, source_field, None)
-        if value is None and target_field in defaults:
-            value = defaults[target_field]
-        elif value is None:
+        if value is None:
+            value = defaults.get(target_field)
+        if value is None:
             return Err(
                 ValueError(
                     f"No attribute '{source_field}' on source component and no default for '{target_field}'"
                 )
             )
-
         kwargs[target_field] = value
 
-    for target_field, getter_func in getters.items():
-        if callable(getter_func):
-            result = getter_func(source_obj, context=context)
-        else:
+    for target_field, getter_func in rule.getters.items():
+        if not callable(getter_func):
             return Err(ValueError(f"Getter for '{target_field}' is not callable: {getter_func}"))
 
-        match result:
-            case Ok(value):
-                if value is not None:
-                    kwargs[target_field] = value
+        match getter_func(source_obj, context=context):
+            case Ok(value) if value is not None:
+                kwargs[target_field] = value
+            case Ok():
+                if target_field not in kwargs and target_field in defaults:
+                    kwargs[target_field] = defaults[target_field]
             case Err(e):
                 if target_field in defaults:
                     kwargs[target_field] = defaults[target_field]
                 else:
                     return Err(ValueError(f"Getter for '{target_field}' failed: {e}"))
+
+    for target_field, default_value in defaults.items():
+        if target_field not in kwargs:
+            kwargs[target_field] = default_value
 
     return Ok(kwargs)
 
@@ -170,19 +170,18 @@ def _evaluate_rule_filter(component: Any, *, rule_filter: RuleFilter) -> bool:
         return rule_filter.on_missing == "include"
 
     candidate = str(attr).casefold() if rule_filter.casefold and isinstance(attr, str) else attr
-    values = [
-        str(val).casefold() if rule_filter.casefold and isinstance(val, str) else val
-        for val in rule_filter.values
-    ]
+    values = rule_filter.normalized_values()
 
     if rule_filter.op == "eq":
         return candidate == values[0]
     if rule_filter.op == "neq":
         return candidate != values[0]
     if rule_filter.op == "in":
-        return candidate in values
+        values_set = rule_filter.normalized_values_set()
+        return candidate in values_set if values_set is not None else candidate in values
     if rule_filter.op == "not_in":
-        return candidate not in values
+        values_set = rule_filter.normalized_values_set()
+        return candidate not in values_set if values_set is not None else candidate not in values
     if rule_filter.op == "geq":
         try:
             cand_num = float(candidate)
@@ -191,11 +190,14 @@ def _evaluate_rule_filter(component: Any, *, rule_filter: RuleFilter) -> bool:
             return False
         return cand_num >= threshold
     if rule_filter.op == "startswith":
-        return any(str(candidate).startswith(val) for val in values)
+        candidate_str = str(candidate)
+        return any(candidate_str.startswith(val) for val in rule_filter.normalized_prefixes())
     if rule_filter.op == "not_startswith":
-        return all(not str(candidate).startswith(val) for val in values)
+        candidate_str = str(candidate)
+        return all(not candidate_str.startswith(val) for val in rule_filter.normalized_prefixes())
     if rule_filter.op == "endswith":
-        return any(str(candidate).endswith(val) for val in values)
+        candidate_str = str(candidate)
+        return any(candidate_str.endswith(val) for val in values)
     return False
 
 

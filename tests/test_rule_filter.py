@@ -285,3 +285,20 @@ def test_rulefilter_normalized_prefixes_no_casefold():
 
     filt = RuleFilter(field="name", op="startswith", values=["Plant_A"], casefold=False)
     assert filt.normalized_prefixes() == ["Plant_A"]
+
+
+def test_rulefilter_normalized_values_cached_for_membership_ops():
+    """normalized values and sets are cached for repeated membership checks."""
+    from r2x_core import RuleFilter
+
+    filt = RuleFilter(field="kind", op="in", values=["GAS", "Coal"], casefold=True)
+
+    normalized_values = filt.normalized_values()
+    normalized_values_again = filt.normalized_values()
+    assert normalized_values == ("gas", "coal")
+    assert normalized_values_again is normalized_values
+
+    normalized_set = filt.normalized_values_set()
+    normalized_set_again = filt.normalized_values_set()
+    assert normalized_set == frozenset({"gas", "coal"})
+    assert normalized_set_again is normalized_set

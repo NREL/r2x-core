@@ -198,6 +198,55 @@ def test_build_component_kwargs_from_parser_record(context_example):
     assert kwargs["ramp_limits"].down == pytest.approx(0.12)
 
 
+def test_build_component_kwargs_applies_standalone_defaults(context_example):
+    """Defaults are applied even when not present in field_map/getters."""
+
+    class Source:
+        name = "component_a"
+
+    rule = Rule(
+        source_type="SourceType",
+        target_type="TargetType",
+        version=1,
+        field_map={"name": "name"},
+        defaults={"longitude": -122.4194},
+    )
+
+    result = build_component_kwargs(Source(), rule=rule, context=context_example)
+
+    assert result.is_ok()
+    kwargs = result.unwrap()
+    assert kwargs["name"] == "component_a"
+    assert kwargs["longitude"] == pytest.approx(-122.4194)
+
+
+def test_build_component_kwargs_getter_none_uses_default(context_example):
+    """Getter Ok(None) should fall back to default when field_map has no value."""
+
+    class Source:
+        name = "component_a"
+
+    def none_getter(_src: Any, *, context: Any) -> Result[Any, ValueError]:
+        _ = context
+        return Ok(None)
+
+    rule = Rule(
+        source_type="SourceType",
+        target_type="TargetType",
+        version=1,
+        field_map={"name": "name"},
+        getters={"computed": none_getter},
+        defaults={"computed": "fallback_value"},
+    )
+
+    result = build_component_kwargs(Source(), rule=rule, context=context_example)
+
+    assert result.is_ok()
+    kwargs = result.unwrap()
+    assert kwargs["name"] == "component_a"
+    assert kwargs["computed"] == "fallback_value"
+
+
 def test_make_attr_getter_returns_none_when_chain_breaks():
     """Attr getter returns Ok(None) when attribute is None mid-chain."""
 
